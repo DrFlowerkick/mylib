@@ -132,7 +132,14 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize, const N: usize> 
     pub fn iter_distance<'a>(&'a self, start_point: MapPoint<X, Y>, filter_fn: Box<dyn Fn(MapPoint<X, Y>, &T, usize) -> bool>) -> impl Iterator<Item = (MapPoint<X, Y>, &'a T, usize)> {
         // use filter_fn as follows (use "_" for unused variables):
         // let filter_fn = Box::new(|point_of_next_cell: MapPoint<X, Y>, value_of_next_cell: &T, current_distance: usize| point_of_next_cell.use_it_somehow() || value_of_next_cell.use_it_somehow() || current_distance.use_it_somehow());
-        DistanceIter::new(self, start_point, filter_fn)
+        let mut start_points: Vec<MapPoint<X, Y>> = Vec::new();
+        start_points.push(start_point);
+        DistanceIter::new(self, start_points, filter_fn)
+    }
+    pub fn iter_distance_area<'a>(&'a self, start_points: Vec<MapPoint<X, Y>>, filter_fn: Box<dyn Fn(MapPoint<X, Y>, &T, usize) -> bool>) -> impl Iterator<Item = (MapPoint<X, Y>, &'a T, usize)> {
+        // use filter_fn as follows (use "_" for unused variables):
+        // let filter_fn = Box::new(|point_of_next_cell: MapPoint<X, Y>, value_of_next_cell: &T, current_distance: usize| point_of_next_cell.use_it_somehow() || value_of_next_cell.use_it_somehow() || current_distance.use_it_somehow());
+        DistanceIter::new(self, start_points, filter_fn)
     }
 }
 
@@ -151,13 +158,17 @@ struct DistanceIter<'a, T, const X: usize, const Y: usize, const N: usize> {
 }
 
 impl<'a, T: Copy + Clone, const X: usize, const Y: usize, const N: usize> DistanceIter<'a, T, X, Y, N> {
-    fn new(data_map: &'a MyMap2D<T, X, Y, N>, start_point: MapPoint<X, Y>, filter_fn: Box<dyn Fn(MapPoint<X, Y>, &T, usize) -> bool>) -> Self {
-        DistanceIter {
+    fn new(data_map: &'a MyMap2D<T, X, Y, N>, start_points: Vec<MapPoint<X, Y>>, filter_fn: Box<dyn Fn(MapPoint<X, Y>, &T, usize) -> bool>) -> Self {
+        let mut result = DistanceIter {
             data_map,
             filter_fn,
-            next_cells: MyArray::init((start_point, 0), 1),
+            next_cells: MyArray::default(),
             index: 0,
+        };
+        for sp in start_points.iter() {
+            result.next_cells.push((*sp, 0));
         }
+        result
     }
 }
 
@@ -165,7 +176,7 @@ impl<'a, T: Copy + Clone + Default, const X: usize, const Y: usize, const N: usi
     type Item = (MapPoint<X, Y>, &'a T, usize);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.index == self.next_cells.len() {
+        if self.index == self.next_cells.len() || self.next_cells.len() == 0 {
             return None
         }
         let (map_point, distance) = *self.next_cells.get(self.index).unwrap();

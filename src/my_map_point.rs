@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::fmt::Display;
 use crate::my_compass::*;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Default)]
@@ -8,6 +9,12 @@ pub struct MapPoint<const X: usize, const Y: usize> {
     // x and y are not public, because changing them without the provided functions can result in unwanted panics!
     x: usize,
     y: usize,
+}
+
+impl<const X: usize, const Y: usize> Display for MapPoint<X, Y> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
 }
 
 impl<const X: usize, const Y: usize> MapPoint<X, Y> {
