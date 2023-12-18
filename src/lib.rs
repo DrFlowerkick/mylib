@@ -7,6 +7,7 @@ pub mod my_open_map;
 pub mod my_array;
 pub mod my_graph;
 pub mod my_binary_tree;
+pub mod my_simple_binary_tree;
 pub mod my_tree;
 pub mod my_monte_carlo_tree_search;
 pub mod my_steady_solution_tree;
