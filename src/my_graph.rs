@@ -6,10 +6,7 @@ pub struct GraphNode<N> {
 
 impl<N: PartialEq + Clone> GraphNode<N> {
     fn new(id: usize, item: N) -> Self {
-        GraphNode {
-            id,
-            item,
-        }
+        GraphNode { id, item }
     }
 }
 
@@ -67,11 +64,15 @@ impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> LevelOrderTraversal<'
     fn visited_node(&mut self, visited_node: usize) -> Option<(&'a GraphNode<N>, usize)> {
         self.visited_nodes.push(visited_node);
         self.traversal_level_nodes.push(visited_node);
-        self.graph.get_node_by_id(visited_node).map_or_else(|_| None, |n| Some((n, self.traversal_level)))
+        self.graph
+            .get_node_by_id(visited_node)
+            .map_or_else(|_| None, |n| Some((n, self.traversal_level)))
     }
 }
 
-impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> Iterator for LevelOrderTraversal<'a, N, E> {
+impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> Iterator
+    for LevelOrderTraversal<'a, N, E>
+{
     type Item = (&'a GraphNode<N>, usize);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -83,13 +84,29 @@ impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> Iterator for LevelOrd
                 self.traversal_level += 1;
                 self.current_node = self.start_node;
                 self.visited_nodes.push(self.start_node);
-                return self.graph.get_node_by_id(self.start_node).map_or_else(|_| None, |n| Some((n, 0)));
+                return self
+                    .graph
+                    .get_node_by_id(self.start_node)
+                    .map_or_else(|_| None, |n| Some((n, 0)));
             }
-            match self.graph.edges.iter().filter(|e| match e.direction {
-                GraphEdgeDirection::Duplex => (e.start == self.current_node && self.visited_nodes.iter().find(|&&n| n == e.end).is_none()) ||
-                                              (e.end == self.current_node && self.visited_nodes.iter().find(|&&n| n == e.start).is_none()),
-                GraphEdgeDirection::Simplex => e.start == self.current_node && self.visited_nodes.iter().find(|&&n| n == e.end).is_none(),
-                }).next() {
+            match self
+                .graph
+                .edges
+                .iter()
+                .filter(|e| match e.direction {
+                    GraphEdgeDirection::Duplex => {
+                        (e.start == self.current_node
+                            && self.visited_nodes.iter().find(|&&n| n == e.end).is_none())
+                            || (e.end == self.current_node
+                                && self.visited_nodes.iter().find(|&&n| n == e.start).is_none())
+                    }
+                    GraphEdgeDirection::Simplex => {
+                        e.start == self.current_node
+                            && self.visited_nodes.iter().find(|&&n| n == e.end).is_none()
+                    }
+                })
+                .next()
+            {
                 Some(edge) => {
                     let next_node = if edge.start == self.current_node {
                         edge.end
@@ -97,7 +114,7 @@ impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> Iterator for LevelOrd
                         edge.start
                     };
                     return self.visited_node(next_node);
-                },
+                }
                 None => {
                     if self.privious_level_nodes.len() > 0 {
                         self.current_node = self.privious_level_nodes.remove(0);
@@ -112,7 +129,7 @@ impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> Iterator for LevelOrd
                         self.finished = true;
                         return None;
                     }
-                },
+                }
             }
         }
     }
@@ -142,14 +159,22 @@ impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> LevelOrderEdgeTravers
             finished: graph.node_count == 0 || graph.get_node_by_id(start_node).is_err(),
         }
     }
-    fn visited_node(&mut self, visited_node: usize, edge: &'a GraphEdge<E>) -> Option<(&'a GraphNode<N>, &'a GraphEdge<E>, usize)> {
+    fn visited_node(
+        &mut self,
+        visited_node: usize,
+        edge: &'a GraphEdge<E>,
+    ) -> Option<(&'a GraphNode<N>, &'a GraphEdge<E>, usize)> {
         self.visited_nodes.push(visited_node);
         self.traversal_level_nodes.push(visited_node);
-        self.graph.get_node_by_id(visited_node).map_or_else(|_| None, |n| Some((n, edge, self.traversal_level)))
+        self.graph
+            .get_node_by_id(visited_node)
+            .map_or_else(|_| None, |n| Some((n, edge, self.traversal_level)))
     }
 }
 
-impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> Iterator for LevelOrderEdgeTraversal<'a, N, E> {
+impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> Iterator
+    for LevelOrderEdgeTraversal<'a, N, E>
+{
     type Item = (&'a GraphNode<N>, &'a GraphEdge<E>, usize);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -162,11 +187,24 @@ impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> Iterator for LevelOrd
                 self.current_node = self.start_node;
                 self.visited_nodes.push(self.start_node);
             }
-            match self.graph.edges.iter().filter(|e| match e.direction {
-                GraphEdgeDirection::Duplex => (e.start == self.current_node && self.visited_nodes.iter().find(|&&n| n == e.end).is_none()) ||
-                                              (e.end == self.current_node && self.visited_nodes.iter().find(|&&n| n == e.start).is_none()),
-                GraphEdgeDirection::Simplex => e.start == self.current_node && self.visited_nodes.iter().find(|&&n| n == e.end).is_none(),
-                }).next() {
+            match self
+                .graph
+                .edges
+                .iter()
+                .filter(|e| match e.direction {
+                    GraphEdgeDirection::Duplex => {
+                        (e.start == self.current_node
+                            && self.visited_nodes.iter().find(|&&n| n == e.end).is_none())
+                            || (e.end == self.current_node
+                                && self.visited_nodes.iter().find(|&&n| n == e.start).is_none())
+                    }
+                    GraphEdgeDirection::Simplex => {
+                        e.start == self.current_node
+                            && self.visited_nodes.iter().find(|&&n| n == e.end).is_none()
+                    }
+                })
+                .next()
+            {
                 Some(edge) => {
                     let next_node = if edge.start == self.current_node {
                         edge.end
@@ -174,7 +212,7 @@ impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> Iterator for LevelOrd
                         edge.start
                     };
                     return self.visited_node(next_node, edge);
-                },
+                }
                 None => {
                     if self.privious_level_nodes.len() > 0 {
                         self.current_node = self.privious_level_nodes.remove(0);
@@ -189,7 +227,7 @@ impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> Iterator for LevelOrd
                         self.finished = true;
                         return None;
                     }
-                },
+                }
             }
         }
     }
@@ -227,11 +265,15 @@ impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> DepthFirstSearchTrave
         self.visited_nodes.push(visited_node);
         self.edge_ids.push(edge_id);
         self.current_node = visited_node;
-        self.graph.get_node_by_id(visited_node).map_or_else(|_| None, |n| Some(n))
+        self.graph
+            .get_node_by_id(visited_node)
+            .map_or_else(|_| None, |n| Some(n))
     }
 }
 
-impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> Iterator for DepthFirstSearchTraversal<'a, N, E> {
+impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> Iterator
+    for DepthFirstSearchTraversal<'a, N, E>
+{
     type Item = &'a GraphNode<N>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -242,13 +284,23 @@ impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> Iterator for DepthFir
             if self.visited_nodes.len() == 0 {
                 self.current_node = self.start_node;
                 self.visited_nodes.push(self.start_node);
-                return self.graph.get_node_by_id(self.start_node).map_or_else(|_| None, |n| Some(n));
+                return self
+                    .graph
+                    .get_node_by_id(self.start_node)
+                    .map_or_else(|_| None, |n| Some(n));
             }
             // filter edges by visited nodes
             let edge_iterator = self.graph.iter_edges().filter(|(e, ..)| match e.direction {
-                GraphEdgeDirection::Duplex => (e.start == self.current_node && self.visited_nodes.iter().find(|&&n| n == e.end).is_none()) ||
-                                            (e.end == self.current_node && self.visited_nodes.iter().find(|&&n| n == e.start).is_none()),
-                GraphEdgeDirection::Simplex => e.start == self.current_node && self.visited_nodes.iter().find(|&&n| n == e.end).is_none(),
+                GraphEdgeDirection::Duplex => {
+                    (e.start == self.current_node
+                        && self.visited_nodes.iter().find(|&&n| n == e.end).is_none())
+                        || (e.end == self.current_node
+                            && self.visited_nodes.iter().find(|&&n| n == e.start).is_none())
+                }
+                GraphEdgeDirection::Simplex => {
+                    e.start == self.current_node
+                        && self.visited_nodes.iter().find(|&&n| n == e.end).is_none()
+                }
             });
             // get edge depending on edge_choice
             let edge_result = match self.edge_choice {
@@ -263,21 +315,19 @@ impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> Iterator for DepthFir
                         edge.start
                     };
                     return self.visited_node(next_node, edge.id);
-                },
-                None => {
-                    match self.edge_ids.pop() {
-                        Some(last_edge) => {
-                            let last_edge = self.graph.get_edge_by_id(last_edge).unwrap();
-                            self.current_node = if last_edge.start == self.current_node {
-                                last_edge.end
-                            } else {
-                                last_edge.start
-                            }
-                        },
-                        None => {
-                            self.finished = true;
-                            return None;
-                        },
+                }
+                None => match self.edge_ids.pop() {
+                    Some(last_edge) => {
+                        let last_edge = self.graph.get_edge_by_id(last_edge).unwrap();
+                        self.current_node = if last_edge.start == self.current_node {
+                            last_edge.end
+                        } else {
+                            last_edge.start
+                        }
+                    }
+                    None => {
+                        self.finished = true;
+                        return None;
                     }
                 },
             }
@@ -295,7 +345,11 @@ pub struct Graph<N, E> {
 }
 
 impl<N: PartialEq + Clone, E: PartialEq + Clone + Ord> Graph<N, E> {
-    pub fn new(expected_number_of_nodes: usize, expected_number_of_edges: usize, force_unambiguous: bool) -> Self {
+    pub fn new(
+        expected_number_of_nodes: usize,
+        expected_number_of_edges: usize,
+        force_unambiguous: bool,
+    ) -> Self {
         Graph {
             nodes: Vec::with_capacity(expected_number_of_nodes),
             edges: Vec::with_capacity(expected_number_of_edges),
@@ -304,7 +358,8 @@ impl<N: PartialEq + Clone, E: PartialEq + Clone + Ord> Graph<N, E> {
             force_unambiguous,
         }
     }
-    pub fn add_node(&mut self, item: N) -> usize { // Creates a new node if item does not exist in graph. Otherwise return id of existing graph.
+    pub fn add_node(&mut self, item: N) -> usize {
+        // Creates a new node if item does not exist in graph. Otherwise return id of existing graph.
         if self.force_unambiguous {
             match self.get_node_by_item(item.clone()) {
                 Ok(node) => return node.id,
@@ -325,11 +380,17 @@ impl<N: PartialEq + Clone, E: PartialEq + Clone + Ord> Graph<N, E> {
         self.remove_node_by_id(id)
     }
     pub fn remove_node_by_id(&mut self, id: usize) -> Result<N, &str> {
-        let position = self.nodes.iter().position(|n| n.id == id).ok_or_else(|| "node id does not exist")?;
+        let position = self
+            .nodes
+            .iter()
+            .position(|n| n.id == id)
+            .ok_or_else(|| "node id does not exist")?;
         let item = self.nodes.remove(position).item;
         loop {
             match self.edges.iter().position(|e| e.start == id || e.end == id) {
-                Some(position) => { self.edges.remove(position); },
+                Some(position) => {
+                    self.edges.remove(position);
+                }
                 None => break,
             }
         }
@@ -344,12 +405,27 @@ impl<N: PartialEq + Clone, E: PartialEq + Clone + Ord> Graph<N, E> {
         result.ok_or_else(|| "item does not exist")
     }
     pub fn get_node_by_id(&self, id: usize) -> Result<&GraphNode<N>, &str> {
-        self.nodes.iter().filter(|n| n.id == id).next().ok_or_else(|| "id does not exist")
+        self.nodes
+            .iter()
+            .filter(|n| n.id == id)
+            .next()
+            .ok_or_else(|| "id does not exist")
     }
     pub fn get_node_item_mut_by_id(&mut self, id: usize) -> Result<&mut N, &str> {
-        self.nodes.iter_mut().filter(|n| n.id == id).map(|n| &mut n.item).next().ok_or_else(|| "id does not exist")
+        self.nodes
+            .iter_mut()
+            .filter(|n| n.id == id)
+            .map(|n| &mut n.item)
+            .next()
+            .ok_or_else(|| "id does not exist")
     }
-    pub fn add_edge(&mut self, start_id: usize, end_id: usize, value: E, direction: GraphEdgeDirection) -> Result<usize, &str> {
+    pub fn add_edge(
+        &mut self,
+        start_id: usize,
+        end_id: usize,
+        value: E,
+        direction: GraphEdgeDirection,
+    ) -> Result<usize, &str> {
         if self.nodes.iter().find(|n| n.id == start_id).is_none() {
             return Err("node of id start not found");
         }
@@ -365,8 +441,16 @@ impl<N: PartialEq + Clone, E: PartialEq + Clone + Ord> Graph<N, E> {
         self.edge_count += 1;
         result
     }
-    pub fn get_edge(&self, start_id: usize, end_id: usize, direction: GraphEdgeDirection) -> Result<&GraphEdge<E>, &str> {
-        let mut iterator = self.edges.iter().filter(|e| e.start == start_id && e.end == end_id && e.direction == direction);
+    pub fn get_edge(
+        &self,
+        start_id: usize,
+        end_id: usize,
+        direction: GraphEdgeDirection,
+    ) -> Result<&GraphEdge<E>, &str> {
+        let mut iterator = self
+            .edges
+            .iter()
+            .filter(|e| e.start == start_id && e.end == end_id && e.direction == direction);
         let result = iterator.next();
         if iterator.next().is_some() {
             return Err("Unambigous edge resolution");
@@ -374,10 +458,22 @@ impl<N: PartialEq + Clone, E: PartialEq + Clone + Ord> Graph<N, E> {
         result.ok_or_else(|| "edge does not exist")
     }
     pub fn get_edge_by_id(&self, id: usize) -> Result<&GraphEdge<E>, &str> {
-        self.edges.iter().find(|e| e.id == id).ok_or_else(|| "edge does not exist")
+        self.edges
+            .iter()
+            .find(|e| e.id == id)
+            .ok_or_else(|| "edge does not exist")
     }
-    pub fn get_edge_value_mut(&mut self, start_id: usize, end_id: usize, direction: GraphEdgeDirection) -> Result<&mut E, &str> {
-        let mut iterator = self.edges.iter_mut().filter(|e| e.start == start_id && e.end == end_id && e.direction == direction).map(|e| &mut e.value);
+    pub fn get_edge_value_mut(
+        &mut self,
+        start_id: usize,
+        end_id: usize,
+        direction: GraphEdgeDirection,
+    ) -> Result<&mut E, &str> {
+        let mut iterator = self
+            .edges
+            .iter_mut()
+            .filter(|e| e.start == start_id && e.end == end_id && e.direction == direction)
+            .map(|e| &mut e.value);
         let result = iterator.next();
         if iterator.next().is_some() {
             return Err("Unambigous edge resolution");
@@ -385,7 +481,12 @@ impl<N: PartialEq + Clone, E: PartialEq + Clone + Ord> Graph<N, E> {
         result.ok_or_else(|| "edge does not exist")
     }
     pub fn get_edge_value_mut_by_id(&mut self, id: usize) -> Result<&mut E, &str> {
-        self.edges.iter_mut().filter(|e| e.id == id).map(|e| &mut e.value).next().ok_or_else(|| "edge does not exist")
+        self.edges
+            .iter_mut()
+            .filter(|e| e.id == id)
+            .map(|e| &mut e.value)
+            .next()
+            .ok_or_else(|| "edge does not exist")
     }
     pub fn remove_edge(&mut self, id: usize) -> Result<E, &str> {
         let position = self.edges.iter().position(|e| e.id == id);
@@ -397,19 +498,36 @@ impl<N: PartialEq + Clone, E: PartialEq + Clone + Ord> Graph<N, E> {
     pub fn iter_nodes(&self) -> impl Iterator<Item = &GraphNode<N>> {
         self.nodes.iter()
     }
-    pub fn iter_edges(&self) -> impl Iterator<Item = (&GraphEdge<E>, &GraphNode<N>, &GraphNode<N>)> { // edge, edge start node, edge end node
-        self.edges.iter().map(move |e| (e, &self.nodes[e.start], &self.nodes[e.end]))
+    pub fn iter_edges(
+        &self,
+    ) -> impl Iterator<Item = (&GraphEdge<E>, &GraphNode<N>, &GraphNode<N>)> {
+        // edge, edge start node, edge end node
+        self.edges
+            .iter()
+            .map(move |e| (e, &self.nodes[e.start], &self.nodes[e.end]))
     }
-    pub fn iter_level_order_traversal(&self, start_node: usize) -> impl Iterator<Item = (&GraphNode<N>, usize)> {
+    pub fn iter_level_order_traversal(
+        &self,
+        start_node: usize,
+    ) -> impl Iterator<Item = (&GraphNode<N>, usize)> {
         LevelOrderTraversal::new(self, start_node)
     }
-    pub fn iter_level_order_edge_traversal(&self, start_node: usize) -> impl Iterator<Item = (&GraphNode<N>, &GraphEdge<E>, usize)> {
+    pub fn iter_level_order_edge_traversal(
+        &self,
+        start_node: usize,
+    ) -> impl Iterator<Item = (&GraphNode<N>, &GraphEdge<E>, usize)> {
         LevelOrderEdgeTraversal::new(self, start_node)
     }
-    pub fn iter_depth_first_search_min_value_traversal(&self, start_node: usize) -> impl Iterator<Item = &GraphNode<N>> {
+    pub fn iter_depth_first_search_min_value_traversal(
+        &self,
+        start_node: usize,
+    ) -> impl Iterator<Item = &GraphNode<N>> {
         DepthFirstSearchTraversal::new(self, start_node, DFSEdgeChoice::MinValue)
     }
-    pub fn iter_depth_first_search_max_value_traversal(&self, start_node: usize) -> impl Iterator<Item = &GraphNode<N>> {
+    pub fn iter_depth_first_search_max_value_traversal(
+        &self,
+        start_node: usize,
+    ) -> impl Iterator<Item = &GraphNode<N>> {
         DepthFirstSearchTraversal::new(self, start_node, DFSEdgeChoice::MaxValue)
     }
 }

@@ -23,7 +23,11 @@ impl MonteCarloPlayerAction for TicTacToePlayerAction {
             None => panic!("player_action is not of type TicTacToePlayerAction!"),
         }
     }
-    fn iter_actions(game_data: &impl MonteCarloGameData, _player: MonteCarloPlayer, _parent_game_turn: usize) -> Box<dyn Iterator<Item=Self> + '_> {
+    fn iter_actions(
+        game_data: &impl MonteCarloGameData,
+        _player: MonteCarloPlayer,
+        _parent_game_turn: usize,
+    ) -> Box<dyn Iterator<Item = Self> + '_> {
         let game_data = TicTacToeGameData::downcast_self(game_data);
         Box::new(IterTicTacToePlayerAction::new(game_data))
     }
@@ -65,7 +69,7 @@ impl<'a> Iterator for IterTicTacToePlayerAction<'a> {
                 Some(new_cell) => {
                     self.iter_action.cell = new_cell;
                     searching_new_action = self.ttt_data.map.get(new_cell).is_not_vacant();
-                },
+                }
                 None => {
                     self.iter_finished = true;
                     searching_new_action = false;
@@ -81,9 +85,12 @@ pub struct TicTacToeGameDataUpdate {}
 
 impl MonteCarloGameDataUpdate for TicTacToeGameDataUpdate {
     fn downcast_self(_game_data_update: &impl MonteCarloGameDataUpdate) -> &Self {
-        &TicTacToeGameDataUpdate{}
+        &TicTacToeGameDataUpdate {}
     }
-    fn iter_game_data_updates(_game_data: &impl MonteCarloGameData, _force_update: bool) -> Box<dyn Iterator<Item=Self> + '_> {
+    fn iter_game_data_updates(
+        _game_data: &impl MonteCarloGameData,
+        _force_update: bool,
+    ) -> Box<dyn Iterator<Item = Self> + '_> {
         Box::new(vec![].into_iter())
     }
 }
@@ -105,23 +112,37 @@ impl MonteCarloGameData for TicTacToeGameData {
     }
     fn apply_my_action(&mut self, player_action: &impl MonteCarloPlayerAction) -> bool {
         let player_action = TicTacToePlayerAction::downcast_self(player_action);
-        self.map.set(player_action.cell, TicTacToeStatus::Player(MonteCarloPlayer::Me));
+        self.map.set(
+            player_action.cell,
+            TicTacToeStatus::Player(MonteCarloPlayer::Me),
+        );
         self.check_status(player_action.cell).is_not_vacant();
         true
     }
     fn apply_opp_action(&mut self, player_action: &impl MonteCarloPlayerAction) -> bool {
         let player_action = TicTacToePlayerAction::downcast_self(player_action);
-        self.map.set(player_action.cell, TicTacToeStatus::Player(MonteCarloPlayer::Opp));
+        self.map.set(
+            player_action.cell,
+            TicTacToeStatus::Player(MonteCarloPlayer::Opp),
+        );
         self.check_status(player_action.cell).is_not_vacant();
         true
     }
-    fn simultaneous_player_actions_for_simultaneous_game_data_change(&mut self, _my_action: &impl MonteCarloPlayerAction, _opp_action: &impl MonteCarloPlayerAction) {
+    fn simultaneous_player_actions_for_simultaneous_game_data_change(
+        &mut self,
+        _my_action: &impl MonteCarloPlayerAction,
+        _opp_action: &impl MonteCarloPlayerAction,
+    ) {
         // no random game_data updates for TicTacToe
     }
     fn is_game_data_update_required(&self, _force_update: bool) -> bool {
         false
     }
-    fn apply_game_data_update(&mut self, _game_data_update: &impl MonteCarloGameDataUpdate, _check_update_consistency: bool) -> bool {
+    fn apply_game_data_update(
+        &mut self,
+        _game_data_update: &impl MonteCarloGameDataUpdate,
+        _check_update_consistency: bool,
+    ) -> bool {
         true
     }
     fn calc_heuristic(&self) -> f32 {
@@ -136,25 +157,40 @@ impl MonteCarloGameData for TicTacToeGameData {
             _ => None,
         }
     }
-    fn check_consistency_of_game_data_during_init_root(&mut self, _current_game_state: &Self, _played_turns: usize) -> bool {
+    fn check_consistency_of_game_data_during_init_root(
+        &mut self,
+        _current_game_state: &Self,
+        _played_turns: usize,
+    ) -> bool {
         //dummy
         true
     }
-    fn check_consistency_of_game_data_update(&mut self, _current_game_state: &Self, _game_data_update: &impl MonteCarloGameDataUpdate, _played_turns: usize) -> bool {
+    fn check_consistency_of_game_data_update(
+        &mut self,
+        _current_game_state: &Self,
+        _game_data_update: &impl MonteCarloGameDataUpdate,
+        _played_turns: usize,
+    ) -> bool {
         //dummy
         true
     }
-    fn check_consistency_of_action_result(&mut self, _current_game_state: Self, _my_action: &impl MonteCarloPlayerAction, _opp_action: &impl MonteCarloPlayerAction, _played_turns: usize, _apply_player_actions_to_game_data: bool) -> bool {
+    fn check_consistency_of_action_result(
+        &mut self,
+        _current_game_state: Self,
+        _my_action: &impl MonteCarloPlayerAction,
+        _opp_action: &impl MonteCarloPlayerAction,
+        _played_turns: usize,
+        _apply_player_actions_to_game_data: bool,
+    ) -> bool {
         //dummy
         true
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     use std::time::Duration;
     const MAX_NUMBER_OF_TURNS: usize = 9;
     const FORCE_UPDATE: bool = true;
@@ -179,7 +215,10 @@ mod tests {
         let mut ttt_match = TicTacToeGameData::new();
         let player_action = TicTacToePlayerAction::default();
         ttt_match.apply_my_action(&player_action);
-        assert_eq!(*ttt_match.map.get(MapPoint::<X, Y>::new(0, 0)), TicTacToeStatus::Player(MonteCarloPlayer::Me));
+        assert_eq!(
+            *ttt_match.map.get(MapPoint::<X, Y>::new(0, 0)),
+            TicTacToeStatus::Player(MonteCarloPlayer::Me)
+        );
         assert_eq!(IterTicTacToePlayerAction::new(&ttt_match).count(), 8);
     }
 
@@ -192,7 +231,21 @@ mod tests {
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
             let mut ttt_match = TicTacToeGameData::new();
-            let mut mcts_player: MonteCarloTreeSearch<TicTacToeGameData, TicTacToePlayerAction, TicTacToeGameDataUpdate> = MonteCarloTreeSearch::new(MonteCarloGameMode::ByTurns, MAX_NUMBER_OF_TURNS, FORCE_UPDATE, TIME_OUT_FIRST_TURN, TIME_OUT_SUCCESSIVE_TURNS, WEIGHTING_FACTOR, use_heuristic_score, DEBUG, KEEP_ROOT);
+            let mut mcts_player: MonteCarloTreeSearch<
+                TicTacToeGameData,
+                TicTacToePlayerAction,
+                TicTacToeGameDataUpdate,
+            > = MonteCarloTreeSearch::new(
+                MonteCarloGameMode::ByTurns,
+                MAX_NUMBER_OF_TURNS,
+                FORCE_UPDATE,
+                TIME_OUT_FIRST_TURN,
+                TIME_OUT_SUCCESSIVE_TURNS,
+                WEIGHTING_FACTOR,
+                use_heuristic_score,
+                DEBUG,
+                KEEP_ROOT,
+            );
             while !ttt_match.check_game_ending(0) {
                 let start = mcts_player.init_root(&ttt_match, MonteCarloPlayer::Me);
                 mcts_player.expand_tree(start);
@@ -208,7 +261,7 @@ mod tests {
                             eprint!("opp ");
                             next_action.execute_action();
                             ttt_match.apply_opp_action(&next_action);
-                        },
+                        }
                         None => (),
                     }
                 }
@@ -219,11 +272,11 @@ mod tests {
                     MonteCarloPlayer::Me => {
                         wins += 1;
                         eprintln!("me winner ({})", wins);
-                    },
+                    }
                     MonteCarloPlayer::Opp => {
                         eprintln!("opp winner");
                         break;
-                    },
+                    }
                 },
                 None => eprintln!("tie"),
             }
@@ -231,7 +284,7 @@ mod tests {
         assert_ne!(last_winner, Some(MonteCarloPlayer::Opp));
         assert!(wins > 45)
     }
-    
+
     // start a TicTacToe match with Opp as StartPlayer
     #[test]
     fn ttt_opp_startplayer_test() {
@@ -247,10 +300,24 @@ mod tests {
                     eprint!("opp ");
                     next_action.execute_action();
                     ttt_match.apply_opp_action(&next_action);
-                },
+                }
                 None => (),
             }
-            let mut mcts_player: MonteCarloTreeSearch<TicTacToeGameData, TicTacToePlayerAction, TicTacToeGameDataUpdate> = MonteCarloTreeSearch::new(MonteCarloGameMode::ByTurns, MAX_NUMBER_OF_TURNS, FORCE_UPDATE, TIME_OUT_FIRST_TURN, TIME_OUT_SUCCESSIVE_TURNS, WEIGHTING_FACTOR, use_heuristic_score, DEBUG, KEEP_ROOT);
+            let mut mcts_player: MonteCarloTreeSearch<
+                TicTacToeGameData,
+                TicTacToePlayerAction,
+                TicTacToeGameDataUpdate,
+            > = MonteCarloTreeSearch::new(
+                MonteCarloGameMode::ByTurns,
+                MAX_NUMBER_OF_TURNS,
+                FORCE_UPDATE,
+                TIME_OUT_FIRST_TURN,
+                TIME_OUT_SUCCESSIVE_TURNS,
+                WEIGHTING_FACTOR,
+                use_heuristic_score,
+                DEBUG,
+                KEEP_ROOT,
+            );
             while !ttt_match.check_game_ending(0) {
                 let start = mcts_player.init_root(&ttt_match, MonteCarloPlayer::Opp);
                 mcts_player.expand_tree(start);
@@ -266,7 +333,7 @@ mod tests {
                             eprint!("opp ");
                             next_action.execute_action();
                             ttt_match.apply_opp_action(&next_action);
-                        },
+                        }
                         None => (),
                     }
                 }
@@ -277,11 +344,11 @@ mod tests {
                     MonteCarloPlayer::Me => {
                         wins += 1;
                         eprintln!("me winner ({})", wins);
-                    },
+                    }
                     MonteCarloPlayer::Opp => {
                         eprintln!("opp winner");
                         break;
-                    },
+                    }
                 },
                 None => eprintln!("tie"),
             }
@@ -297,9 +364,37 @@ mod tests {
             eprintln!("________match {}________", i + 1);
             let mut ttt_match_first = TicTacToeGameData::new();
             let mut ttt_match_second = TicTacToeGameData::new();
-            
-            let mut mcts_first: MonteCarloTreeSearch<TicTacToeGameData, TicTacToePlayerAction, TicTacToeGameDataUpdate> = MonteCarloTreeSearch::new(MonteCarloGameMode::ByTurns, MAX_NUMBER_OF_TURNS, FORCE_UPDATE, TIME_OUT_FIRST_TURN, TIME_OUT_SUCCESSIVE_TURNS, WEIGHTING_FACTOR, use_heuristic_score, DEBUG, KEEP_ROOT);
-            let mut mcts_second: MonteCarloTreeSearch<TicTacToeGameData, TicTacToePlayerAction, TicTacToeGameDataUpdate> = MonteCarloTreeSearch::new(MonteCarloGameMode::ByTurns, MAX_NUMBER_OF_TURNS, FORCE_UPDATE, TIME_OUT_FIRST_TURN, TIME_OUT_SUCCESSIVE_TURNS, WEIGHTING_FACTOR, use_heuristic_score, DEBUG, KEEP_ROOT);
+
+            let mut mcts_first: MonteCarloTreeSearch<
+                TicTacToeGameData,
+                TicTacToePlayerAction,
+                TicTacToeGameDataUpdate,
+            > = MonteCarloTreeSearch::new(
+                MonteCarloGameMode::ByTurns,
+                MAX_NUMBER_OF_TURNS,
+                FORCE_UPDATE,
+                TIME_OUT_FIRST_TURN,
+                TIME_OUT_SUCCESSIVE_TURNS,
+                WEIGHTING_FACTOR,
+                use_heuristic_score,
+                DEBUG,
+                KEEP_ROOT,
+            );
+            let mut mcts_second: MonteCarloTreeSearch<
+                TicTacToeGameData,
+                TicTacToePlayerAction,
+                TicTacToeGameDataUpdate,
+            > = MonteCarloTreeSearch::new(
+                MonteCarloGameMode::ByTurns,
+                MAX_NUMBER_OF_TURNS,
+                FORCE_UPDATE,
+                TIME_OUT_FIRST_TURN,
+                TIME_OUT_SUCCESSIVE_TURNS,
+                WEIGHTING_FACTOR,
+                use_heuristic_score,
+                DEBUG,
+                KEEP_ROOT,
+            );
             let mut first = true;
             while !ttt_match_first.check_game_ending(0) {
                 if first {
@@ -316,7 +411,8 @@ mod tests {
                     let start = mcts_second.init_root(&ttt_match_second, MonteCarloPlayer::Opp);
                     mcts_second.expand_tree(start);
                     eprint!("second ");
-                    let (current_game_data, second_action) = mcts_second.choose_and_execute_actions();
+                    let (current_game_data, second_action) =
+                        mcts_second.choose_and_execute_actions();
                     ttt_match_second = *TicTacToeGameData::downcast_self(&current_game_data);
                     let second_action = *TicTacToePlayerAction::downcast_self(&second_action);
                     second_action.execute_action();

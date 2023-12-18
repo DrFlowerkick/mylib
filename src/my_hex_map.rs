@@ -35,9 +35,16 @@ impl<T: Copy + Clone + Default, const N: usize> MyHexMap<T, N> {
         self.items.iter().enumerate()
     }
     pub fn iter_neighbors(&self, index: usize) -> impl Iterator<Item = (usize, &T)> {
-        self.map[index].iter().filter_map(|m| *m).map(move |i| (i, self.items.get(i).unwrap()))
+        self.map[index]
+            .iter()
+            .filter_map(|m| *m)
+            .map(move |i| (i, self.items.get(i).unwrap()))
     }
-    pub fn iter_distance<'a>(&'a self, start_hexes: MyArray<usize, N>, filter_fn: Box<dyn Fn(usize, &T, usize) -> bool>) -> impl Iterator<Item = (usize, &'a T, usize)> {
+    pub fn iter_distance<'a>(
+        &'a self,
+        start_hexes: MyArray<usize, N>,
+        filter_fn: Box<dyn Fn(usize, &T, usize) -> bool>,
+    ) -> impl Iterator<Item = (usize, &'a T, usize)> {
         // use filter_fn as follows (use "_" for unused variables):
         // let filter_fn = Box::new(|index_of_next_hex: usize, value_of_next_cell: &T, current_distance: usize| index_of_next_hex.use_it_somehow() || value_of_next_cell.use_it_somehow() || current_distance.use_it_somehow());
         HexDistanceIter::new(self, start_hexes, filter_fn)
@@ -47,12 +54,16 @@ impl<T: Copy + Clone + Default, const N: usize> MyHexMap<T, N> {
 struct HexDistanceIter<'a, T, const N: usize> {
     data_hex_map: &'a MyHexMap<T, N>,
     filter_fn: Box<dyn Fn(usize, &T, usize) -> bool>, // input for filter_fn: index_of_next_hex, value_of_next_cell, distance of current hex
-    next_hexes: MyArray<(usize, usize), N>, // contains index and distance
+    next_hexes: MyArray<(usize, usize), N>,           // contains index and distance
     index: usize,
 }
 
 impl<'a, T: Copy + Clone, const N: usize> HexDistanceIter<'a, T, N> {
-    fn new(data_hex_map: &'a MyHexMap<T, N>, start_hexes: MyArray<usize, N>, filter_fn: Box<dyn Fn(usize, &T, usize) -> bool>) -> Self {
+    fn new(
+        data_hex_map: &'a MyHexMap<T, N>,
+        start_hexes: MyArray<usize, N>,
+        filter_fn: Box<dyn Fn(usize, &T, usize) -> bool>,
+    ) -> Self {
         let mut next_hexes: MyArray<(usize, usize), N> = MyArray::default();
         for hex in start_hexes.iter() {
             next_hexes.push((*hex, 0));
@@ -71,11 +82,18 @@ impl<'a, T: Copy + Clone + Default, const N: usize> Iterator for HexDistanceIter
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index == self.next_hexes.len() {
-            return None
+            return None;
         }
         let (map_index, distance) = self.next_hexes[self.index];
         let mut local_next_cells: MyArray<(usize, usize), 6> = MyArray::new();
-        for (next_hex_index, _) in self.data_hex_map.iter_neighbors(map_index).filter(|(p, c)| self.next_hexes.iter().find(|(n, _)| n == p).is_none() && (self.filter_fn)(*p, *c, distance)) {
+        for (next_hex_index, _) in self
+            .data_hex_map
+            .iter_neighbors(map_index)
+            .filter(|(p, c)| {
+                self.next_hexes.iter().find(|(n, _)| n == p).is_none()
+                    && (self.filter_fn)(*p, *c, distance)
+            })
+        {
             local_next_cells.push((next_hex_index, distance + 1));
         }
         self.next_hexes.append_slice(local_next_cells.as_slice());
@@ -84,15 +102,14 @@ impl<'a, T: Copy + Clone + Default, const N: usize> Iterator for HexDistanceIter
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::my_map_two_dim::*;
     use crate::my_map_point::*;
+    use crate::my_map_two_dim::*;
     // see C:\Users\Marc\Documents\Repos\basic_rust\projects\my_lib\example_hex_map.png
     const N: usize = 27;
-    const M: usize = N*N;
+    const M: usize = N * N;
     // neigh 0 to neigh 5
     const HEXMAP: &str = "1 3 -1 2 4 -1\n\
                           5 -1 3 0 -1 -1\n\
@@ -126,7 +143,11 @@ mod tests {
         let mut neighbors: MyArray<HexNeigh, N> = MyArray::init(init_item, N);
         let lines = HEXMAP.lines().map(|l| l.trim());
         for (index, line) in lines.enumerate() {
-            for (i, neighbor) in line.split_whitespace().map(|n| n.parse::<i32>().unwrap()).enumerate() {
+            for (i, neighbor) in line
+                .split_whitespace()
+                .map(|n| n.parse::<i32>().unwrap())
+                .enumerate()
+            {
                 neighbors.get_mut(index).unwrap()[i] = if neighbor < 0 {
                     None
                 } else {
@@ -157,7 +178,10 @@ mod tests {
         assert_eq!(*distance_map.get(MapPoint::<N, N>::new(19, 20)), 8);
         for x in 0..N {
             for y in 0..N {
-                assert_eq!(*distance_map.get(MapPoint::<N, N>::new(x, y)), *distance_map.get(MapPoint::<N, N>::new(y, x)));
+                assert_eq!(
+                    *distance_map.get(MapPoint::<N, N>::new(x, y)),
+                    *distance_map.get(MapPoint::<N, N>::new(y, x))
+                );
             }
         }
     }

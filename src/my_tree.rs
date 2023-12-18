@@ -1,12 +1,12 @@
-use std::cmp::Ordering;
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::rc::Rc;
 use std::rc::Weak;
 
 struct PreOrderTraversal<N> {
     next_node: Rc<TreeNode<N>>,
     child_indices: Vec<usize>, // vector of indices of children while traveling through tree
-    vertical: bool, // false: children, true: parent
+    vertical: bool,            // false: children, true: parent
     iter_finished: bool,
 }
 
@@ -29,7 +29,8 @@ impl<'a, N: PartialEq> Iterator for PreOrderTraversal<N> {
             return None;
         }
         loop {
-            if self.vertical { // in direction of parent
+            if self.vertical {
+                // in direction of parent
                 match self.next_node.get_parent() {
                     Some(node) => {
                         self.child_indices.pop();
@@ -40,10 +41,11 @@ impl<'a, N: PartialEq> Iterator for PreOrderTraversal<N> {
                         self.child_indices[last_index] += 1;
                         self.next_node = node;
                         self.vertical = false;
-                    },
+                    }
                     None => break, // end of tree
-                } 
-            } else { // in direction of children
+                }
+            } else {
+                // in direction of children
                 if self.child_indices.len() == 0 {
                     self.child_indices.push(0);
                     return Some(self.next_node.clone());
@@ -54,7 +56,7 @@ impl<'a, N: PartialEq> Iterator for PreOrderTraversal<N> {
                         self.next_node = node;
                         self.child_indices.push(0);
                         return Some(self.next_node.clone());
-                    },
+                    }
                     None => self.vertical = true,
                 }
             }
@@ -67,8 +69,8 @@ impl<'a, N: PartialEq> Iterator for PreOrderTraversal<N> {
 struct PostOrderTraversal<N> {
     current_node: Rc<TreeNode<N>>,
     child_indices: Vec<usize>, // vector of indices of children while traveling through tree
-    vertical: bool, // false: children, true: parent
-    finished: bool, // true if iterator finished
+    vertical: bool,            // false: children, true: parent
+    finished: bool,            // true if iterator finished
 }
 
 impl<'a, N: PartialEq> PostOrderTraversal<N> {
@@ -90,17 +92,19 @@ impl<'a, N: PartialEq> Iterator for PostOrderTraversal<N> {
             return None; // iterator finished
         }
         loop {
-            if self.vertical { // in direction of parent
+            if self.vertical {
+                // in direction of parent
                 let last_index = self.child_indices.len() - 1;
                 self.child_indices[last_index] += 1;
                 self.vertical = false;
-            } else { // in direction of child
+            } else {
+                // in direction of child
                 let child_index = self.child_indices[self.child_indices.len() - 1];
                 match self.current_node.get_child(child_index) {
                     Some(node) => {
                         self.current_node = node;
                         self.child_indices.push(0);
-                    },
+                    }
                     None => {
                         let result = self.current_node.get_self();
                         match self.current_node.get_parent() {
@@ -109,11 +113,11 @@ impl<'a, N: PartialEq> Iterator for PostOrderTraversal<N> {
                                 self.child_indices.pop();
                                 self.finished = self.child_indices.len() == 0; // root of subtree, which started at given "root" node
                                 self.current_node = node;
-                            },
+                            }
                             None => self.finished = true,
                         }
                         return result;
-                    },
+                    }
                 }
             }
         }
@@ -123,8 +127,8 @@ impl<'a, N: PartialEq> Iterator for PostOrderTraversal<N> {
 struct LevelOrderTraversal<N> {
     current_node: Rc<TreeNode<N>>,
     child_indices: Vec<usize>, // vector of indices of children while traveling through tree
-    vertical: bool, // false: children, true: parent
-    finished: bool, // true if iterator finished
+    vertical: bool,            // false: children, true: parent
+    finished: bool,            // true if iterator finished
     target_level: usize,
     end_level: Option<usize>,
     node_on_target_level: bool,
@@ -138,7 +142,7 @@ impl<'a, N: PartialEq> LevelOrderTraversal<N> {
                     panic!("end_level must be >= start_level.");
                 }
                 level + 1
-            },
+            }
             None => 1,
         };
         let mut child_indices: Vec<usize> = Vec::with_capacity(ci_capacity);
@@ -155,10 +159,12 @@ impl<'a, N: PartialEq> LevelOrderTraversal<N> {
     }
     fn increment_target_level(&mut self) -> bool {
         match self.end_level {
-            Some(level) => if self.target_level == level {
-                self.finished = true;
-                return true;
-            },
+            Some(level) => {
+                if self.target_level == level {
+                    self.finished = true;
+                    return true;
+                }
+            }
             None => (),
         }
         self.target_level += 1;
@@ -187,25 +193,28 @@ impl<'a, N: PartialEq> Iterator for LevelOrderTraversal<N> {
                             self.vertical = true;
                             self.child_indices.pop();
                             self.current_node = node;
-                        },
+                        }
                         None => (),
                     }
                 }
                 return result;
             }
-            if self.vertical { // in direction of parent
+            if self.vertical {
+                // in direction of parent
                 let last_index = self.child_indices.len() - 1;
                 self.child_indices[last_index] += 1;
                 self.vertical = false;
-            } else { // in direction of child
+            } else {
+                // in direction of child
                 let child_index = self.child_indices[self.child_indices.len() - 1];
                 match self.current_node.get_child(child_index) {
                     Some(node) => {
                         self.current_node = node;
                         self.child_indices.push(0);
-                    },
+                    }
                     None => {
-                        if self.child_indices.len() == 1 { // root of sub tree
+                        if self.child_indices.len() == 1 {
+                            // root of sub tree
                             if self.node_on_target_level {
                                 if self.increment_target_level() {
                                     return None;
@@ -223,11 +232,11 @@ impl<'a, N: PartialEq> Iterator for LevelOrderTraversal<N> {
                                     self.vertical = true;
                                     self.child_indices.pop();
                                     self.current_node = node;
-                                },
+                                }
                                 None => (),
                             }
                         }
-                    },
+                    }
                 }
             }
         }
@@ -294,11 +303,11 @@ impl<'a, N: PartialEq> Iterator for IterChildren<N> {
             Some(node) => {
                 self.child_index += 1;
                 Some(node)
-            },
+            }
             None => {
                 self.finished = true;
                 None
-            },
+            }
         }
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -347,7 +356,7 @@ pub struct TreeNode<N> {
 }
 
 impl<N: PartialEq> TreeNode<N> {
-    pub fn seed_root(value: N, children_capacity: usize)  -> Rc<TreeNode<N>> {
+    pub fn seed_root(value: N, children_capacity: usize) -> Rc<TreeNode<N>> {
         TreeNode::new(value, 0, children_capacity)
     }
     fn new(value: N, level: usize, children_capacity: usize) -> Rc<TreeNode<N>> {
@@ -362,14 +371,19 @@ impl<N: PartialEq> TreeNode<N> {
         *result.node.borrow_mut() = node;
         result
     }
-    pub fn add_child_to_parent(&self, child_value: N, parent_value: &N, children_capacity: usize) -> Option<Rc<TreeNode<N>>> {
+    pub fn add_child_to_parent(
+        &self,
+        child_value: N,
+        parent_value: &N,
+        children_capacity: usize,
+    ) -> Option<Rc<TreeNode<N>>> {
         // search always from root to make sure that parent will be found
         match self.get_root().get_node(parent_value) {
             Some(parent) => Some(parent.add_child(child_value, children_capacity)),
             None => None,
         }
     }
-    pub fn add_child(&self, value: N, children_capacity: usize) -> Rc<TreeNode<N>> { 
+    pub fn add_child(&self, value: N, children_capacity: usize) -> Rc<TreeNode<N>> {
         match self.iter_children().find(|n| *n.value.borrow() == value) {
             Some(node) => node,
             None => {
@@ -380,14 +394,25 @@ impl<N: PartialEq> TreeNode<N> {
             }
         }
     }
-    pub fn insert_child_at_parent(&self, child_value: N, parent_value: &N, index: usize, children_capacity: usize) -> Option<Rc<TreeNode<N>>> {
+    pub fn insert_child_at_parent(
+        &self,
+        child_value: N,
+        parent_value: &N,
+        index: usize,
+        children_capacity: usize,
+    ) -> Option<Rc<TreeNode<N>>> {
         // search always from root to make sure that parent will be found
         match self.get_root().get_node(parent_value) {
             Some(parent) => Some(parent.insert_child(child_value, index, children_capacity)),
             None => None,
         }
     }
-    pub fn insert_child(&self, value: N, index: usize, children_capacity: usize) -> Rc<TreeNode<N>> {
+    pub fn insert_child(
+        &self,
+        value: N,
+        index: usize,
+        children_capacity: usize,
+    ) -> Rc<TreeNode<N>> {
         match self.iter_children().find(|n| *n.value.borrow() == value) {
             Some(node) => node,
             None => {
@@ -403,7 +428,12 @@ impl<N: PartialEq> TreeNode<N> {
             }
         }
     }
-    pub fn add_unambiguous_child_to_parent(&self, child_value: N, parent_value: &N, children_capacity: usize) -> Option<Rc<TreeNode<N>>> {
+    pub fn add_unambiguous_child_to_parent(
+        &self,
+        child_value: N,
+        parent_value: &N,
+        children_capacity: usize,
+    ) -> Option<Rc<TreeNode<N>>> {
         let root = self.get_root();
         if root.get_node(&child_value).is_some() {
             return None; // child already exists
@@ -413,9 +443,17 @@ impl<N: PartialEq> TreeNode<N> {
             None => None, // parent does not exist
         }
     }
-    pub fn add_unambiguous_child(&self, value: N, children_capacity: usize) -> Option<Rc<TreeNode<N>>> {
+    pub fn add_unambiguous_child(
+        &self,
+        value: N,
+        children_capacity: usize,
+    ) -> Option<Rc<TreeNode<N>>> {
         // search always from root to make sure that all added children values are checked
-        match self.get_root().iter_pre_order_traversal().find(|n| *n.value.borrow() == value) {
+        match self
+            .get_root()
+            .iter_pre_order_traversal()
+            .find(|n| *n.value.borrow() == value)
+        {
             Some(_) => None, // child already exists
             None => {
                 let child = TreeNode::new(value, self.level + 1, children_capacity);
@@ -425,7 +463,13 @@ impl<N: PartialEq> TreeNode<N> {
             }
         }
     }
-    pub fn insert_unambiguous_child_at_parent(&self, child_value: N, parent_value: &N, index: usize, children_capacity: usize) -> Option<Rc<TreeNode<N>>> {
+    pub fn insert_unambiguous_child_at_parent(
+        &self,
+        child_value: N,
+        parent_value: &N,
+        index: usize,
+        children_capacity: usize,
+    ) -> Option<Rc<TreeNode<N>>> {
         let root = self.get_root();
         if root.get_node(&child_value).is_some() {
             return None; // child already exists
@@ -435,8 +479,17 @@ impl<N: PartialEq> TreeNode<N> {
             None => None,
         }
     }
-    pub fn insert_unambiguous_child(&self, value: N, index: usize, children_capacity: usize) -> Option<Rc<TreeNode<N>>> {
-        match self.get_root().iter_pre_order_traversal().find(|n| *n.value.borrow() == value) {
+    pub fn insert_unambiguous_child(
+        &self,
+        value: N,
+        index: usize,
+        children_capacity: usize,
+    ) -> Option<Rc<TreeNode<N>>> {
+        match self
+            .get_root()
+            .iter_pre_order_traversal()
+            .find(|n| *n.value.borrow() == value)
+        {
             Some(_) => None, // child already exists,
             None => {
                 let child = TreeNode::new(value, self.level + 1, children_capacity);
@@ -473,7 +526,7 @@ impl<N: PartialEq> TreeNode<N> {
     }
     pub fn clear_parent(&self) {
         // removing parent makes this node to a root node. If no reference or variable exists, which holds at least
-        // one node above this node, then all nodes above this node are released from memory 
+        // one node above this node, then all nodes above this node are released from memory
         *self.parent.borrow_mut() = Weak::new();
     }
     pub fn get_value(&self) -> std::cell::Ref<'_, N> {
@@ -507,7 +560,8 @@ impl<N: PartialEq> TreeNode<N> {
         }
     }
     pub fn get_node(&self, value: &N) -> Option<Rc<TreeNode<N>>> {
-        self.iter_pre_order_traversal().find(|n| *n.value.borrow() == *value)
+        self.iter_pre_order_traversal()
+            .find(|n| *n.value.borrow() == *value)
     }
     pub fn get_root(&self) -> Rc<TreeNode<N>> {
         let mut node = self.get_self().unwrap();
@@ -524,12 +578,21 @@ impl<N: PartialEq> TreeNode<N> {
     pub fn is_leave(&self) -> bool {
         self.len_children() == 0
     }
-    pub fn sort_children_by<F>(&self, compare: F) where
-    F: Fn(&N, &N) -> Ordering, {
-        self.children.borrow_mut().sort_by(|a, b| compare(&a.value.borrow(), &b.value.borrow()));
+    pub fn sort_children_by<F>(&self, compare: F)
+    where
+        F: Fn(&N, &N) -> Ordering,
+    {
+        self.children
+            .borrow_mut()
+            .sort_by(|a, b| compare(&a.value.borrow(), &b.value.borrow()));
     }
-    pub fn get_max_level(&self) -> (usize, usize) { // tuple of absolute level and relative level
-        self.get_root().iter_level_order_traversal().max_by_key(|(_, l)| *l).map(|(n, l)| (n.level, l)).unwrap()
+    pub fn get_max_level(&self) -> (usize, usize) {
+        // tuple of absolute level and relative level
+        self.get_root()
+            .iter_level_order_traversal()
+            .max_by_key(|(_, l)| *l)
+            .map(|(n, l)| (n.level, l))
+            .unwrap()
     }
     pub fn iter_self(&self) -> impl Iterator<Item = Rc<TreeNode<N>>> {
         IterSelf::new(self.get_self().unwrap()) // iterator over single node; usefull for functions, which have an iterator as output and you want to be able to iterate over different outcomes
@@ -550,14 +613,18 @@ impl<N: PartialEq> TreeNode<N> {
     pub fn iter_level_order_traversal(&self) -> impl Iterator<Item = (Rc<TreeNode<N>>, usize)> {
         LevelOrderTraversal::new(self.get_self().unwrap(), 0, None)
     }
-    pub fn iter_level_order_traversal_with_bordes(&self, start_level: usize, end_level: Option<usize>) -> impl Iterator<Item = (Rc<TreeNode<N>>, usize)> {
+    pub fn iter_level_order_traversal_with_bordes(
+        &self,
+        start_level: usize,
+        end_level: Option<usize>,
+    ) -> impl Iterator<Item = (Rc<TreeNode<N>>, usize)> {
         LevelOrderTraversal::new(self.get_self().unwrap(), start_level, end_level)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    
+
     use super::*;
 
     #[test]
@@ -573,9 +640,9 @@ mod tests {
         test_tree.add_child_to_parent('E', &'D', 0);
         test_tree.add_child_to_parent('I', &'G', 1);
         test_tree.add_child_to_parent('H', &'I', 0);
-        
+
         assert_eq!(*test_tree.get_child(0).unwrap().get_value(), 'B');
-        
+
         let child_h = test_tree.get_node(&'H').unwrap();
         assert_eq!(*child_h.get_value(), 'H');
         assert_eq!(*child_h.get_root().get_value(), 'F');
@@ -589,49 +656,100 @@ mod tests {
 
         assert_eq!(test_tree.add_unambiguous_child('I', 0).is_none(), true);
         assert_eq!(child_h.insert_unambiguous_child('F', 0, 0).is_none(), true);
-        assert_eq!(test_tree.add_unambiguous_child_to_parent('I', &'Z', 0).is_none(), true);
-        assert_eq!(test_tree.add_unambiguous_child_to_parent('I', &'B', 0).is_none(), true);
-        assert_eq!(child_h.insert_unambiguous_child_at_parent('F', &'Z', 0, 0).is_none(), true);
-        assert_eq!(child_h.insert_unambiguous_child_at_parent('F', &'A', 0, 0).is_none(), true);
-        
+        assert_eq!(
+            test_tree
+                .add_unambiguous_child_to_parent('I', &'Z', 0)
+                .is_none(),
+            true
+        );
+        assert_eq!(
+            test_tree
+                .add_unambiguous_child_to_parent('I', &'B', 0)
+                .is_none(),
+            true
+        );
+        assert_eq!(
+            child_h
+                .insert_unambiguous_child_at_parent('F', &'Z', 0, 0)
+                .is_none(),
+            true
+        );
+        assert_eq!(
+            child_h
+                .insert_unambiguous_child_at_parent('F', &'A', 0, 0)
+                .is_none(),
+            true
+        );
+
         assert!(child_h.is_leave());
         let child_d = test_tree.get_node(&'D').unwrap();
         assert!(!child_d.is_leave());
         assert!(!child_d.is_root());
         let child_f = test_tree.get_node(&'F').unwrap();
         assert!(child_f.is_root());
-        assert_eq!(test_tree.iter_pre_order_traversal().filter(|n| n.is_leave()).count(), 4);
-        assert_eq!(test_tree.iter_post_order_traversal().filter(|n| n.is_leave()).count(), 4);
-        assert_eq!(test_tree.iter_level_order_traversal().filter(|(n, _)| n.is_leave()).count(), 4);
+        assert_eq!(
+            test_tree
+                .iter_pre_order_traversal()
+                .filter(|n| n.is_leave())
+                .count(),
+            4
+        );
+        assert_eq!(
+            test_tree
+                .iter_post_order_traversal()
+                .filter(|n| n.is_leave())
+                .count(),
+            4
+        );
+        assert_eq!(
+            test_tree
+                .iter_level_order_traversal()
+                .filter(|(n, _)| n.is_leave())
+                .count(),
+            4
+        );
 
         let pre_order_iterator = test_tree.iter_pre_order_traversal();
         let pre_order_vector: Vec<char> = pre_order_iterator.map(|n| *n.get_value()).collect();
-        assert_eq!(pre_order_vector, ['F', 'B', 'A', 'D', 'C', 'E', 'G', 'I', 'H']);
+        assert_eq!(
+            pre_order_vector,
+            ['F', 'B', 'A', 'D', 'C', 'E', 'G', 'I', 'H']
+        );
         let child_b = test_tree.get_node(&'B').unwrap();
         let pre_order_iterator = child_b.iter_pre_order_traversal();
         let pre_order_vector: Vec<char> = pre_order_iterator.map(|n| *n.get_value()).collect();
         assert_eq!(pre_order_vector, ['B', 'A', 'D', 'C', 'E']);
-        
+
         let post_order_iterator = test_tree.iter_post_order_traversal();
         let post_order_vector: Vec<char> = post_order_iterator.map(|n| *n.get_value()).collect();
-        assert_eq!(post_order_vector, ['A', 'C', 'E', 'D', 'B', 'H', 'I', 'G', 'F']);
+        assert_eq!(
+            post_order_vector,
+            ['A', 'C', 'E', 'D', 'B', 'H', 'I', 'G', 'F']
+        );
         let child_b = test_tree.get_node(&'B').unwrap();
         let post_order_iterator = child_b.iter_post_order_traversal();
         let post_order_vector: Vec<char> = post_order_iterator.map(|n| *n.get_value()).collect();
         assert_eq!(post_order_vector, ['A', 'C', 'E', 'D', 'B']);
 
         let level_order_iterator = test_tree.iter_level_order_traversal();
-        let level_order_vector: Vec<char> = level_order_iterator.map(|(n, _)| *n.get_value()).collect();
-        assert_eq!(level_order_vector, ['F', 'B', 'G', 'A', 'D', 'I', 'C', 'E', 'H']);
+        let level_order_vector: Vec<char> =
+            level_order_iterator.map(|(n, _)| *n.get_value()).collect();
+        assert_eq!(
+            level_order_vector,
+            ['F', 'B', 'G', 'A', 'D', 'I', 'C', 'E', 'H']
+        );
         let child_b = test_tree.get_node(&'B').unwrap();
         let level_order_iterator = child_b.iter_level_order_traversal();
-        let level_order_vector: Vec<char> = level_order_iterator.map(|(n, _)| *n.get_value()).collect();
+        let level_order_vector: Vec<char> =
+            level_order_iterator.map(|(n, _)| *n.get_value()).collect();
         assert_eq!(level_order_vector, ['B', 'A', 'D', 'C', 'E']);
         let level_order_iterator = test_tree.iter_level_order_traversal_with_bordes(2, None);
-        let level_order_vector: Vec<char> = level_order_iterator.map(|(n, _)| *n.get_value()).collect();
+        let level_order_vector: Vec<char> =
+            level_order_iterator.map(|(n, _)| *n.get_value()).collect();
         assert_eq!(level_order_vector, ['A', 'D', 'I', 'C', 'E', 'H']);
         let level_order_iterator = test_tree.iter_level_order_traversal_with_bordes(1, Some(2));
-        let level_order_vector: Vec<char> = level_order_iterator.map(|(n, _)| *n.get_value()).collect();
+        let level_order_vector: Vec<char> =
+            level_order_iterator.map(|(n, _)| *n.get_value()).collect();
         assert_eq!(level_order_vector, ['B', 'G', 'A', 'D', 'I']);
 
         let child_b = test_tree.get_child(0).unwrap();
@@ -641,7 +759,7 @@ mod tests {
 
         // changing value of node
         {
-             let mut child_b_value = child_b.get_mut_value();
+            let mut child_b_value = child_b.get_mut_value();
             *child_b_value = 'X';
         }
         assert_eq!(*child_b.get_value(), 'X');

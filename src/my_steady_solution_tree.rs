@@ -2,7 +2,6 @@ use std::rc::Rc;
 
 use crate::my_binary_tree::*;
 
-
 pub trait SteadySolutionItem: Copy + Clone + Eq + Ord + PartialEq + PartialOrd {
     // resulting output must fulfill either self > Output > item or self < Output < item
     fn combine(&self, item: Self) -> Self;
@@ -27,7 +26,12 @@ impl<S: SteadySolutionItem> SteadySolutionTree<S> {
     }
     pub fn append_next_level(&self) {
         let max_level = self.tree.get_max_level();
-        let max_level_nodes: Vec<Rc<BinaryTreeNode<S>>> = self.tree.iter_level_order_traversal().filter(|(_, l)| *l == max_level).map(|(n, _)| n).collect();
+        let max_level_nodes: Vec<Rc<BinaryTreeNode<S>>> = self
+            .tree
+            .iter_level_order_traversal()
+            .filter(|(_, l)| *l == max_level)
+            .map(|(n, _)| n)
+            .collect();
         for node in max_level_nodes {
             let left = match node.get_next_smaller() {
                 Some(node) => node.get_value(),
@@ -70,7 +74,7 @@ impl<S: SteadySolutionItem> SteadySolutionTree<S> {
                             None => self.min,
                         };
                         current_node.append_value(current_node.get_value().combine(left))
-                    },
+                    }
                 };
             } else {
                 current_node = match current_node.get_right() {
@@ -81,7 +85,7 @@ impl<S: SteadySolutionItem> SteadySolutionTree<S> {
                             None => self.max,
                         };
                         current_node.append_value(current_node.get_value().combine(right))
-                    },
+                    }
                 };
             }
         }
@@ -100,9 +104,9 @@ impl<S: SteadySolutionItem> SteadySolutionTree<S> {
                                 None => self.min,
                             };
                             current_node.append_value(current_node.get_value().combine(left))
-                        },
+                        }
                     };
-                },
+                }
                 'R' => {
                     current_node = match current_node.get_right() {
                         Some(node) => node,
@@ -112,10 +116,10 @@ impl<S: SteadySolutionItem> SteadySolutionTree<S> {
                                 None => self.max,
                             };
                             current_node.append_value(current_node.get_value().combine(right))
-                        },
+                        }
                     };
-                },
-                _ => panic!("Unknown char in L-R path.")
+                }
+                _ => panic!("Unknown char in L-R path."),
             }
         }
         current_node

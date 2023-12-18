@@ -1,5 +1,5 @@
-use crate::my_point::*;
 use crate::my_array::*;
+use crate::my_point::*;
 
 // An open map is not defined by cells with specific values. Instead your objects have just coordinates,
 // which you have to manage. Therefore MyOpenMap does not contain data of elements on map, but provides
@@ -55,7 +55,7 @@ impl MyOpenMap {
         result
     }
     pub fn get_middle_point_of_map(&self) -> Point {
-        Point::new(self.max_x/2, self.max_y/2)
+        Point::new(self.max_x / 2, self.max_y / 2)
     }
     pub fn set_outposts(&mut self, vector_defense_outpost: Point, vector_attack_outpost: Point) {
         // vectors a given assuming:
@@ -77,7 +77,12 @@ impl MyOpenMap {
         // and try to prevent monsters to enter your base (meaning attack the monsters nearest to base).
 
         // sort monsters by distance to base
-        monsters.as_slice_mut().sort_by(|a, b| a.pos.distance(self.my_base).partial_cmp(&b.pos.distance(self.my_base)).unwrap());
+        monsters.as_slice_mut().sort_by(|a, b| {
+            a.pos
+                .distance(self.my_base)
+                .partial_cmp(&b.pos.distance(self.my_base))
+                .unwrap()
+        });
         let start_monster = match monsters.get(0) {
             Some(start_monster) => *start_monster,
             None => return self.my_defense_outpost,
@@ -86,23 +91,31 @@ impl MyOpenMap {
         // remove all monsters from list which are too far away from start_monster
         let mut index = 0;
         while index < monsters.len() {
-            if monsters.get(index).unwrap().pos.distance(start_monster.pos) <= self.attack_range * 2.0 {
+            if monsters.get(index).unwrap().pos.distance(start_monster.pos)
+                <= self.attack_range * 2.0
+            {
                 index += 1;
             } else {
                 monsters.remove(index);
             }
         }
-        
-        let defense_point = self.calc_centroid(start_monster.pos,self.my_base, monsters);
+
+        let defense_point = self.calc_centroid(start_monster.pos, self.my_base, monsters);
 
         if start_monster.pos.distance(defense_point) <= self.attack_range {
             defense_point
         } else {
             // if centroid is to far away from start_point, move attack_range from start_monster to defense_point
-            start_monster.pos.scale_toward_point_with_len(defense_point, self.attack_range)
+            start_monster
+                .pos
+                .scale_toward_point_with_len(defense_point, self.attack_range)
         }
     }
-    pub fn best_farming_position(&self, farmer: &Entity, mut monsters: MyArray<Entity, 100>) -> Point {
+    pub fn best_farming_position(
+        &self,
+        farmer: &Entity,
+        mut monsters: MyArray<Entity, 100>,
+    ) -> Point {
         // remove all monsters to far away from farmer
         let mut index = 0;
         while index < monsters.len() {
@@ -113,17 +126,36 @@ impl MyOpenMap {
             }
         }
         // sort monsters by distance to farmer in descending order
-        monsters.as_slice_mut().sort_by(|a, b| b.pos.distance(farmer.pos).partial_cmp(&a.pos.distance(farmer.pos)).unwrap());
+        monsters.as_slice_mut().sort_by(|a, b| {
+            b.pos
+                .distance(farmer.pos)
+                .partial_cmp(&a.pos.distance(farmer.pos))
+                .unwrap()
+        });
         let mut farm_point = farmer.pos;
         let mut search_farm_point = true;
         while search_farm_point {
             // start_monster is monster farthest away from farmer to make sure, that it is on outline of polygon
             let start_monster = monsters.get(0).unwrap();
-            farm_point = self.calc_centroid(start_monster.pos, farmer.pos.scale_toward_point_with_factor(start_monster.pos, 2.0), monsters);
-            let monsters_in_attack_range = monsters.iter().filter(|m| m.pos.distance(farm_point) <= self.attack_range).count();
+            farm_point = self.calc_centroid(
+                start_monster.pos,
+                farmer
+                    .pos
+                    .scale_toward_point_with_factor(start_monster.pos, 2.0),
+                monsters,
+            );
+            let monsters_in_attack_range = monsters
+                .iter()
+                .filter(|m| m.pos.distance(farm_point) <= self.attack_range)
+                .count();
             if monsters_in_attack_range < monsters.len() - 1 {
                 // sort monsters by distance to farm point in descending order
-                monsters.as_slice_mut().sort_by(|a, b| b.pos.distance(farm_point).partial_cmp(&a.pos.distance(farm_point)).unwrap());
+                monsters.as_slice_mut().sort_by(|a, b| {
+                    b.pos
+                        .distance(farm_point)
+                        .partial_cmp(&a.pos.distance(farm_point))
+                        .unwrap()
+                });
                 monsters.remove(0);
             } else {
                 search_farm_point = false;
@@ -131,7 +163,12 @@ impl MyOpenMap {
         }
         farm_point
     }
-    pub fn calc_centroid(&self, start_point: Point, reference_point: Point, mut unsorted_polygon: MyArray<Entity, 100>) -> Point {
+    pub fn calc_centroid(
+        &self,
+        start_point: Point,
+        reference_point: Point,
+        mut unsorted_polygon: MyArray<Entity, 100>,
+    ) -> Point {
         // let's try to build a non-self-intersecting closed and sorted by angle polygon from a list of unsorted entities,
         // which centroid is probably the best defense position. See https://de.wikipedia.org/wiki/Geometrischer_Schwerpunkt#Polygon
         // Handels the following special cases: multiple entities on same point, entities on outline without a corner,
@@ -146,9 +183,19 @@ impl MyOpenMap {
         while not_origin && unsorted_polygon.len() > 0 {
             let current_alpha = last_point.subtract(current_point).angle();
             // sort unsorted_polygon regarding to current_point and current_alpha
-            unsorted_polygon.as_slice_mut().sort_by(|a, b| ((a.pos.subtract(current_point).angle() - current_alpha + 360.0) % 360.0).partial_cmp(&((b.pos.subtract(current_point).angle() - current_alpha + 360.0) % 360.0)).unwrap());
+            unsorted_polygon.as_slice_mut().sort_by(|a, b| {
+                ((a.pos.subtract(current_point).angle() - current_alpha + 360.0) % 360.0)
+                    .partial_cmp(
+                        &((b.pos.subtract(current_point).angle() - current_alpha + 360.0) % 360.0),
+                    )
+                    .unwrap()
+            });
             // get next_point and filter any point on same position as current_point and last_point
-            let next_point = unsorted_polygon.iter().enumerate().filter(|(_, m)| m.pos != current_point && m.pos != last_point).next();
+            let next_point = unsorted_polygon
+                .iter()
+                .enumerate()
+                .filter(|(_, m)| m.pos != current_point && m.pos != last_point)
+                .next();
             if next_point.is_none() {
                 return start_point; // this happens, if all points are on same position or just one point is available
             }
@@ -162,7 +209,7 @@ impl MyOpenMap {
 
         if not_origin {
             // polygon did not close on start point -> return start_point
-            return start_point
+            return start_point;
         }
 
         // calc centroid of polygon
@@ -170,7 +217,7 @@ impl MyOpenMap {
         let mut polygon_area = 0;
         let mut last_point = start_point;
         for point in polygon.iter() {
-            polygon_area += last_point.x*point.y - point.x*last_point.y;
+            polygon_area += last_point.x * point.y - point.x * last_point.y;
             last_point = *point;
         }
         // devide by 2 and multiply by 6 equals multiply by 3
@@ -179,20 +226,26 @@ impl MyOpenMap {
         if polygon_area == 0 {
             // multiple points are on one angle respectively line toward start_point
             // choose middle point between start_point and point farthest away
-            polygon.as_slice_mut().sort_by(|a, b| b.distance(start_point).partial_cmp(&a.distance(start_point)).unwrap());
+            polygon.as_slice_mut().sort_by(|a, b| {
+                b.distance(start_point)
+                    .partial_cmp(&a.distance(start_point))
+                    .unwrap()
+            });
             let mv = polygon.get(0).unwrap().subtract(start_point); // vector from start_point to point 0
             start_point.add(mv.scale(0.5)) // move to middle of both points
         } else {
             let mut x_centroid = 0;
             let mut last_point = start_point;
             for point in polygon.iter() {
-                x_centroid += (last_point.x + point.x) * (last_point.x*point.y - point.x*last_point.y);
+                x_centroid +=
+                    (last_point.x + point.x) * (last_point.x * point.y - point.x * last_point.y);
                 last_point = *point;
             }
             let mut y_centroid = 0;
             let mut last_point = start_point;
             for point in polygon.iter() {
-                y_centroid += (last_point.y + point.y) * (last_point.x*point.y - point.x*last_point.y);
+                y_centroid +=
+                    (last_point.y + point.y) * (last_point.x * point.y - point.x * last_point.y);
                 last_point = *point;
             }
             Point::new(x_centroid / polygon_area, y_centroid / polygon_area)
@@ -200,10 +253,9 @@ impl MyOpenMap {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    
+
     use super::*;
 
     #[test]
@@ -221,7 +273,7 @@ mod tests {
         monsters.push(monster_3);
         let defense_point = game_data.best_defense_position(monsters);
         assert_eq!(defense_point, Point::new(15, 15));
-        // raute plus unneccescary extra points at the same position,  on curve, and inside raute 
+        // raute plus unneccescary extra points at the same position,  on curve, and inside raute
         monsters.flush();
         let monster_0 = Entity::_new(10, 10);
         let monster_1 = Entity::_new(20, 30);
@@ -277,7 +329,10 @@ mod tests {
     fn test_farming_point() {
         let game_data = MyOpenMap::new(1000, 1000, true, 100.0);
         let mut monsters: MyArray<Entity, 100> = MyArray::new();
-        let farmer = Entity::_new(game_data.get_middle_point_of_map().x, game_data.get_middle_point_of_map().y);
+        let farmer = Entity::_new(
+            game_data.get_middle_point_of_map().x,
+            game_data.get_middle_point_of_map().y,
+        );
         assert_eq!(farmer.pos, Point::new(500, 500));
         let monster_0 = Entity::_new(500, 450);
         let monster_1 = Entity::_new(20, 30);
@@ -296,5 +351,4 @@ mod tests {
         let attack_point = game_data.best_farming_position(&farmer, monsters);
         assert_eq!(attack_point, Point::new(500, 550));
     }
-
 }

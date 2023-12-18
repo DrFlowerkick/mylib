@@ -1,10 +1,10 @@
+use std::iter::FromIterator;
 use std::ops::Index;
 use std::ops::IndexMut;
-use std::iter::FromIterator;
 
 #[derive(Copy, Clone, PartialEq)]
 pub struct MyArray<T, const N: usize> {
-    items: [T ; N],
+    items: [T; N],
     n_items: usize,
 }
 
@@ -88,7 +88,7 @@ impl<T: Copy + Clone + Default, const N: usize> MyArray<T, N> {
         if index + len - 1 >= self.n_items {
             panic!("line {}", line!());
         }
-        &self.items[index..index+len]
+        &self.items[index..index + len]
     }
     pub fn as_slice(&self) -> &[T] {
         &self.items[..self.n_items]
@@ -100,7 +100,7 @@ impl<T: Copy + Clone + Default, const N: usize> MyArray<T, N> {
         if self.n_items + slice.len() > N {
             panic!("line {}", line!());
         }
-        for (i,item) in slice.iter().enumerate() {
+        for (i, item) in slice.iter().enumerate() {
             self.items[self.n_items + i] = *item;
         }
         self.n_items += slice.len();
@@ -131,19 +131,19 @@ impl<T: Copy + Clone + Default, const N: usize> Index<usize> for MyArray<T, N> {
 
     fn index(&self, index: usize) -> &Self::Output {
         assert!(index < self.n_items);
-        &self.items[index] 
+        &self.items[index]
     }
 }
 
 impl<T: Copy + Clone + Default, const N: usize> IndexMut<usize> for MyArray<T, N> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         assert!(index < self.n_items);
-        &mut self.items[index] 
+        &mut self.items[index]
     }
 }
 
 impl<T: Copy + Clone + Default, const N: usize> FromIterator<T> for MyArray<T, N> {
-    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut my_array: MyArray<T, N> = MyArray::new();
 
         for i in iter {
@@ -159,8 +159,6 @@ impl<T: Copy + Clone + Default, const N: usize> Default for MyArray<T, N> {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -174,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_collect_empty_collection() {
-        let array:[i32; 0] = [];
+        let array: [i32; 0] = [];
         let my_array: MyArray<i32, 10> = array.iter().map(|i| *i).collect();
         assert_eq!(my_array.len(), 0);
     }

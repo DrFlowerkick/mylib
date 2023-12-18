@@ -9,7 +9,7 @@ pub struct Point {
 
 impl Point {
     pub fn new(x: i32, y: i32) -> Self {
-        Point { x, y, }
+        Point { x, y }
     }
     pub fn new_angle_len(alpha: f32, len: f32) -> Point {
         Point {
@@ -69,7 +69,7 @@ impl Point {
     }
     pub fn scale_toward_point_with_len(&self, target: Point, len: f32) -> Point {
         let mut vector = target.subtract(*self);
-        vector = vector.scale(len/vector.len());
+        vector = vector.scale(len / vector.len());
         self.add(vector)
     }
     pub fn scale_toward_point_with_factor(&self, target: Point, factor: f32) -> Point {
@@ -81,7 +81,7 @@ impl Point {
 
 #[cfg(test)]
 mod tests {
-    
+
     use super::*;
 
     #[test]

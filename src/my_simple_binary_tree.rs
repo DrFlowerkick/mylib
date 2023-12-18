@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-
 pub struct SimpleBinaryTreeNode<N> {
     value: N,
     left: RefCell<Option<Rc<SimpleBinaryTreeNode<N>>>>,
@@ -24,7 +23,10 @@ impl<N: Eq + PartialEq + Copy + Clone> SimpleBinaryTreeNode<N> {
         *self.left.borrow_mut() = Some(left);
         self.get_left().unwrap()
     }
-    pub fn link_left(&self, node: Rc<SimpleBinaryTreeNode<N>>) -> Option<Rc<SimpleBinaryTreeNode<N>>> {
+    pub fn link_left(
+        &self,
+        node: Rc<SimpleBinaryTreeNode<N>>,
+    ) -> Option<Rc<SimpleBinaryTreeNode<N>>> {
         if self.get_left().is_some() {
             // left is already linked
             return None;
@@ -32,7 +34,10 @@ impl<N: Eq + PartialEq + Copy + Clone> SimpleBinaryTreeNode<N> {
         *self.left.borrow_mut() = Some(node);
         Some(self.get_left().unwrap())
     }
-    pub fn link_right(&self, node: Rc<SimpleBinaryTreeNode<N>>) -> Option<Rc<SimpleBinaryTreeNode<N>>> {
+    pub fn link_right(
+        &self,
+        node: Rc<SimpleBinaryTreeNode<N>>,
+    ) -> Option<Rc<SimpleBinaryTreeNode<N>>> {
         if self.get_right().is_some() {
             // right is already linked
             return None;
