@@ -37,6 +37,9 @@ impl<const X: usize, const Y: usize> MapPoint<X, Y> {
     pub fn y(&self) -> usize {
         self.y
     }
+    pub fn as_tuple(&self) -> (usize, usize) {
+        (self.x, self.y)
+    }
     pub fn distance_x(&self, target: MapPoint<X, Y>) -> usize {
         match self.x.cmp(&target.x) {
             Ordering::Equal => 0,
@@ -202,6 +205,7 @@ struct NeighborIter<const X: usize, const Y: usize> {
     center_point: MapPoint<X, Y>,
     initial_orientation: Compass,
     current_orientation: Compass,
+    // true: rotate clockwise, false: rotate counterclockwise
     rotation_direction: bool,
     finished: bool,
 }

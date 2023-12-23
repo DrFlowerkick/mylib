@@ -41,7 +41,7 @@ impl Default for TicTacToeStatus {
 
 #[derive(Copy, Clone, Default)]
 pub struct TicTacToeGameData {
-    map: MyMap2D<TicTacToeStatus, X, Y, N>,
+    map: MyMap2D<TicTacToeStatus, X, Y>,
     status: TicTacToeStatus,
 }
 
