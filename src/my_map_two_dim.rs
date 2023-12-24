@@ -108,12 +108,37 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
                     .map(move |(x, column)| (MapPoint::new(x, y), column))
             })
     }
+    pub fn iter_row_mut(&mut self, r: usize) -> impl Iterator<Item = (MapPoint<X, Y>, &mut T)> {
+        if r >= Y {
+            panic!("line {}, row index is out of range", line!());
+        }
+        self.items
+            .iter_mut()
+            .enumerate()
+            .filter(move |(y, _)| *y == r)
+            .flat_map(|(y, row)| {
+                row.iter_mut()
+                    .enumerate()
+                    .map(move |(x, column)| (MapPoint::new(x, y), column))
+            })
+    }
     pub fn iter_column(&self, c: usize) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         if c >= X {
             panic!("line {}, column index is out of range", line!());
         }
         self.items.iter().enumerate().flat_map(move |(y, row)| {
             row.iter()
+                .enumerate()
+                .filter(move |(x, _)| *x == c)
+                .map(move |(x, column)| (MapPoint::new(x, y), column))
+        })
+    }
+    pub fn iter_column_mut(&mut self, c: usize) -> impl Iterator<Item = (MapPoint<X, Y>, &mut T)> {
+        if c >= X {
+            panic!("line {}, column index is out of range", line!());
+        }
+        self.items.iter_mut().enumerate().flat_map(move |(y, row)| {
+            row.iter_mut()
                 .enumerate()
                 .filter(move |(x, _)| *x == c)
                 .map(move |(x, column)| (MapPoint::new(x, y), column))
