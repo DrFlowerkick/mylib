@@ -394,6 +394,7 @@ impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> Iterator for PathT
 
 pub struct BinaryTreeNode<N> {
     value: N,
+    count: RefCell<usize>,
     node: RefCell<Weak<BinaryTreeNode<N>>>,
     parent: RefCell<Weak<BinaryTreeNode<N>>>,
     left: RefCell<Option<Rc<BinaryTreeNode<N>>>>,
@@ -404,6 +405,7 @@ impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> BinaryTreeNode<N> {
     pub fn new(value: N) -> Rc<BinaryTreeNode<N>> {
         let result = Rc::new(BinaryTreeNode {
             value,
+            count: RefCell::new(1),
             node: RefCell::new(Weak::new()), // weak reference on itself!
             parent: RefCell::new(Weak::new()),
             left: RefCell::new(None),
@@ -415,7 +417,12 @@ impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> BinaryTreeNode<N> {
     }
     pub fn append_value(&self, value: N) -> Rc<BinaryTreeNode<N>> {
         match self.value.cmp(&value) {
-            Ordering::Equal => self.get_self().unwrap(), // value already in tree -> do nothing
+            Ordering::Equal => {
+                // value already in tree -> increment count and return node
+                let node = self.get_self().unwrap();
+                *node.count.borrow_mut() += 1;
+                node
+            }
             Ordering::Greater => {
                 let left = if let Some(ref node) = *self.left.borrow() {
                     node.append_value(value);
@@ -448,6 +455,9 @@ impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> BinaryTreeNode<N> {
     }
     pub fn get_value(&self) -> N {
         self.value
+    }
+    pub fn get_count(&self) -> usize {
+        *self.count.borrow()
     }
     pub fn get_self(&self) -> Option<Rc<BinaryTreeNode<N>>> {
         match self.node.borrow().upgrade() {

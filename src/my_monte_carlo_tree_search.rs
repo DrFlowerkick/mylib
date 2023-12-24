@@ -447,7 +447,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             };
             match self
                 .tree_root
-                .iter_level_order_traversal_with_bordes(1, end_level)
+                .iter_level_order_traversal_with_borders(1, end_level)
                 .find(|(n, _)| {
                     let mut n_value = n.get_mut_value();
                     n_value.game_turn == search_turn

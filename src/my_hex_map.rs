@@ -109,7 +109,6 @@ mod tests {
     use crate::my_map_two_dim::*;
     // see C:\Users\Marc\Documents\Repos\basic_rust\projects\my_lib\example_hex_map.png
     const N: usize = 27;
-    const M: usize = N * N;
     // neigh 0 to neigh 5
     const HEXMAP: &str = "1 3 -1 2 4 -1\n\
                           5 -1 3 0 -1 -1\n\
@@ -160,7 +159,7 @@ mod tests {
 
     #[test]
     fn test_hex_distance() {
-        let mut distance_map: MyMap2D<usize, N, N, M> = MyMap2D::default();
+        let mut distance_map: MyMap2D<usize, N, N> = MyMap2D::default();
         let mut hex_map: MyHexMap<usize, N> = MyHexMap::new();
         let neighbors = read_hexmap();
         for (item, neighbor) in neighbors.iter().enumerate() {

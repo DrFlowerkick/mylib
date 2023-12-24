@@ -613,7 +613,7 @@ impl<N: PartialEq> TreeNode<N> {
     pub fn iter_level_order_traversal(&self) -> impl Iterator<Item = (Rc<TreeNode<N>>, usize)> {
         LevelOrderTraversal::new(self.get_self().unwrap(), 0, None)
     }
-    pub fn iter_level_order_traversal_with_bordes(
+    pub fn iter_level_order_traversal_with_borders(
         &self,
         start_level: usize,
         end_level: Option<usize>,
@@ -743,11 +743,11 @@ mod tests {
         let level_order_vector: Vec<char> =
             level_order_iterator.map(|(n, _)| *n.get_value()).collect();
         assert_eq!(level_order_vector, ['B', 'A', 'D', 'C', 'E']);
-        let level_order_iterator = test_tree.iter_level_order_traversal_with_bordes(2, None);
+        let level_order_iterator = test_tree.iter_level_order_traversal_with_borders(2, None);
         let level_order_vector: Vec<char> =
             level_order_iterator.map(|(n, _)| *n.get_value()).collect();
         assert_eq!(level_order_vector, ['A', 'D', 'I', 'C', 'E', 'H']);
-        let level_order_iterator = test_tree.iter_level_order_traversal_with_bordes(1, Some(2));
+        let level_order_iterator = test_tree.iter_level_order_traversal_with_borders(1, Some(2));
         let level_order_vector: Vec<char> =
             level_order_iterator.map(|(n, _)| *n.get_value()).collect();
         assert_eq!(level_order_vector, ['B', 'G', 'A', 'D', 'I']);

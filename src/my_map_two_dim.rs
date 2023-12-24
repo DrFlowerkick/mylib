@@ -9,9 +9,7 @@ pub struct MyMap2D<T, const X: usize, const Y: usize> {
     items: [[T; X]; Y], //outer array rows, inner array columns -> first index chooses row (y), second index chooses column (x)
 }
 
-impl<T: Copy + Clone + Default, const X: usize, const Y: usize>
-    MyMap2D<T, X, Y>
-{
+impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y> {
     pub fn new() -> Self {
         if X == 0 {
             panic!("line {}, minimum one column", line!());
@@ -156,7 +154,7 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize>
     pub fn iter_neighbors_with_center_and_corners(
         &self,
         center_point: MapPoint<X, Y>,
-    ) -> impl Iterator<Item = (MapPoint<X, Y>, Compass  , &T)> {
+    ) -> impl Iterator<Item = (MapPoint<X, Y>, Compass, &T)> {
         center_point
             .iter_neighbors(Compass::N, true, true, true)
             .map(move |(p, o)| (p, o, self.get(p)))
@@ -212,9 +210,7 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize>
     }
 }
 
-impl<T: Copy + Clone + Default, const X: usize, const Y: usize> Default
-    for MyMap2D<T, X, Y>
-{
+impl<T: Copy + Clone + Default, const X: usize, const Y: usize> Default for MyMap2D<T, X, Y> {
     fn default() -> Self {
         Self::new()
     }
@@ -234,9 +230,7 @@ struct DistanceIter<'a, T, const X: usize, const Y: usize> {
     index: usize,
 }
 
-impl<'a, T: Copy + Clone, const X: usize, const Y: usize>
-    DistanceIter<'a, T, X, Y>
-{
+impl<'a, T: Copy + Clone, const X: usize, const Y: usize> DistanceIter<'a, T, X, Y> {
     fn new(
         data_map: &'a MyMap2D<T, X, Y>,
         start_points: Vec<MapPoint<X, Y>>,
@@ -268,11 +262,19 @@ impl<'a, T: Copy + Clone + Default, const X: usize, const Y: usize> Iterator
         let mut local_next_cells: MyArray<(MapPoint<X, Y>, usize), 4> = MyArray::new();
         for (next_cell, ..) in self.data_map.iter_neighbors(map_point).filter(|(p, o, c)| {
             self.next_cells.iter().find(|(n, _)| n == p).is_none()
-                && (self.filter_fn)(*p, *c, *o, map_point, self.data_map.get(map_point), distance)
+                && (self.filter_fn)(
+                    *p,
+                    *c,
+                    *o,
+                    map_point,
+                    self.data_map.get(map_point),
+                    distance,
+                )
         }) {
             local_next_cells.push((next_cell, distance + 1));
         }
-        self.next_cells.extend_from_slice(local_next_cells.as_slice());
+        self.next_cells
+            .extend_from_slice(local_next_cells.as_slice());
         self.index += 1;
         Some((map_point, self.data_map.get(map_point), distance))
     }
@@ -287,10 +289,9 @@ mod tests {
     fn test_cut_off() {
         const X: usize = 20;
         const Y: usize = 10;
-        const N: usize = X * Y;
 
-        let mut cut_off_map: MyMap2D<bool, X, Y, N> = MyMap2D::new();
-        let mut game_map: MyMap2D<bool, X, Y, N> = MyMap2D::init(true);
+        let mut cut_off_map: MyMap2D<bool, X, Y> = MyMap2D::new();
+        let mut game_map: MyMap2D<bool, X, Y> = MyMap2D::init(true);
         game_map.set(MapPoint::<X, Y>::new(1, 1), false);
         for (p, _) in game_map.iter().filter(|(_, c)| **c) {
             let is_cell_free_fn = Box::new(|_: MapPoint<X, Y>, c: &bool| *c);
