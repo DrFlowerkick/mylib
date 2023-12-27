@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::my_array::*;
 use crate::my_compass::*;
 use crate::my_map_point::*;
@@ -7,6 +9,38 @@ use crate::my_map_point::*;
 pub struct MyMap2D<T, const X: usize, const Y: usize> {
     // X: number of columns, Y: number of rows
     items: [[T; X]; Y], //outer array rows, inner array columns -> first index chooses row (y), second index chooses column (x)
+}
+
+impl<T: Copy + Clone + Default + From<char>, const X: usize, const Y: usize> From<&str>
+    for MyMap2D<T, X, Y>
+{
+    fn from(value: &str) -> Self {
+        let mut map = MyMap2D::default();
+        for (y, line) in value.lines().enumerate() {
+            for (x, c) in line.chars().enumerate() {
+                map.set(MapPoint::<X, Y>::new(x, y), T::from(c));
+            }
+        }
+        map
+    }
+}
+
+impl<T: Copy + Clone + Default + Display, const X: usize, const Y: usize> Display
+    for MyMap2D<T, X, Y>
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut line = String::new();
+        for (p, v) in self.iter() {
+            line = format!("{}{}", line, v);
+            if (p.x() + 1) % X == 0 {
+                if line != "" {
+                    writeln!(f, "{}", line)?;
+                    line = "".into();
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y> {
@@ -41,6 +75,18 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
     pub fn set(&mut self, coordinates: MapPoint<X, Y>, value: T) -> &T {
         self.items[coordinates.y()][coordinates.x()] = value;
         &self.items[coordinates.y()][coordinates.x()]
+    }
+    pub fn get_row(&self, row: usize) -> &[T] {
+        if row >= Y {
+            panic!("line {}, row out of range", line!());
+        }
+        &self.items[row][..]
+    }
+    pub fn get_column(&self, col: usize) -> Vec<&T> {
+        if col >= X {
+            panic!("line {}, column out of range", line!());
+        }
+        self.iter_column(col).map(|(_, c)| c).collect::<Vec<&T>>()
     }
     pub fn is_cut_off_cell(
         &self,
@@ -352,5 +398,27 @@ mod tests {
         }
         assert_eq!(cut_off_map.iter().filter(|(_, c)| **c == true).count(), 14);
         assert!(*cut_off_map.get(MapPoint::<X, Y>::new(8, 7)));
+    }
+
+    #[test]
+    fn test_get_column() {
+        const X: usize = 20;
+        const Y: usize = 10;
+        let mut map: MyMap2D<usize, X, Y> = MyMap2D::default();
+        let mut count = 0;
+        for y in 0..Y {
+            for x in 0..X {
+                map.set((x, y).into(), count);
+                count += 1;
+            }
+        }
+        eprintln!("{}", map);
+        for col in 0..X {
+            eprint!("col {:02}: ", col);
+            for cell in map.get_column(col).iter() {
+                eprint!("{:03} ", cell);
+            }
+            eprintln!("");
+        }
     }
 }

@@ -17,6 +17,12 @@ impl<const X: usize, const Y: usize> Display for MapPoint<X, Y> {
     }
 }
 
+impl<const X: usize, const Y: usize> From<(usize, usize)> for MapPoint<X, Y> {
+    fn from(value: (usize, usize)) -> Self {
+        MapPoint::<X, Y>::new(value.0, value.1)
+    }
+}
+
 impl<const X: usize, const Y: usize> MapPoint<X, Y> {
     pub fn new(x: usize, y: usize) -> Self {
         if X == 0 {
