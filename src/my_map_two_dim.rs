@@ -5,7 +5,7 @@ use crate::my_compass::*;
 use crate::my_map_point::*;
 
 // use MyMap2D if compilation time is suffice, because it is more efficient and has cleaner interface
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct MyMap2D<T, const X: usize, const Y: usize> {
     // X: number of columns, Y: number of rows
     items: [[T; X]; Y], //outer array rows, inner array columns -> first index chooses row (y), second index chooses column (x)
@@ -82,11 +82,28 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         }
         &self.items[row][..]
     }
-    pub fn get_column(&self, col: usize) -> Vec<&T> {
+    pub fn get_row_mut(&mut self, row: usize) -> &mut [T] {
+        if row >= Y {
+            panic!("line {}, row out of range", line!());
+        }
+        &mut self.items[row][..]
+    }
+    // Since you cannot get a slice on a column with indexing (as you can with a row, since a row is an array of [T; X]),
+    // you have to work around it by returning a column as copy of values
+    pub fn get_column(&self, col: usize) -> [T; Y] {
         if col >= X {
             panic!("line {}, column out of range", line!());
         }
-        self.iter_column(col).map(|(_, c)| c).collect::<Vec<&T>>()
+        let mut column = [T::default(); Y];
+        self.iter_column(col).for_each(|(p, v)| column[p.y()] = *v);
+        column
+    }
+    // If you modify values of a column outside of MyMap2D, you can use this function to apply these new values
+    pub fn apply_column(&mut self, col: usize, column: [T; Y]) {
+        if col >= X {
+            panic!("line {}, column out of range", line!());
+        }
+        self.iter_column_mut(col).for_each(|(p, v)| *v = column[p.y()]);
     }
     pub fn is_cut_off_cell(
         &self,
