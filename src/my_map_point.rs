@@ -203,6 +203,9 @@ impl<const X: usize, const Y: usize> MapPoint<X, Y> {
     pub fn iter_orientation(&self, orientation: Compass) -> impl Iterator<Item = MapPoint<X, Y>> {
         OrientationIter::new(*self, orientation)
     }
+    pub fn iter_edge(&self, counterclockwise: bool) -> impl Iterator<Item = MapPoint<X, Y>> {
+        EdgeIter::new(*self, counterclockwise)
+    }
 }
 
 struct NeighborIter<const X: usize, const Y: usize> {
@@ -320,6 +323,70 @@ impl<const X: usize, const Y: usize> Iterator for OrientationIter<X, Y> {
             Some(map_point) => self.current_point = map_point,
             None => self.finished = true,
         }
+        Some(result)
+    }
+}
+
+struct EdgeIter<const X: usize, const Y: usize> {
+    current_point: MapPoint<X, Y>,
+    start_point: MapPoint<X, Y>,
+    orientation: Compass,
+    counterclockwise: bool,
+    finished: bool,
+}
+
+impl<const X: usize, const Y: usize> EdgeIter<X, Y> {
+    fn new(start_point: MapPoint<X, Y>, counterclockwise: bool) -> Self {
+        let mut edge_iter = EdgeIter {
+            current_point: start_point,
+            start_point,
+            orientation: start_point.map_position(),
+            counterclockwise,
+            finished: start_point.map_position().is_center(),
+        };
+        // initialize orientation
+        edge_iter.orientation = match edge_iter.orientation {
+            Compass::Center => Compass::Center,
+            Compass::N | Compass::E | Compass::S | Compass::W => if counterclockwise {
+                edge_iter.orientation.counterclockwise().counterclockwise()
+            } else {
+                edge_iter.orientation.clockwise().clockwise()
+            },
+            Compass::NE | Compass::NW | Compass::SE | Compass::SW => if counterclockwise {
+                edge_iter.orientation.counterclockwise().counterclockwise().counterclockwise()
+            } else {
+                edge_iter.orientation.clockwise().clockwise().clockwise()
+            },
+        };
+        edge_iter
+    }
+    fn turn_orientation(&mut self) {
+        self.orientation = if self.counterclockwise {
+            self.orientation.counterclockwise().counterclockwise()
+        } else {
+            self.orientation.clockwise().clockwise()
+        };
+    }
+}
+
+impl<const X: usize, const Y: usize> Iterator for EdgeIter<X, Y> {
+    type Item = MapPoint<X, Y>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None;
+        }
+        let result = self.current_point;
+        loop {
+            match self.current_point.neighbor(self.orientation) {
+                Some(map_point) => {
+                    self.current_point = map_point;
+                    break;
+                },
+                None => self.turn_orientation(),
+            }
+        }
+        self.finished = self.current_point == self.start_point;
         Some(result)
     }
 }
