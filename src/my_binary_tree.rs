@@ -339,17 +339,14 @@ impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> Iterator for Level
 struct PathToNode<N> {
     current_node: Rc<BinaryTreeNode<N>>,
     target_value: N,
-    last_value: N,
     finished: bool, // true if iterator finished
 }
 
 impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> PathToNode<N> {
     fn new(start: Rc<BinaryTreeNode<N>>, target_value: N) -> Self {
-        let start_value = start.value;
         PathToNode {
             current_node: start,
             target_value,
-            last_value: start_value,
             finished: false,
         }
     }
@@ -366,25 +363,11 @@ impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> Iterator for PathT
         match self.target_value.cmp(&self.current_node.value) {
             Ordering::Equal => self.finished = true,
             Ordering::Greater => match self.current_node.get_next_bigger() {
-                Some(node) => {
-                    if node.value != self.last_value {
-                        self.last_value = self.current_node.value;
-                        self.current_node = node;
-                    } else {
-                        self.finished = true;
-                    }
-                }
+                Some(node) => self.current_node = node,
                 None => self.finished = true,
             },
             Ordering::Less => match self.current_node.get_next_smaller() {
-                Some(node) => {
-                    if node.value != self.last_value {
-                        self.last_value = self.current_node.value;
-                        self.current_node = node;
-                    } else {
-                        self.finished = true;
-                    }
-                }
+                Some(node) => self.current_node = node,
                 None => self.finished = true,
             },
         }
@@ -532,9 +515,7 @@ impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> BinaryTreeNode<N> {
         None
     }
     pub fn get_node(&self, value: N) -> Option<Rc<BinaryTreeNode<N>>> {
-        self.iter_path_to_node(value)
-            .filter(|n| n.value == value)
-            .next()
+        self.iter_path_to_node(value).find(|n| n.value == value)
     }
     pub fn get_max_level(&self) -> usize {
         self.iter_level_order_traversal()

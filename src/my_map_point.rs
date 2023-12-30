@@ -2,7 +2,7 @@ use crate::my_compass::*;
 use std::cmp::Ordering;
 use std::fmt::Display;
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Default)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Default, Hash)]
 pub struct MapPoint<const X: usize, const Y: usize> {
     // X: size of dimension x
     // Y: size of dimension Y

@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Compass {
     N,
     NE,
@@ -13,7 +13,7 @@ pub enum Compass {
 
 impl Default for Compass {
     fn default() -> Self {
-        Compass::N
+        Compass::Center
     }
 }
 
