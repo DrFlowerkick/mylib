@@ -17,6 +17,23 @@ impl Default for Compass {
     }
 }
 
+impl From<(i32, i32)> for Compass {
+    fn from(value: (i32, i32)) -> Self {
+        match value {
+            (0, 0) => Compass::Center,
+            (0, -1) => Compass::N,
+            (1, -1) => Compass::NE,
+            (1, 0) => Compass::E,
+            (1, 1) => Compass::SE,
+            (0, 1) => Compass::S,
+            (-1, 1) => Compass::SW,
+            (-1, 0) => Compass::W,
+            (-1, -1) => Compass::NW,
+            _ => panic!("bad compass tuple"),
+        }
+    }
+}
+
 impl Compass {
     pub fn flip(&self) -> Self {
         match self {
