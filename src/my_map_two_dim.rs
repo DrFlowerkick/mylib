@@ -207,6 +207,9 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
                 .map(move |(x, column)| (MapPoint::new(x, y), column))
         })
     }
+    pub fn iter_edge(&self, start_point: MapPoint<X, Y>, counterclockwise: bool)  -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
+        start_point.iter_edge(counterclockwise).map(move |p| (p, self.get(p)))
+    }
     pub fn iter_neighbors(
         &self,
         center_point: MapPoint<X, Y>,
@@ -281,8 +284,22 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         start_point: MapPoint<X, Y>,
         filter_fn: Box<dyn Fn(MapPoint<X, Y>, &T, Compass, MapPoint<X, Y>, &T, usize) -> bool>,
     ) -> impl Iterator<Item = (MapPoint<X, Y>, &'a T, usize)> {
-        // use filter_fn as follows (use "_" for unused variables):
-        // let filter_fn = Box::new(|point_of_next_cell: MapPoint<X, Y>, value_of_next_cell: &T, current_distance: usize| point_of_next_cell.use_it_somehow() || value_of_next_cell.use_it_somehow() || current_distance.use_it_somehow());
+        /* use filter_fn as follows (use "_" for unused variables):
+        let filter_fn = Box::new(|
+            point_of_next_cell: MapPoint<X, Y>,
+            value_of_next_cell: &T,
+            orientation_of_next_cell: Compass,
+            current_point: MapPoint<X, Y>,
+            value_of_current_cell: &T,
+            current_distance: usize| {
+                point_of_next_cell.use_it_somehow() &&
+                value_of_next_cell.use_it_somehow() &&
+                orientation_of_next_cell.use_it_somehow() &&
+                current_point.use_it_somehow() &&
+                value_of_current_cell.use_it_somehow() &&
+                current_distance.use_it_somehow()
+        });
+         */
         let mut start_points: Vec<MapPoint<X, Y>> = Vec::new();
         start_points.push(start_point);
         DistanceIter::new(self, start_points, filter_fn)
@@ -292,8 +309,22 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         start_points: Vec<MapPoint<X, Y>>,
         filter_fn: Box<dyn Fn(MapPoint<X, Y>, &T, Compass, MapPoint<X, Y>, &T, usize) -> bool>,
     ) -> impl Iterator<Item = (MapPoint<X, Y>, &'a T, usize)> {
-        // use filter_fn as follows (use "_" for unused variables):
-        // let filter_fn = Box::new(|point_of_next_cell: MapPoint<X, Y>, value_of_next_cell: &T, current_distance: usize| point_of_next_cell.use_it_somehow() || value_of_next_cell.use_it_somehow() || current_distance.use_it_somehow());
+        /* use filter_fn as follows (use "_" for unused variables):
+        let filter_fn = Box::new(|
+            point_of_next_cell: MapPoint<X, Y>,
+            value_of_next_cell: &T,
+            orientation_of_next_cell: Compass,
+            current_point: MapPoint<X, Y>,
+            value_of_current_cell: &T,
+            current_distance: usize| {
+                point_of_next_cell.use_it_somehow() &&
+                value_of_next_cell.use_it_somehow() &&
+                orientation_of_next_cell.use_it_somehow() &&
+                current_point.use_it_somehow() &&
+                value_of_current_cell.use_it_somehow() &&
+                current_distance.use_it_somehow()
+        });
+         */
         DistanceIter::new(self, start_points, filter_fn)
     }
 }
@@ -349,7 +380,7 @@ impl<'a, T: Copy + Clone + Default, const X: usize, const Y: usize> Iterator
         let (map_point, distance) = *self.next_cells.get(self.index).unwrap();
         let mut local_next_cells: MyArray<(MapPoint<X, Y>, usize), 4> = MyArray::new();
         for (next_cell, ..) in self.data_map.iter_neighbors(map_point).filter(|(p, o, c)| {
-            self.next_cells.iter().find(|(n, _)| n == p).is_none()
+            !self.next_cells.iter().any(|(n, _)| n == p)
                 && (self.filter_fn)(
                     *p,
                     *c,
