@@ -88,6 +88,19 @@ impl<const X: usize, const Y: usize> MapPoint<X, Y> {
             _ => Compass::Center,
         }
     }
+    pub fn available_cardinal_directions(&self) -> Vec<Compass> {
+        match self.map_position() {
+            Compass::Center => vec![Compass::N, Compass::E, Compass::S, Compass::W],
+            Compass::N => vec![Compass::E, Compass::S, Compass::W],
+            Compass::E => vec![Compass::N, Compass::S, Compass::W],
+            Compass::S => vec![Compass::N, Compass::E, Compass::W],
+            Compass::W => vec![Compass::N, Compass::E, Compass::S],
+            Compass::NE => vec![Compass::S, Compass::W],
+            Compass::SE => vec![Compass::N, Compass::W],
+            Compass::SW => vec![Compass::N, Compass::E],
+            Compass::NW => vec![Compass::E, Compass::S],
+        }
+    }
     pub fn forward_x(&self) -> Option<MapPoint<X, Y>> {
         // increments x, if x reaches row end, move to start of next row; if x reaches end of map, return None
         let mut result = *self;
