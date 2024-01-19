@@ -1,10 +1,24 @@
 // Point is a simple two dimensional point with positive and negative x and y dimension.
 // It can also be used as a vector, e.g. see offset().
 
+use std::fmt::Display;
+
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Default)]
 pub struct Point {
     pub x: i32,
     pub y: i32,
+}
+
+impl Display for Point {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
+impl From<(i32, i32)> for Point {
+    fn from(value: (i32, i32)) -> Self {
+        Point::new(value.0, value.1)
+    }
 }
 
 impl Point {
