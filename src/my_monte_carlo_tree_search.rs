@@ -351,14 +351,14 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         played_turns: usize,
         force_update: bool,
     ) -> bool {
-        if !force_update {
-            if !self
+        if !force_update
+            && !self
                 .game_data
                 .check_consistency_of_game_data_during_init_root(current_game_state, played_turns)
-            {
-                return false;
-            }
+        {
+            return false;
         }
+
         self.game_data == *current_game_state
     }
 }
@@ -387,6 +387,7 @@ pub struct MonteCarloTreeSearch<
 impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpdate>
     MonteCarloTreeSearch<G, A, U>
 {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         game_mode: MonteCarloGameMode,
         max_number_of_turns: usize,
@@ -525,11 +526,10 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         match selection_node {
             Some(selection_node) => {
                 let child_node = self.expansion(selection_node);
-                match self.playout(child_node.clone(), start, time_out) {
-                    Some((playout_score, backtrack_heuristic)) => {
-                        self.propagation(child_node, playout_score, backtrack_heuristic)
-                    }
-                    None => (),
+                if let Some((playout_score, backtrack_heuristic)) =
+                    self.playout(child_node.clone(), start, time_out)
+                {
+                    self.propagation(child_node, playout_score, backtrack_heuristic)
                 }
             }
             None => return true, // no more nodes to simulate in tree or time over
@@ -558,13 +558,12 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             }
 
             // search children without samples
-            match selection_node
+            if let Some(child_without_samples) = selection_node
                 .iter_children()
                 .filter(|c| c.get_value().samples.is_nan())
                 .choose(&mut rng)
             {
-                Some(child_without_samples) => return Some(child_without_samples),
-                None => (),
+                return Some(child_without_samples);
             }
             selection_node.iter_children().for_each(|c| {
                 c.get_mut_value()

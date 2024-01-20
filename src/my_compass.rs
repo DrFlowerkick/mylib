@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 pub enum Compass {
     N,
     NE,
@@ -8,13 +8,8 @@ pub enum Compass {
     SW,
     W,
     NW,
+    #[default]
     Center,
-}
-
-impl Default for Compass {
-    fn default() -> Self {
-        Compass::Center
-    }
 }
 
 impl From<(i32, i32)> for Compass {
@@ -75,16 +70,10 @@ impl Compass {
         }
     }
     pub fn is_cardinal(&self) -> bool {
-        match self {
-            Compass::N | Compass::E | Compass::S | Compass::W => true,
-            _ => false,
-        }
+        matches!(self, Compass::N | Compass::E | Compass::S | Compass::W)
     }
     pub fn is_ordinal(&self) -> bool {
-        match self {
-            Compass::NE | Compass::SE | Compass::SW | Compass::NW => true,
-            _ => false,
-        }
+        matches!(self, Compass::NE | Compass::SE | Compass::SW | Compass::NW)
     }
     pub fn is_center(&self) -> bool {
         *self == Compass::Center

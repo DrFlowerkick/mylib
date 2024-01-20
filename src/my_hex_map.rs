@@ -8,10 +8,19 @@ use crate::my_array::*;
 
 pub type HexNeigh = [Option<usize>; 6];
 
+// input for filter_fn: index_of_next_hex, value_of_next_cell, distance of current hex
+pub type FilterFn<T> = Box<dyn Fn(usize, &T, usize) -> bool>;
+
 #[derive(Copy, Clone, PartialEq)]
 pub struct MyHexMap<T, const N: usize> {
     items: MyArray<T, N>,
     map: MyArray<HexNeigh, N>,
+}
+
+impl<T: Copy + Clone + Default, const N: usize> Default for MyHexMap<T, N> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<T: Copy + Clone + Default, const N: usize> MyHexMap<T, N> {
@@ -40,11 +49,11 @@ impl<T: Copy + Clone + Default, const N: usize> MyHexMap<T, N> {
             .filter_map(|m| *m)
             .map(move |i| (i, self.items.get(i).unwrap()))
     }
-    pub fn iter_distance<'a>(
-        &'a self,
+    pub fn iter_distance(
+        &self,
         start_hexes: MyArray<usize, N>,
-        filter_fn: Box<dyn Fn(usize, &T, usize) -> bool>,
-    ) -> impl Iterator<Item = (usize, &'a T, usize)> {
+        filter_fn: FilterFn<T>,
+    ) -> impl Iterator<Item = (usize, &T, usize)> {
         // use filter_fn as follows (use "_" for unused variables):
         // let filter_fn = Box::new(|index_of_next_hex: usize, value_of_next_cell: &T, current_distance: usize| index_of_next_hex.use_it_somehow() || value_of_next_cell.use_it_somehow() || current_distance.use_it_somehow());
         HexDistanceIter::new(self, start_hexes, filter_fn)
@@ -53,8 +62,8 @@ impl<T: Copy + Clone + Default, const N: usize> MyHexMap<T, N> {
 
 struct HexDistanceIter<'a, T, const N: usize> {
     data_hex_map: &'a MyHexMap<T, N>,
-    filter_fn: Box<dyn Fn(usize, &T, usize) -> bool>, // input for filter_fn: index_of_next_hex, value_of_next_cell, distance of current hex
-    next_hexes: MyArray<(usize, usize), N>,           // contains index and distance
+    filter_fn: FilterFn<T>, // input for filter_fn: index_of_next_hex, value_of_next_cell, distance of current hex
+    next_hexes: MyArray<(usize, usize), N>, // contains index and distance
     index: usize,
 }
 
@@ -62,7 +71,7 @@ impl<'a, T: Copy + Clone, const N: usize> HexDistanceIter<'a, T, N> {
     fn new(
         data_hex_map: &'a MyHexMap<T, N>,
         start_hexes: MyArray<usize, N>,
-        filter_fn: Box<dyn Fn(usize, &T, usize) -> bool>,
+        filter_fn: FilterFn<T>,
     ) -> Self {
         let mut next_hexes: MyArray<(usize, usize), N> = MyArray::default();
         for hex in start_hexes.iter() {
@@ -90,8 +99,7 @@ impl<'a, T: Copy + Clone + Default, const N: usize> Iterator for HexDistanceIter
             .data_hex_map
             .iter_neighbors(map_index)
             .filter(|(p, c)| {
-                self.next_hexes.iter().find(|(n, _)| n == p).is_none()
-                    && (self.filter_fn)(*p, *c, distance)
+                !self.next_hexes.iter().any(|(n, _)| n == p) && (self.filter_fn)(*p, *c, distance)
             })
         {
             local_next_cells.push((next_hex_index, distance + 1));

@@ -9,7 +9,7 @@ struct PreOrderTraversal<N> {
     vertical: bool,   // false: children, true: parent
 }
 
-impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> PreOrderTraversal<N> {
+impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> PreOrderTraversal<N> {
     fn new(root: Rc<BinaryTreeNode<N>>) -> Self {
         PreOrderTraversal {
             next_node: root,
@@ -19,7 +19,7 @@ impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> PreOrderTraversal<
     }
 }
 
-impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> Iterator for PreOrderTraversal<N> {
+impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> Iterator for PreOrderTraversal<N> {
     type Item = Rc<BinaryTreeNode<N>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -88,7 +88,7 @@ struct InOrderTraversal<N> {
     vertical: bool,   // false: children, true: parent
 }
 
-impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> InOrderTraversal<N> {
+impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> InOrderTraversal<N> {
     fn new(root: Rc<BinaryTreeNode<N>>) -> Self {
         InOrderTraversal {
             current_node: root,
@@ -98,7 +98,7 @@ impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> InOrderTraversal<N
     }
 }
 
-impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> Iterator for InOrderTraversal<N> {
+impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> Iterator for InOrderTraversal<N> {
     type Item = Rc<BinaryTreeNode<N>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -158,7 +158,7 @@ struct PostOrderTraversal<N> {
     finished: bool,   // true if iterator finished
 }
 
-impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> PostOrderTraversal<N> {
+impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> PostOrderTraversal<N> {
     fn new(root: Rc<BinaryTreeNode<N>>) -> Self {
         PostOrderTraversal {
             current_node: root,
@@ -169,7 +169,7 @@ impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> PostOrderTraversal
     }
 }
 
-impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> Iterator for PostOrderTraversal<N> {
+impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> Iterator for PostOrderTraversal<N> {
     type Item = Rc<BinaryTreeNode<N>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -232,7 +232,7 @@ struct LevelOrderTraversal<N> {
     node_on_target_level: bool,
 }
 
-impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> LevelOrderTraversal<N> {
+impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> LevelOrderTraversal<N> {
     fn new(root: Rc<BinaryTreeNode<N>>) -> Self {
         LevelOrderTraversal {
             current_node: root,
@@ -246,7 +246,7 @@ impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> LevelOrderTraversa
     }
 }
 
-impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> Iterator for LevelOrderTraversal<N> {
+impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> Iterator for LevelOrderTraversal<N> {
     type Item = (Rc<BinaryTreeNode<N>>, usize);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -342,7 +342,7 @@ struct PathToNode<N> {
     finished: bool, // true if iterator finished
 }
 
-impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> PathToNode<N> {
+impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> PathToNode<N> {
     fn new(start: Rc<BinaryTreeNode<N>>, target_value: N) -> Self {
         PathToNode {
             current_node: start,
@@ -352,7 +352,7 @@ impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> PathToNode<N> {
     }
 }
 
-impl<'a, N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> Iterator for PathToNode<N> {
+impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> Iterator for PathToNode<N> {
     type Item = Rc<BinaryTreeNode<N>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -443,73 +443,49 @@ impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> BinaryTreeNode<N> {
         *self.count.borrow()
     }
     pub fn get_self(&self) -> Option<Rc<BinaryTreeNode<N>>> {
-        match self.node.borrow().upgrade() {
-            Some(ref node) => Some(node.clone()),
-            None => None,
-        }
+        self.node.borrow().upgrade().as_ref().cloned()
     }
     pub fn get_left(&self) -> Option<Rc<BinaryTreeNode<N>>> {
-        match *self.left.borrow() {
-            Some(ref node) => Some(node.clone()),
-            None => None,
-        }
+        self.left.borrow().as_ref().cloned()
     }
     pub fn get_right(&self) -> Option<Rc<BinaryTreeNode<N>>> {
-        match *self.right.borrow() {
-            Some(ref node) => Some(node.clone()),
-            None => None,
-        }
+        self.right.borrow().as_ref().cloned()
     }
     pub fn get_parent(&self) -> Option<Rc<BinaryTreeNode<N>>> {
-        match self.parent.borrow().upgrade() {
-            Some(ref node) => Some(node.clone()),
-            None => None,
-        }
+        self.parent.borrow().upgrade().as_ref().cloned()
     }
     pub fn get_direction(&self) -> Option<bool> {
-        match self.parent.borrow().upgrade() {
-            Some(node) => Some(self.value > node.value),
-            None => None,
-        }
+        self.parent
+            .borrow()
+            .upgrade()
+            .map(|node| self.value > node.value)
     }
     pub fn get_next_smaller(&self) -> Option<Rc<BinaryTreeNode<N>>> {
-        match self.get_left() {
-            Some(node) => return Some(node),
-            None => (),
+        if let Some(node) = self.get_left() {
+            return Some(node);
         }
         let mut current_node = self.get_self().unwrap();
-        loop {
-            match current_node.get_parent() {
-                Some(node) => {
-                    if current_node.get_direction().unwrap() {
-                        // current node is right -> parent is smaller
-                        return Some(node);
-                    } else {
-                        current_node = node;
-                    }
-                }
-                None => break, // root has no parent -> no smaller node possible -> current node is smallest node
+        while let Some(node) = current_node.get_parent() {
+            if current_node.get_direction().unwrap() {
+                // current node is right -> parent is smaller
+                return Some(node);
+            } else {
+                current_node = node;
             }
         }
         None
     }
     pub fn get_next_bigger(&self) -> Option<Rc<BinaryTreeNode<N>>> {
-        match self.get_right() {
-            Some(node) => return Some(node),
-            None => (),
+        if let Some(node) = self.get_right() {
+            return Some(node);
         }
         let mut current_node = self.get_self().unwrap();
-        loop {
-            match current_node.get_parent() {
-                Some(node) => {
-                    if current_node.get_direction().unwrap() {
-                        current_node = node;
-                    } else {
-                        // current node is left -> parent is bigger
-                        return Some(node);
-                    }
-                }
-                None => break, // root has no parent -> no smaller node possible -> current node is smallest node
+        while let Some(node) = current_node.get_parent() {
+            if current_node.get_direction().unwrap() {
+                current_node = node;
+            } else {
+                // current node is left -> parent is bigger
+                return Some(node);
             }
         }
         None

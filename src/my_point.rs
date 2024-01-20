@@ -3,6 +3,25 @@
 
 use std::fmt::Display;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Quadrant {
+    // positive x and y
+    First,
+    // negative x, positive y
+    Second,
+    // negtive x and y
+    Third,
+    // positive x, negative y
+    Fourth,
+    // on axis
+    PositiveX,
+    PositiveY,
+    NegativeX,
+    NegativeY,
+    // both 0
+    Origin,
+}
+
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Default)]
 pub struct Point {
     pub x: i32,
@@ -21,15 +40,18 @@ impl From<(i32, i32)> for Point {
     }
 }
 
+impl From<Cylindrical> for Point {
+    fn from(value: Cylindrical) -> Self {
+        Point {
+            x: (value.r * value.angle.to_radians().cos()) as i32,
+            y: (value.r * value.angle.to_radians().sin()) as i32,
+        }
+    }
+}
+
 impl Point {
     pub fn new(x: i32, y: i32) -> Self {
         Point { x, y }
-    }
-    pub fn new_angle_len(alpha: f32, len: f32) -> Point {
-        Point {
-            x: (alpha.to_radians().cos() * len) as i32,
-            y: (alpha.to_radians().sin() * len) as i32,
-        }
     }
     pub fn switch_xy(&self) -> Point {
         Point {
@@ -40,27 +62,33 @@ impl Point {
     pub fn distance_x(&self, target: Point) -> i32 {
         self.x - target.x
     }
+    pub fn delta_x(&self, target: Point) -> i32 {
+        (self.x - target.x).abs()
+    }
     pub fn distance_y(&self, target: Point) -> i32 {
         self.y - target.y
     }
+    pub fn delta_y(&self, target: Point) -> i32 {
+        (self.y - target.y).abs()
+    }
     pub fn distance(&self, target: Point) -> f32 {
-        let result = (self.x - target.x).pow(2) + (self.y - target.y).pow(2);
-        let result = (result as f32).sqrt();
-        result.abs()
+        let result = self.distance_x(target).pow(2) + self.distance_y(target).pow(2);
+        (result as f32).sqrt()
     }
-    pub fn len(&self) -> f32 {
-        self.distance(Point::new(0, 0))
+    pub fn delta(&self, target: Point) -> i32 {
+        self.delta_x(target) + self.delta_y(target)
     }
-    pub fn angle(&self) -> f32 {
-        let len = self.len();
-        if (len as i32) == 0 {
-            return 0.0; // return 0, if zero len vector
-        }
-        let alpha = ((self.x as f32) / self.len()).acos().to_degrees();
-        if self.y < 0 {
-            360.0 - alpha
-        } else {
-            alpha
+    pub fn quadrant(&self) -> Quadrant {
+        match (self.x, self.y) {
+            (0, 0) => Quadrant::Origin,
+            (1.., 0) => Quadrant::PositiveX,
+            (_, 0) => Quadrant::NegativeX,
+            (0, 1..) => Quadrant::PositiveY,
+            (0, _) => Quadrant::NegativeY,
+            (1.., 1..) => Quadrant::First,
+            (_, 1..) => Quadrant::Second,
+            (1.., _) => Quadrant::Fourth,
+            (_, _) => Quadrant::Third,
         }
     }
     pub fn add(&self, offset: Point) -> Point {
@@ -75,21 +103,46 @@ impl Point {
             y: self.y - offset.y,
         }
     }
-    pub fn scale(&self, scale_factor: f32) -> Point {
-        Point {
-            x: (self.x as f32 * scale_factor) as i32,
-            y: (self.y as f32 * scale_factor) as i32,
-        }
-    }
     pub fn scale_toward_point_with_len(&self, target: Point, len: f32) -> Point {
-        let mut vector = target.subtract(*self);
-        vector = vector.scale(len / vector.len());
-        self.add(vector)
+        let mut vector = Cylindrical::from(target.subtract(*self));
+        vector.r = len;
+        self.add(vector.into())
     }
     pub fn scale_toward_point_with_factor(&self, target: Point, factor: f32) -> Point {
-        let mut vector = target.subtract(*self);
-        vector = vector.scale(factor);
-        self.add(vector)
+        let mut vector = Cylindrical::from(target.subtract(*self));
+        vector.r *= factor;
+        self.add(vector.into())
+    }
+}
+
+#[derive(Debug, PartialEq, Copy, Clone, Default)]
+pub struct Cylindrical {
+    pub r: f32,
+    // in degree
+    pub angle: f32,
+}
+
+impl From<Point> for Cylindrical {
+    fn from(value: Point) -> Self {
+        let r = value.distance(Point::new(0, 0));
+        let angle = if (r as i32) == 0 {
+            // 0, if zero len vector
+            0.0
+        } else {
+            let alpha = ((value.x as f32) / r).acos().to_degrees();
+            if value.y < 0 {
+                360.0 - alpha
+            } else {
+                alpha
+            }
+        };
+        Self { r, angle }
+    }
+}
+
+impl Cylindrical {
+    pub fn new(r: f32, angle: f32) -> Self {
+        Self { r, angle }
     }
 }
 
@@ -99,14 +152,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_my_signed_point() {
+    fn test_my_point() {
         let mut test_point = Point::new(1, 1);
         test_point = test_point.add(Point::new(2, 3));
         assert_eq!(test_point, Point::new(3, 4));
-        assert_eq!(test_point.len() as i32, 5);
+        assert_eq!(Cylindrical::from(test_point).r as i32, 5);
         let angle = 180.0;
-        let vector = Point::new_angle_len(angle, 10000.0);
-        let abs_difference = (vector.angle() - angle).abs();
+        let on_negative_x_axis = Point::new(-10000, 0);
+        let abs_difference = (Cylindrical::from(on_negative_x_axis).angle - angle).abs();
         assert!(abs_difference <= 0.01);
+    }
+
+    #[test]
+    fn test_quadrant() {
+        assert_eq!(Point::new(0, 0).quadrant(), Quadrant::Origin);
+        assert_eq!(Point::new(9, 0).quadrant(), Quadrant::PositiveX);
+        assert_eq!(Point::new(-8, 0).quadrant(), Quadrant::NegativeX);
+        assert_eq!(Point::new(0, 7).quadrant(), Quadrant::PositiveY);
+        assert_eq!(Point::new(0, -11).quadrant(), Quadrant::NegativeY);
+        assert_eq!(Point::new(12, 13).quadrant(), Quadrant::First);
+        assert_eq!(Point::new(-4, 8).quadrant(), Quadrant::Second);
+        assert_eq!(Point::new(-4, -8).quadrant(), Quadrant::Third);
+        assert_eq!(Point::new(7, -3).quadrant(), Quadrant::Fourth);
     }
 }

@@ -57,15 +57,9 @@ impl<N: Eq + PartialEq + Copy + Clone> SimpleBinaryTreeNode<N> {
         self.value
     }
     pub fn get_left(&self) -> Option<Rc<SimpleBinaryTreeNode<N>>> {
-        match *self.left.borrow() {
-            Some(ref node) => Some(node.clone()),
-            None => None,
-        }
+        self.left.borrow().as_ref().cloned()
     }
     pub fn get_right(&self) -> Option<Rc<SimpleBinaryTreeNode<N>>> {
-        match *self.right.borrow() {
-            Some(ref node) => Some(node.clone()),
-            None => None,
-        }
+        self.right.borrow().as_ref().cloned()
     }
 }

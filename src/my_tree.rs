@@ -10,7 +10,7 @@ struct PreOrderTraversal<N> {
     iter_finished: bool,
 }
 
-impl<'a, N: PartialEq> PreOrderTraversal<N> {
+impl<N: PartialEq> PreOrderTraversal<N> {
     fn new(root: Rc<TreeNode<N>>) -> Self {
         PreOrderTraversal {
             next_node: root,
@@ -21,7 +21,7 @@ impl<'a, N: PartialEq> PreOrderTraversal<N> {
     }
 }
 
-impl<'a, N: PartialEq> Iterator for PreOrderTraversal<N> {
+impl<N: PartialEq> Iterator for PreOrderTraversal<N> {
     type Item = Rc<TreeNode<N>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -34,7 +34,7 @@ impl<'a, N: PartialEq> Iterator for PreOrderTraversal<N> {
                 match self.next_node.get_parent() {
                     Some(node) => {
                         self.child_indices.pop();
-                        if self.child_indices.len() == 0 {
+                        if self.child_indices.is_empty() {
                             break; // end of subtree, which started at given "root" node
                         }
                         let last_index = self.child_indices.len() - 1;
@@ -46,7 +46,7 @@ impl<'a, N: PartialEq> Iterator for PreOrderTraversal<N> {
                 }
             } else {
                 // in direction of children
-                if self.child_indices.len() == 0 {
+                if self.child_indices.is_empty() {
                     self.child_indices.push(0);
                     return Some(self.next_node.clone());
                 }
@@ -73,7 +73,7 @@ struct PostOrderTraversal<N> {
     finished: bool,            // true if iterator finished
 }
 
-impl<'a, N: PartialEq> PostOrderTraversal<N> {
+impl<N: PartialEq> PostOrderTraversal<N> {
     fn new(root: Rc<TreeNode<N>>) -> Self {
         PostOrderTraversal {
             current_node: root,
@@ -84,7 +84,7 @@ impl<'a, N: PartialEq> PostOrderTraversal<N> {
     }
 }
 
-impl<'a, N: PartialEq> Iterator for PostOrderTraversal<N> {
+impl<N: PartialEq> Iterator for PostOrderTraversal<N> {
     type Item = Rc<TreeNode<N>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -111,7 +111,7 @@ impl<'a, N: PartialEq> Iterator for PostOrderTraversal<N> {
                             Some(node) => {
                                 self.vertical = true;
                                 self.child_indices.pop();
-                                self.finished = self.child_indices.len() == 0; // root of subtree, which started at given "root" node
+                                self.finished = self.child_indices.is_empty(); // root of subtree, which started at given "root" node
                                 self.current_node = node;
                             }
                             None => self.finished = true,
@@ -134,7 +134,7 @@ struct LevelOrderTraversal<N> {
     node_on_target_level: bool,
 }
 
-impl<'a, N: PartialEq> LevelOrderTraversal<N> {
+impl<N: PartialEq> LevelOrderTraversal<N> {
     fn new(root: Rc<TreeNode<N>>, start_level: usize, end_level: Option<usize>) -> Self {
         let ci_capacity = match end_level {
             Some(level) => {
@@ -158,21 +158,18 @@ impl<'a, N: PartialEq> LevelOrderTraversal<N> {
         }
     }
     fn increment_target_level(&mut self) -> bool {
-        match self.end_level {
-            Some(level) => {
-                if self.target_level == level {
-                    self.finished = true;
-                    return true;
-                }
+        if let Some(level) = self.end_level {
+            if self.target_level == level {
+                self.finished = true;
+                return true;
             }
-            None => (),
         }
         self.target_level += 1;
         false
     }
 }
 
-impl<'a, N: PartialEq> Iterator for LevelOrderTraversal<N> {
+impl<N: PartialEq> Iterator for LevelOrderTraversal<N> {
     type Item = (Rc<TreeNode<N>>, usize);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -186,16 +183,11 @@ impl<'a, N: PartialEq> Iterator for LevelOrderTraversal<N> {
                     if self.increment_target_level() {
                         return None;
                     }
-                } else {
-                    match self.current_node.get_parent() {
-                        Some(node) => {
-                            self.node_on_target_level = true;
-                            self.vertical = true;
-                            self.child_indices.pop();
-                            self.current_node = node;
-                        }
-                        None => (),
-                    }
+                } else if let Some(node) = self.current_node.get_parent() {
+                    self.node_on_target_level = true;
+                    self.vertical = true;
+                    self.child_indices.pop();
+                    self.current_node = node;
                 }
                 return result;
             }
@@ -226,15 +218,10 @@ impl<'a, N: PartialEq> Iterator for LevelOrderTraversal<N> {
                                 self.finished = true;
                                 return None;
                             }
-                        } else {
-                            match self.current_node.get_parent() {
-                                Some(node) => {
-                                    self.vertical = true;
-                                    self.child_indices.pop();
-                                    self.current_node = node;
-                                }
-                                None => (),
-                            }
+                        } else if let Some(node) = self.current_node.get_parent() {
+                            self.vertical = true;
+                            self.child_indices.pop();
+                            self.current_node = node;
                         }
                     }
                 }
@@ -248,7 +235,7 @@ struct BackTrack<N> {
     finished: bool, // true if iterator finished
 }
 
-impl<'a, N: PartialEq> BackTrack<N> {
+impl<N: PartialEq> BackTrack<N> {
     fn new(node: Rc<TreeNode<N>>) -> Self {
         BackTrack {
             current_node: node,
@@ -257,7 +244,7 @@ impl<'a, N: PartialEq> BackTrack<N> {
     }
 }
 
-impl<'a, N: PartialEq> Iterator for BackTrack<N> {
+impl<N: PartialEq> Iterator for BackTrack<N> {
     type Item = Rc<TreeNode<N>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -280,7 +267,7 @@ struct IterChildren<N> {
     finished: bool, // true if iterator finished
 }
 
-impl<'a, N: PartialEq> IterChildren<N> {
+impl<N: PartialEq> IterChildren<N> {
     fn new(node: Rc<TreeNode<N>>) -> Self {
         let len_children = node.len_children();
         IterChildren {
@@ -292,7 +279,7 @@ impl<'a, N: PartialEq> IterChildren<N> {
     }
 }
 
-impl<'a, N: PartialEq> Iterator for IterChildren<N> {
+impl<N: PartialEq> Iterator for IterChildren<N> {
     type Item = Rc<TreeNode<N>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -315,7 +302,7 @@ impl<'a, N: PartialEq> Iterator for IterChildren<N> {
     }
 }
 
-impl<'a, N: PartialEq + Copy + Clone> ExactSizeIterator for IterChildren<N> {
+impl<N: PartialEq + Copy + Clone> ExactSizeIterator for IterChildren<N> {
     fn len(&self) -> usize {
         self.len_children
     }
@@ -326,7 +313,7 @@ struct IterSelf<N> {
     finished: bool, // true if iterator finished
 }
 
-impl<'a, N: PartialEq> IterSelf<N> {
+impl<N: PartialEq> IterSelf<N> {
     fn new(node: Rc<TreeNode<N>>) -> Self {
         IterSelf {
             node,
@@ -335,7 +322,7 @@ impl<'a, N: PartialEq> IterSelf<N> {
     }
 }
 
-impl<'a, N: PartialEq> Iterator for IterSelf<N> {
+impl<N: PartialEq> Iterator for IterSelf<N> {
     type Item = Rc<TreeNode<N>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -378,10 +365,9 @@ impl<N: PartialEq> TreeNode<N> {
         children_capacity: usize,
     ) -> Option<Rc<TreeNode<N>>> {
         // search always from root to make sure that parent will be found
-        match self.get_root().get_node(parent_value) {
-            Some(parent) => Some(parent.add_child(child_value, children_capacity)),
-            None => None,
-        }
+        self.get_root()
+            .get_node(parent_value)
+            .map(|parent| parent.add_child(child_value, children_capacity))
     }
     pub fn add_child(&self, value: N, children_capacity: usize) -> Rc<TreeNode<N>> {
         match self.iter_children().find(|n| *n.value.borrow() == value) {
@@ -402,10 +388,9 @@ impl<N: PartialEq> TreeNode<N> {
         children_capacity: usize,
     ) -> Option<Rc<TreeNode<N>>> {
         // search always from root to make sure that parent will be found
-        match self.get_root().get_node(parent_value) {
-            Some(parent) => Some(parent.insert_child(child_value, index, children_capacity)),
-            None => None,
-        }
+        self.get_root()
+            .get_node(parent_value)
+            .map(|parent| parent.insert_child(child_value, index, children_capacity))
     }
     pub fn insert_child(
         &self,
@@ -438,10 +423,8 @@ impl<N: PartialEq> TreeNode<N> {
         if root.get_node(&child_value).is_some() {
             return None; // child already exists
         }
-        match root.get_node(parent_value) {
-            Some(parent) => Some(parent.add_child(child_value, children_capacity)),
-            None => None, // parent does not exist
-        }
+        root.get_node(parent_value)
+            .map(|parent| parent.add_child(child_value, children_capacity))
     }
     pub fn add_unambiguous_child(
         &self,
@@ -474,10 +457,8 @@ impl<N: PartialEq> TreeNode<N> {
         if root.get_node(&child_value).is_some() {
             return None; // child already exists
         }
-        match root.get_node(parent_value) {
-            Some(parent) => Some(parent.insert_child(child_value, index, children_capacity)),
-            None => None,
-        }
+        root.get_node(parent_value)
+            .map(|parent| parent.insert_child(child_value, index, children_capacity))
     }
     pub fn insert_unambiguous_child(
         &self,
@@ -539,25 +520,16 @@ impl<N: PartialEq> TreeNode<N> {
         self.level
     }
     pub fn get_self(&self) -> Option<Rc<TreeNode<N>>> {
-        match self.node.borrow().upgrade() {
-            Some(ref node) => Some(node.clone()),
-            None => None,
-        }
+        self.node.borrow().upgrade().as_ref().cloned()
     }
     pub fn get_child(&self, index: usize) -> Option<Rc<TreeNode<N>>> {
-        match self.children.borrow().get(index) {
-            Some(ref node) => Some((*node).clone()),
-            None => None,
-        }
+        self.children.borrow().get(index).cloned()
     }
     pub fn len_children(&self) -> usize {
         self.children.borrow().len()
     }
     pub fn get_parent(&self) -> Option<Rc<TreeNode<N>>> {
-        match self.parent.borrow().upgrade() {
-            Some(ref node) => Some(node.clone()),
-            None => None,
-        }
+        self.parent.borrow().upgrade().as_ref().cloned()
     }
     pub fn get_node(&self, value: &N) -> Option<Rc<TreeNode<N>>> {
         self.iter_pre_order_traversal()

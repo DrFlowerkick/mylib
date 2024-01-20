@@ -2,6 +2,23 @@ use crate::my_array::*;
 use crate::my_compass::*;
 use crate::my_map_point::*;
 
+/* use filter_fn as follows (use "_" for unused variables):
+        let filter_fn = Box::new(|
+            point_of_next_cell: MapPoint<X, Y>,
+            value_of_next_cell: &T,
+            current_distance: usize| {
+                point_of_next_cell.use_it_somehow() &&
+                value_of_next_cell.use_it_somehow() &&
+                current_distance.use_it_somehow()
+        });
+*/
+pub type FilterFn<T, const X: usize, const Y: usize> =
+    Box<dyn Fn(MapPoint<X, Y>, &T, usize) -> bool>;
+
+// use is_cell_free_fn as follows (use "_" for unused variables):
+// let is_cell_free_fn = Box::new(|current_point: MapPoint<X, Y>, current_cell_value: &T| current_point.use_it_somehow() || current_cell_value.use_it_somehow() );
+pub type IsCellFreeFn<T, const X: usize, const Y: usize> = Box<dyn Fn(MapPoint<X, Y>, &T) -> bool>;
+
 #[derive(Copy, Clone, PartialEq)]
 pub struct MyMap1D<T, const X: usize, const Y: usize, const N: usize> {
     // Saving the map data of a 2-dim map in a 1-dim array saves a substantial amount of compilation time at the
@@ -76,7 +93,7 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize, const N: usize>
     pub fn is_cut_off_cell(
         &self,
         map_point: MapPoint<X, Y>,
-        is_cell_free_fn: Box<dyn Fn(MapPoint<X, Y>, &T) -> bool>,
+        is_cell_free_fn: IsCellFreeFn<T, X, Y>,
     ) -> bool {
         // use is_cell_free_fn as follows (use "_" for unused variables):
         // let is_cell_free_fn = Box::new(|current_point: MapPoint<X, Y>, current_cell_value: &T| current_point.use_it_somehow() || current_cell_value.use_it_somehow() );
@@ -95,11 +112,9 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize, const N: usize>
             .iter_neighbors(initial_orientation, true, false, true)
             .map(|(p, o)| (is_cell_free_fn(p, self.get(p)), o.is_cardinal()))
         {
-            if !last_free {
-                if is_free && is_side {
-                    // new free zones start always at a side of map_point, since movement over cornes is not allowed
-                    free_zones += 1;
-                }
+            if !last_free && is_free && is_side {
+                // new free zones start always at a side of map_point, since movement over cornes is not allowed
+                free_zones += 1;
             }
             last_free = if is_side || !is_free {
                 // side or blocked corner -> apply is_free to last_free
@@ -212,11 +227,11 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize, const N: usize>
             .iter_orientation(Compass::NW)
             .map(move |p| (p, self.get(p)))
     }
-    pub fn iter_distance<'a>(
-        &'a self,
+    pub fn iter_distance(
+        &self,
         start_point: MapPoint<X, Y>,
-        filter_fn: Box<dyn Fn(MapPoint<X, Y>, &T, usize) -> bool>,
-    ) -> impl Iterator<Item = (MapPoint<X, Y>, &'a T, usize)> {
+        filter_fn: FilterFn<T, X, Y>,
+    ) -> impl Iterator<Item = (MapPoint<X, Y>, &T, usize)> {
         // use filter_fn as follows (use "_" for unused variables):
         // let filter_fn = Box::new(|point_of_next_cell: MapPoint<X, Y>, value_of_next_cell: &T, current_distance: usize| current_point.use_it_somehow() || current_cell_value.use_it_somehow() || current_distance.use_it_somehow());
         DistanceIter::new(self, start_point, filter_fn)
@@ -233,7 +248,7 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize, const N: usize> 
 
 struct DistanceIter<'a, T, const X: usize, const Y: usize, const N: usize> {
     data_map: &'a MyMap1D<T, X, Y, N>,
-    filter_fn: Box<dyn Fn(MapPoint<X, Y>, &T, usize) -> bool>, // input for filter_fn: next possible point, data from data_map of next possible point, distance of current point
+    filter_fn: FilterFn<T, X, Y>,
     next_cells: MyArray<(MapPoint<X, Y>, usize), N>,
     index: usize,
 }
@@ -244,7 +259,7 @@ impl<'a, T: Copy + Clone, const X: usize, const Y: usize, const N: usize>
     fn new(
         data_map: &'a MyMap1D<T, X, Y, N>,
         start_point: MapPoint<X, Y>,
-        filter_fn: Box<dyn Fn(MapPoint<X, Y>, &T, usize) -> bool>,
+        filter_fn: FilterFn<T, X, Y>,
     ) -> Self {
         DistanceIter {
             data_map,
@@ -267,8 +282,7 @@ impl<'a, T: Copy + Clone + Default, const X: usize, const Y: usize, const N: usi
         let (map_point, distance) = *self.next_cells.get(self.index).unwrap();
         let mut local_next_cells: MyArray<(MapPoint<X, Y>, usize), 4> = MyArray::new();
         for (next_cell, _) in self.data_map.iter_neighbors(map_point).filter(|(p, c)| {
-            self.next_cells.iter().find(|(n, _)| n == p).is_none()
-                && (self.filter_fn)(*p, *c, distance)
+            !self.next_cells.iter().any(|(n, _)| n == p) && (self.filter_fn)(*p, *c, distance)
         }) {
             local_next_cells.push((next_cell, distance + 1));
         }

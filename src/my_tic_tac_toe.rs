@@ -11,8 +11,9 @@ pub const X: usize = 3;
 pub const Y: usize = X;
 pub const N: usize = X * Y;
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, Default)]
 pub enum TicTacToeStatus {
+    #[default]
     Vacant,
     Player(MonteCarloPlayer),
     Tie,
@@ -26,16 +27,7 @@ impl TicTacToeStatus {
         *self != Self::Vacant
     }
     pub fn is_player(&self) -> bool {
-        match self {
-            Self::Player(_) => true,
-            _ => false,
-        }
-    }
-}
-
-impl Default for TicTacToeStatus {
-    fn default() -> Self {
-        TicTacToeStatus::Vacant
+        matches!(self, Self::Player(_))
     }
 }
 
@@ -77,46 +69,39 @@ impl TicTacToeGameData {
     }
     fn check_status(&mut self, cell: MapPoint<X, Y>) -> TicTacToeStatus {
         // check row with cell.y()
-        match self.check_status_for_one_line(self.map.iter_row(cell.y()).map(|(_, v)| v)) {
-            TicTacToeStatus::Player(player) => {
-                self.status = TicTacToeStatus::Player(player);
-                return self.status;
-            }
-            _ => (),
+        if let TicTacToeStatus::Player(player) =
+            self.check_status_for_one_line(self.map.iter_row(cell.y()).map(|(_, v)| v))
+        {
+            self.status = TicTacToeStatus::Player(player);
+            return self.status;
         }
         // check col with cell.x()
-        match self.check_status_for_one_line(self.map.iter_column(cell.x()).map(|(_, v)| v)) {
-            TicTacToeStatus::Player(player) => {
-                self.status = TicTacToeStatus::Player(player);
-                return self.status;
-            }
-            _ => (),
+        if let TicTacToeStatus::Player(player) =
+            self.check_status_for_one_line(self.map.iter_column(cell.x()).map(|(_, v)| v))
+        {
+            self.status = TicTacToeStatus::Player(player);
+            return self.status;
         }
         // check neg diag, if cell.x() == cell.y()
         if cell.x() == cell.y() {
-            match self.check_status_for_one_line(self.map.iter_diagonale_top_left().map(|(_, v)| v))
+            if let TicTacToeStatus::Player(player) =
+                self.check_status_for_one_line(self.map.iter_diagonale_top_left().map(|(_, v)| v))
             {
-                TicTacToeStatus::Player(player) => {
-                    self.status = TicTacToeStatus::Player(player);
-                    return self.status;
-                }
-                _ => (),
+                self.status = TicTacToeStatus::Player(player);
+                return self.status;
             }
         }
         // check pos diag, if cell.x() + cell.y() == 2
         if cell.x() + cell.y() == 2 {
-            match self
-                .check_status_for_one_line(self.map.iter_diagonale_top_right().map(|(_, v)| v))
+            if let TicTacToeStatus::Player(player) =
+                self.check_status_for_one_line(self.map.iter_diagonale_top_right().map(|(_, v)| v))
             {
-                TicTacToeStatus::Player(player) => {
-                    self.status = TicTacToeStatus::Player(player);
-                    return self.status;
-                }
-                _ => (),
+                self.status = TicTacToeStatus::Player(player);
+                return self.status;
             }
         }
         // set to Tie, if no Vacant left
-        if self.map.iter().find(|(_, v)| v.is_vacant()).is_none() {
+        if !self.map.iter().any(|(_, v)| v.is_vacant()) {
             self.status = TicTacToeStatus::Tie;
         }
         self.status

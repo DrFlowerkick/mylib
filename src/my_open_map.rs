@@ -180,13 +180,16 @@ impl MyOpenMap {
         let mut last_point = reference_point;
         let mut not_origin = true;
         // fill polygon in order of angle
-        while not_origin && unsorted_polygon.len() > 0 {
-            let current_alpha = last_point.subtract(current_point).angle();
+        while not_origin && !unsorted_polygon.is_empty() {
+            let current_alpha = Cylindrical::from(last_point.subtract(current_point)).angle;
             // sort unsorted_polygon regarding to current_point and current_alpha
             unsorted_polygon.as_slice_mut().sort_by(|a, b| {
-                ((a.pos.subtract(current_point).angle() - current_alpha + 360.0) % 360.0)
+                ((Cylindrical::from(a.pos.subtract(current_point)).angle - current_alpha + 360.0)
+                    % 360.0)
                     .partial_cmp(
-                        &((b.pos.subtract(current_point).angle() - current_alpha + 360.0) % 360.0),
+                        &((Cylindrical::from(b.pos.subtract(current_point)).angle - current_alpha
+                            + 360.0)
+                            % 360.0),
                     )
                     .unwrap()
             });
@@ -194,8 +197,7 @@ impl MyOpenMap {
             let next_point = unsorted_polygon
                 .iter()
                 .enumerate()
-                .filter(|(_, m)| m.pos != current_point && m.pos != last_point)
-                .next();
+                .find(|(_, m)| m.pos != current_point && m.pos != last_point);
             if next_point.is_none() {
                 return start_point; // this happens, if all points are on same position or just one point is available
             }
@@ -231,8 +233,8 @@ impl MyOpenMap {
                     .partial_cmp(&a.distance(start_point))
                     .unwrap()
             });
-            let mv = polygon.get(0).unwrap().subtract(start_point); // vector from start_point to point 0
-            start_point.add(mv.scale(0.5)) // move to middle of both points
+            // move to middle of both points
+            start_point.scale_toward_point_with_factor(polygon[0], 0.5)
         } else {
             let mut x_centroid = 0;
             let mut last_point = start_point;
