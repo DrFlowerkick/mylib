@@ -104,22 +104,20 @@ impl Point {
         }
     }
     pub fn scale_toward_point_with_len(&self, target: Point, len: f32) -> Point {
-        let mut vector = Cylindrical::from(target.subtract(*self));
-        vector.r = len;
-        self.add(vector.into())
+        let vector = Cylindrical::from(target.subtract(*self));
+        self.add(vector.set_radius(len).into())
     }
     pub fn scale_toward_point_with_factor(&self, target: Point, factor: f32) -> Point {
-        let mut vector = Cylindrical::from(target.subtract(*self));
-        vector.r *= factor;
-        self.add(vector.into())
+        let vector = Cylindrical::from(target.subtract(*self));
+        self.add(vector.stretch(factor).into())
     }
 }
 
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Cylindrical {
-    pub r: f32,
+    r: f32,
     // in degree
-    pub angle: f32,
+    angle: f32,
 }
 
 impl From<Point> for Cylindrical {
@@ -142,7 +140,60 @@ impl From<Point> for Cylindrical {
 
 impl Cylindrical {
     pub fn new(r: f32, angle: f32) -> Self {
+        assert!(r >= 0.0);
+        assert!(angle >= 0.0 && angle < 360.0);
         Self { r, angle }
+    }
+    pub fn radius(&self) -> f32 {
+        self.r
+    }
+    pub fn angle(&self) -> f32 {
+        self.angle
+    }
+    pub fn set_radius(&self, r: f32) -> Self {
+        assert!(r >= 0.0);
+        Self {
+            r,
+            angle: self.angle,
+        }
+    }
+    pub fn stretch(&self, factor: f32) -> Self {
+        assert!(factor >= 0.0);
+        Self {
+            r: self.r * factor,
+            angle: self.angle,
+        }
+    }
+    pub fn set_angle(&self, angle: f32) -> Self {
+        assert!(angle >= 0.0 && angle < 360.0);
+        Self { r: self.r, angle }
+    }
+    pub fn rotate(&self, rotation_angle: f32) -> Self {
+        Self {
+            r: self.r,
+            angle: (self.angle + rotation_angle) % 360.0,
+        }
+    }
+    pub fn quadrant(&self) -> Quadrant {
+        if self.r == 0.0 {
+            Quadrant::Origin
+        } else if self.angle == 0.0 {
+            Quadrant::PositiveX
+        } else if self.angle > 0.0 && self.angle < 90.0 {
+            Quadrant::First
+        } else if self.angle == 90.0 {
+            Quadrant::PositiveY
+        } else if self.angle > 90.0 && self.angle < 180.0 {
+            Quadrant::Second
+        } else if self.angle == 180.0 {
+            Quadrant::NegativeX
+        } else if self.angle > 180.0 && self.angle < 270.0 {
+            Quadrant::Third
+        } else if self.angle == 270.0 {
+            Quadrant::NegativeY
+        } else {
+            Quadrant::Fourth
+        }
     }
 }
 

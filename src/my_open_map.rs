@@ -181,13 +181,14 @@ impl MyOpenMap {
         let mut not_origin = true;
         // fill polygon in order of angle
         while not_origin && !unsorted_polygon.is_empty() {
-            let current_alpha = Cylindrical::from(last_point.subtract(current_point)).angle;
+            let current_alpha = Cylindrical::from(last_point.subtract(current_point)).angle();
             // sort unsorted_polygon regarding to current_point and current_alpha
             unsorted_polygon.as_slice_mut().sort_by(|a, b| {
-                ((Cylindrical::from(a.pos.subtract(current_point)).angle - current_alpha + 360.0)
+                ((Cylindrical::from(a.pos.subtract(current_point)).angle() - current_alpha + 360.0)
                     % 360.0)
                     .partial_cmp(
-                        &((Cylindrical::from(b.pos.subtract(current_point)).angle - current_alpha
+                        &((Cylindrical::from(b.pos.subtract(current_point)).angle()
+                            - current_alpha
                             + 360.0)
                             % 360.0),
                     )
