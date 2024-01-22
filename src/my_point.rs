@@ -141,7 +141,7 @@ impl From<Point> for Cylindrical {
 impl Cylindrical {
     pub fn new(r: f32, angle: f32) -> Self {
         assert!(r >= 0.0);
-        assert!(angle >= 0.0 && angle < 360.0);
+        assert!((0.0..360.0).contains(&angle));
         Self { r, angle }
     }
     pub fn radius(&self) -> f32 {
@@ -165,7 +165,7 @@ impl Cylindrical {
         }
     }
     pub fn set_angle(&self, angle: f32) -> Self {
-        assert!(angle >= 0.0 && angle < 360.0);
+        assert!((0.0..360.0).contains(&angle));
         Self { r: self.r, angle }
     }
     pub fn rotate(&self, rotation_angle: f32) -> Self {
