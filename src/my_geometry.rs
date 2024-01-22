@@ -169,6 +169,12 @@ impl Circle {
         assert!(radius > 0);
         Self { center, radius }
     }
+    pub fn get_center(&self) -> Point {
+        self.center
+    }
+    pub fn get_radius(&self) -> i32 {
+        self.radius
+    }
     pub fn shift(&self, center: Point) -> Self {
         Self {
             center,
@@ -392,6 +398,12 @@ impl Diamond {
     pub fn new(center: Point, radius: i32) -> Self {
         assert!(radius > 0);
         Self { center, radius }
+    }
+    pub fn get_center(&self) -> Point {
+        self.center
+    }
+    pub fn get_radius(&self) -> i32 {
+        self.radius
     }
     pub fn shift(&self, center: Point) -> Self {
         Self {
