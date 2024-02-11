@@ -214,7 +214,7 @@ impl<const X: usize, const Y: usize> MapPoint<X, Y> {
         )
     }
     pub fn iter_orientation(&self, orientation: Compass) -> impl Iterator<Item = MapPoint<X, Y>> {
-        OrientationIter::new(*self, orientation)
+        OrientationIter::new(*self, orientation, false, Compass::Center)
     }
     pub fn iter_edge(&self, counterclockwise: bool) -> impl Iterator<Item = MapPoint<X, Y>> {
         EdgeIter::new(*self, counterclockwise)
@@ -308,19 +308,31 @@ impl<const X: usize, const Y: usize> Iterator for NeighborIter<X, Y> {
 struct OrientationIter<const X: usize, const Y: usize> {
     current_point: MapPoint<X, Y>,
     orientation: Compass,
+    wrap_around: bool,
+    offset: Compass,
     finished: bool,
 }
 
 impl<const X: usize, const Y: usize> OrientationIter<X, Y> {
-    fn new(start_point: MapPoint<X, Y>, orientation: Compass) -> Self {
+    fn new(
+        start_point: MapPoint<X, Y>,
+        orientation: Compass,
+        wrap_around: bool,
+        offset: Compass,
+    ) -> Self {
         if orientation.is_center() {
             panic!("line {}, need direction", line!());
         }
         OrientationIter {
             current_point: start_point,
             orientation,
+            wrap_around,
+            offset,
             finished: false,
         }
+    }
+    fn wrap_around(&mut self) {
+        // ToDo
     }
 }
 
@@ -334,7 +346,13 @@ impl<const X: usize, const Y: usize> Iterator for OrientationIter<X, Y> {
         let result = self.current_point;
         match self.current_point.neighbor(self.orientation) {
             Some(map_point) => self.current_point = map_point,
-            None => self.finished = true,
+            None => {
+                if self.wrap_around {
+                    self.wrap_around();
+                } else {
+                    self.finished = true;
+                }
+            }
         }
         Some(result)
     }

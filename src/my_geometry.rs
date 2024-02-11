@@ -5,12 +5,50 @@
 use crate::my_point::*;
 use std::cmp::Ordering;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum FormOrdering {
+    Identical,
+    Inside,
+    InsideTouching,
+    Overlapping,
+    Touching,
+    NonOverlapping,
+}
+
+#[derive(Debug, Clone, Copy, Eq)]
 pub struct Line {
     // a*x + b*y + c = 0
     a: i32,
     b: i32,
     c: i32,
+}
+
+impl PartialEq for Line {
+    fn eq(&self, other: &Self) -> bool {
+        self.is_parallel(other) && {
+            if self.b == 0 {
+                self.c * other.a == other.c * self.a
+            } else {
+                self.c * other.b == other.c * self.b
+            }
+        }
+    }
+}
+
+impl PartialEq<Point> for Line {
+    // equal if Point is on Line
+    fn eq(&self, other: &Point) -> bool {
+        self.a * other.x + self.b * other.y + self.c == 0
+    }
+}
+
+impl From<(Point, Point)> for Line {
+    fn from(value: (Point, Point)) -> Self {
+        Self {
+            a: value.0.y - value.1.y,
+            b: value.1.x - value.0.x,
+            c: value.0.x * value.1.y - value.1.x * value.0.y,
+        }
+    }
 }
 
 impl Line {
@@ -70,12 +108,19 @@ impl Line {
             None => Some((self.c as f32) / (-self.a as f32)),
         }
     }
+    pub fn is_parallel(&self, other: &Self) -> bool {
+        // check if parallel: m_self == m_other
+        // m_self = -a_self / b_self
+        // m_other = -a_other / b_other
+        // parallel, if a_self * b_other == a_other * b_self
+        self.a * other.b == other.a * self.b
+    }
     pub fn line_intersection(&self, other: &Self) -> Option<Point> {
         // check if parallel: m_self == m_other
         // m_self = -a_self / b_self
         // m_other = -a_other / b_other
         // parallel, if a_self * b_other == a_other * b_self
-        if self.a * other.b == other.a * self.b {
+        if self.is_parallel(other) {
             return None;
         }
         // intersection: y_self == y_other
@@ -109,27 +154,269 @@ impl Line {
     }
 }
 
-pub enum FormOrdering {
-    Identical,
-    Inside,
-    InsideTouching,
-    Overlapping,
-    Touching,
-    NonOverlapping,
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct LineSegment {
+    a: Point,
+    b: Point,
+}
+
+impl PartialOrd for LineSegment {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.len().partial_cmp(&other.len())
+    }
+}
+
+impl PartialEq<Point> for LineSegment {
+    fn eq(&self, other: &Point) -> bool {
+        self.line() == *other
+            && self.min_x() <= other.x
+            && other.x <= self.max_x()
+            && self.min_y() <= other.y
+            && other.y <= self.max_y()
+    }
+}
+
+impl LineSegment {
+    pub fn new(a: Point, b: Point) -> Self {
+        assert!(a != b);
+        Self { a, b }
+    }
+    pub fn end_points(&self) -> [Point; 2] {
+        [
+            self.a,
+            self.b
+        ]
+    }
+    pub fn line(&self) -> Line {
+        Line::from((self.a, self.b))
+    }
+    pub fn min_x(&self) -> i32 {
+        self.a.x.min(self.b.x)
+    }
+    pub fn max_x(&self) -> i32 {
+        self.a.x.max(self.b.x)
+    }
+    pub fn min_y(&self) -> i32 {
+        self.a.y.min(self.b.y)
+    }
+    pub fn max_y(&self) -> i32 {
+        self.a.y.max(self.b.y)
+    }
+    pub fn len(&self) -> f32 {
+        self.a.distance(self.b)
+    }
+    pub fn is_parallel(&self, other: &Self) -> bool {
+        self.line().is_parallel(&other.line())
+    }
+    pub fn segment_intersection(&self, other: &Self) -> Option<Point> {
+        if let Some(si) = self.line().line_intersection(&other.line()) {
+            if self == &si && other == &si {
+                return Some(si);
+            }
+        }
+        None
+    }
+    pub fn segment_overlapping(&self, other: &Self) -> Vec<Point> {
+        let mut so: Vec<Point> = Vec::with_capacity(2);
+        for ep in self.end_points().iter().filter(|p| other == *p) {
+            so.push(*ep);
+        }
+        for ep in other.end_points().iter().filter(|p| self == *p) {
+            if !so.contains(ep) {
+                so.push(*ep);
+            }
+        }
+        so
+    }
+}
+
+// Rectangle: defined by top-left and bottom-right point
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct Rectangle {
+    top_left: Point,
+    bottom_right: Point,
+}
+
+impl PartialOrd for Rectangle {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Rectangle {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.surface().cmp(&other.surface())
+    }
+}
+
+impl PartialEq<Point> for Rectangle {
+    // equal if Point is on one segment
+    // if corner, point is on 2 segments
+    fn eq(&self, other: &Point) -> bool {
+        self.sides().iter().filter(|s| *s == other).count() > 0
+    }
+}
+
+impl PartialOrd<Point> for Rectangle {
+    // Greater: Point inside Rectangle
+    // Equal: Point is on circumference of Rectangle
+    // Less: Point is outside of Rectangle
+    fn partial_cmp(&self, other: &Point) -> Option<Ordering> {
+        if self == other {
+            Some(Ordering::Equal)
+        } else if self.top_left.x < other.x
+            && other.x < self.bottom_right.x
+            && self.top_left.y > other.y
+            && other.y > self.bottom_right.y
+        {
+            Some(Ordering::Greater)
+        } else {
+            Some(Ordering::Less)
+        }
+    }
+}
+
+impl Rectangle {
+    pub fn new(top_left: Point, bottom_right: Point) -> Self {
+        assert!(top_left.x < bottom_right.x);
+        assert!(top_left.y > bottom_right.y);
+        Self {
+            top_left,
+            bottom_right,
+        }
+    }
+    pub fn size_x(&self) -> i32 {
+        self.bottom_right.x - self.top_left.x
+    }
+    pub fn size_y(&self) -> i32 {
+        self.top_left.y - self.bottom_right.y
+    }
+    pub fn surface(&self) -> i32 {
+        self.size_x() * self.size_y()
+    }
+    pub fn corners(&self) -> [Point; 4] {
+        [
+            self.top_left,
+            // top right
+            Point::new(self.bottom_right.x, self.top_left.y),
+            // bottom left
+            Point::new(self.top_left.x, self.bottom_right.y),
+            self.bottom_right,
+        ]
+    }
+    pub fn sides(&self) -> [LineSegment; 4] {
+        [
+            // top
+            LineSegment::new(
+                self.top_left,
+                Point::new(self.bottom_right.x, self.top_left.y),
+            ),
+            // right
+            LineSegment::new(
+                Point::new(self.bottom_right.x, self.top_left.y),
+                self.bottom_right,
+            ),
+            // bottom
+            LineSegment::new(
+                self.bottom_right,
+                Point::new(self.top_left.x, self.bottom_right.y),
+            ),
+            // left
+            LineSegment::new(
+                Point::new(self.top_left.x, self.bottom_right.y),
+                self.top_left,
+            ),
+        ]
+    }
+    pub fn overlapping_corners(&self, other: &Self) -> Vec<Point> {
+        let mut oc: Vec<Point> = Vec::new();
+        for corner in other.corners().iter() {
+            if self >= corner {
+                oc.push(*corner);
+            }
+        }
+        oc
+    }
+    pub fn rectangle_cmp(&self, other: &Self) -> FormOrdering {
+        if self == other {
+            return FormOrdering::Identical;
+        }
+        let oc_other_in_self = self.overlapping_corners(other);
+        let oc_self_in_other = other.overlapping_corners(self);
+        match oc_other_in_self.len().cmp(&oc_self_in_other.len()) {
+            Ordering::Greater => {
+                if oc_other_in_self.len() == 4 && oc_other_in_self.iter().any(|c| self == c) {
+                    FormOrdering::InsideTouching
+                } else if oc_other_in_self.len() == 4 {
+                    FormOrdering::Inside
+                } else if oc_other_in_self.iter().any(|c| self == c) {
+                    // side is touching
+                    FormOrdering::Touching
+                } else {
+                    FormOrdering::Overlapping
+                }
+            }
+            Ordering::Less => {
+                if oc_self_in_other.len() == 4 && oc_self_in_other.iter().any(|c| other == c) {
+                    FormOrdering::InsideTouching
+                } else if oc_self_in_other.len() == 4 {
+                    FormOrdering::Inside
+                } else if oc_self_in_other.iter().any(|c| other == c) {
+                    // side is touching
+                    FormOrdering::Touching
+                } else {
+                    FormOrdering::Overlapping
+                }
+            }
+            Ordering::Equal => {
+                if oc_other_in_self.len() == 0 {
+                    FormOrdering::NonOverlapping
+                } else if oc_other_in_self.len() == 2
+                    && oc_other_in_self
+                        .iter()
+                        .all(|c| oc_self_in_other.contains(c))
+                {
+                    // side is touching
+                    FormOrdering::Touching
+                } else if oc_other_in_self.len() == 2 {
+                    // overlapping rectangles with either equal size_x or size_y and 2 corners on sides of other rectangle and vice versa
+                    FormOrdering::Overlapping
+                } else if oc_other_in_self.iter().any(|c| self == c) {
+                    // corner is touching
+                    FormOrdering::Touching
+                } else {
+                    FormOrdering::Overlapping
+                }
+            }
+        }
+    }
+
+    pub fn rectangle_intersection(&self, other: &Self) -> Vec<Point> {
+        let mut ri: Vec<Point> = Vec::new();
+        for sside in self.sides().iter() {
+            for oside in other.sides().iter() {
+                if let Some(ip) = sside.segment_intersection(oside) {
+                    if !ri.contains(&ip) {
+                        ri.push(ip);
+                    }
+                }
+                for op in sside.segment_overlapping(oside).iter() {
+                    if !ri.contains(op) {
+                        ri.push(*op);
+                    }
+                }
+            }
+        }
+        ri
+    }
 }
 
 // Circle: (x - x_c)² + (y - y_c)² = r²
 // with center: (x_c, y_c) and r: radius
-#[derive(Debug, Clone, Copy, Eq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Circle {
     center: Point,
     radius: i32,
-}
-
-impl PartialEq for Circle {
-    fn eq(&self, other: &Self) -> bool {
-        self.radius == other.radius
-    }
 }
 
 impl PartialOrd for Circle {
@@ -453,6 +740,18 @@ impl Diamond {
         }
         x
     }
+    pub fn corners(&self) -> [Point; 4] {
+        [
+            // top
+            Point::new(self.center.x, self.center.y + self.radius),
+            // right
+            Point::new(self.center.x + self.radius, self.center.y),
+            // bottom
+            Point::new(self.center.x, self.center.y - self.radius),
+            // left
+            Point::new(self.center.x - self.radius, self.center.y),
+        ]
+    }
     pub fn diamond_cmp(&self, other: &Self) -> FormOrdering {
         match (self.radius - other.radius)
             .abs()
@@ -506,15 +805,17 @@ impl Diamond {
             // q4d1::q1d2 and q4d2::q1d1
             // all these combinations result in a intersection point, but only points, which are on
             // circumferences of both diamonds are valid
-            let q1d1 = Line::new(1, 1, -self.center.y - self.center.x - self.radius);
-            let q2d1 = Line::new(-1, 1, -self.center.y + self.center.x - self.radius);
-            let q3d1 = Line::new(-1, -1, self.center.y + self.center.x - self.radius);
-            let q4d1 = Line::new(1, -1, self.center.y - self.center.x - self.radius);
-            let q1d2 = Line::new(1, 1, -other.center.y - other.center.x - other.radius);
-            let q2d2 = Line::new(-1, 1, -other.center.y + other.center.x - other.radius);
-            let q3d2 = Line::new(-1, -1, other.center.y + other.center.x - other.radius);
-            let q4d2 = Line::new(1, -1, other.center.y - other.center.x - other.radius);
-            let line_pairs = [
+            let sc = self.corners();
+            let oc = other.corners();
+            let q1d1 = LineSegment::new(sc[0], sc[1]);
+            let q2d1 = LineSegment::new(sc[0], sc[3]);
+            let q3d1 = LineSegment::new(sc[2], sc[3]);
+            let q4d1 = LineSegment::new(sc[2], sc[1]);
+            let q1d2 = LineSegment::new(oc[0], oc[1]);
+            let q2d2 = LineSegment::new(oc[0], oc[3]);
+            let q3d2 = LineSegment::new(oc[2], oc[3]);
+            let q4d2 = LineSegment::new(oc[2], oc[1]);
+            let segment_pairs = [
                 (q1d1, q2d2),
                 (q1d2, q2d1),
                 (q2d1, q3d2),
@@ -524,13 +825,13 @@ impl Diamond {
                 (q4d1, q1d2),
                 (q4d2, q1d1),
             ];
-            for (side_1, side_2) in line_pairs.iter() {
-                let intersection_point = side_1.line_intersection(side_2).unwrap();
-                if *self == intersection_point && *other == intersection_point {
-                    // check for duplicates, which can happen, if corners touch each other
-                    if !intersection_points.contains(&intersection_point) {
-                        intersection_points.push(intersection_point);
-                    }
+            for intersection_point in segment_pairs
+                .iter()
+                .filter_map(|(s1, s2)| s1.segment_intersection(s2))
+            {
+                // check for duplicates, which can happen, if corners touch each other
+                if !intersection_points.contains(&intersection_point) {
+                    intersection_points.push(intersection_point);
                 }
             }
         }

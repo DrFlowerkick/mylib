@@ -29,6 +29,22 @@ impl From<(i32, i32)> for Compass {
     }
 }
 
+impl From<Compass> for (i32, i32) {
+    fn from(value: Compass) -> Self {
+        match value {
+            Compass::Center => (0, 0),
+            Compass::N => (0, -1),
+            Compass::NE => (1, -1),
+            Compass::E => (1, 0),
+            Compass::SE => (1, 1),
+            Compass::S => (0, 1),
+            Compass::SW => (-1, 1),
+            Compass::W => (-1, 0),
+            Compass::NW => (-1, -1),
+        }
+    }
+}
+
 impl Compass {
     pub fn flip(&self) -> Self {
         match self {
