@@ -1,5 +1,5 @@
 use crate::my_array::*;
-use crate::my_point::*;
+use crate::my_geometry::my_point::*;
 
 // An open map is not defined by cells with specific values. Instead your objects have just coordinates,
 // which you have to manage. Therefore MyOpenMap does not contain data of elements on map, but provides
