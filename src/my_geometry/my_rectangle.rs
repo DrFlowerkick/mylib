@@ -1,9 +1,9 @@
 use super::{
-    FormOrdering,
-    my_point::Point,
-    my_line::{Line, LineSegment},
-    my_diamond::Diamond,
     my_circle::Circle,
+    my_diamond::Diamond,
+    my_line::{Line, LineSegment},
+    my_point::Point,
+    FormOrdering,
 };
 use std::cmp::Ordering;
 

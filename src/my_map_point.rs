@@ -1,5 +1,9 @@
 use crate::my_compass::*;
+use crate::my_geometry::my_line::Line;
+use crate::my_geometry::my_point::Point;
+use crate::my_geometry::my_rectangle::Rectangle;
 use std::cmp::Ordering;
+use std::convert::TryFrom;
 use std::fmt::Display;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Default, Hash)]
@@ -23,7 +27,29 @@ impl<const X: usize, const Y: usize> From<(usize, usize)> for MapPoint<X, Y> {
     }
 }
 
+impl<const X: usize, const Y: usize> From<MapPoint<X, Y>> for (usize, usize) {
+    fn from(value: MapPoint<X, Y>) -> Self {
+        (value.x(), value.y())
+    }
+}
+
+impl<const X: usize, const Y: usize> TryFrom<Point> for MapPoint<X, Y> {
+    type Error = &'static str;
+
+    fn try_from(value: Point) -> Result<Self, Self::Error> {
+        if value.x < 0 || value.x as usize >= X || value.y < 0 || value.y as usize >= Y {
+            Err("Point values outside of map range")
+        } else {
+            Ok(MapPoint::new(value.x as usize, value.y as usize))
+        }
+    }
+}
+
 impl<const X: usize, const Y: usize> MapPoint<X, Y> {
+    pub const NW: MapPoint<X, Y> = MapPoint { x: 0, y: 0 };
+    pub const NE: MapPoint<X, Y> = MapPoint { x: X - 1, y: 0 };
+    pub const SW: MapPoint<X, Y> = MapPoint { x: 0, y: Y - 1 };
+    pub const SE: MapPoint<X, Y> = MapPoint { x: X - 1, y: Y - 1 };
     pub fn new(x: usize, y: usize) -> Self {
         if X == 0 {
             panic!("line {}, minimum size of dimension X is 1", line!());
@@ -42,9 +68,6 @@ impl<const X: usize, const Y: usize> MapPoint<X, Y> {
     }
     pub fn y(&self) -> usize {
         self.y
-    }
-    pub fn as_tuple(&self) -> (usize, usize) {
-        (self.x, self.y)
     }
     pub fn distance_x(&self, target: MapPoint<X, Y>) -> usize {
         match self.x.cmp(&target.x) {
@@ -216,6 +239,13 @@ impl<const X: usize, const Y: usize> MapPoint<X, Y> {
     pub fn iter_orientation(&self, orientation: Compass) -> impl Iterator<Item = MapPoint<X, Y>> {
         OrientationIter::new(*self, orientation, false, Compass::Center)
     }
+    pub fn iter_orientation_wrap_around(
+        &self,
+        orientation: Compass,
+        offset: Compass,
+    ) -> impl Iterator<Item = MapPoint<X, Y>> {
+        OrientationIter::new(*self, orientation, true, offset)
+    }
     pub fn iter_edge(&self, counterclockwise: bool) -> impl Iterator<Item = MapPoint<X, Y>> {
         EdgeIter::new(*self, counterclockwise)
     }
@@ -323,6 +353,9 @@ impl<const X: usize, const Y: usize> OrientationIter<X, Y> {
         if orientation.is_center() {
             panic!("line {}, need direction", line!());
         }
+        if wrap_around && (orientation == offset || orientation == offset.flip()) {
+            panic!("line {}, offset on same axis as orientation", line!());
+        }
         OrientationIter {
             current_point: start_point,
             orientation,
@@ -332,7 +365,42 @@ impl<const X: usize, const Y: usize> OrientationIter<X, Y> {
         }
     }
     fn wrap_around(&mut self) {
-        // ToDo
+        // using my_geometry rectangle and line to find wrap around point
+        let i_current = Point::from(self.current_point);
+        let delta = Point::from(self.orientation);
+        let offset = Point::from(self.offset);
+        #[cfg(test)]
+        eprintln!(
+            "delta: {}, offset: {}, i_current: {}",
+            delta, offset, i_current
+        );
+        let a = i_current.add(offset);
+        let b = a.add(delta);
+        let line = Line::from((a, b));
+        // to find top_left and bottom_right of rectangle, map has to be mirror an x-axis
+        let rectangle = Rectangle::new(MapPoint::<X, Y>::SW.into(), MapPoint::<X, Y>::NE.into());
+        let rli: Vec<MapPoint<X, Y>> = rectangle
+            .rectangle_line_intersection(&line)
+            .iter()
+            .filter_map(|p| MapPoint::<X, Y>::try_from(*p).ok())
+            .collect();
+        match rli.len() {
+            0 => self.current_point = match self.current_point.map_position() {
+                Compass::NW => MapPoint::<X, Y>::SE,
+                Compass::NE => MapPoint::<X, Y>::SW,
+                Compass::SW => MapPoint::<X, Y>::NE,
+                Compass::SE => MapPoint::<X, Y>::NW,
+                _ => panic!("line {}, wrap around fails to find new current_point while not being at cardinal point of map.", line!())
+            },
+            1 => self.current_point = rli[0],
+            2 => {
+                let orientation = self.orientation;
+                let mut rli_iter = rli.iter().filter(|p| p.neighbor(orientation).is_some());
+                self.current_point = *rli_iter.next().expect(format!("line {}, wrap around fails to find neighbor in map at edge point", line!()).as_str());
+                assert!(rli_iter.next().is_none());
+            },
+            _ => panic!("line {}, internal error. this should never happen.", line!()),
+        }
     }
 }
 
@@ -458,6 +526,57 @@ mod tests {
         point = point.forward_x().unwrap();
         assert_eq!(point, MapPoint::<X, Y>::new(2, 2));
         assert_eq!(point.forward_x(), None);
+    }
+
+    #[test]
+    fn iter_wrap_around_test() {
+        const X: usize = 20;
+        const Y: usize = 10;
+        eprintln!("start NW, orientation NE, offset S");
+        let start = MapPoint::<X, Y>::NW;
+        assert_eq!(
+            start
+                .iter_orientation_wrap_around(Compass::NE, Compass::S)
+                .take_while(|p| *p != MapPoint::<X, Y>::SE)
+                .count(),
+            X * Y - 1
+        );
+        eprintln!("start NE, orientation NW, offset S");
+        let start = MapPoint::<X, Y>::NE;
+        assert_eq!(
+            start
+                .iter_orientation_wrap_around(Compass::NW, Compass::S)
+                .take_while(|p| *p != MapPoint::<X, Y>::SW)
+                .count(),
+            X * Y - 1
+        );
+        eprintln!("start SW, orientation E, offset N");
+        let start = MapPoint::<X, Y>::SW;
+        assert_eq!(
+            start
+                .iter_orientation_wrap_around(Compass::E, Compass::N)
+                .take_while(|p| *p != MapPoint::<X, Y>::NE)
+                .count(),
+            X * Y - 1
+        );
+        eprintln!("start NE, orientation S, offset W");
+        let start = MapPoint::<X, Y>::NE;
+        assert_eq!(
+            start
+                .iter_orientation_wrap_around(Compass::S, Compass::W)
+                .take_while(|p| *p != MapPoint::<X, Y>::SW)
+                .count(),
+            X * Y - 1
+        );
+        eprintln!("start NW, orientation E, offset Center");
+        let start = MapPoint::<X, Y>::NW;
+        assert_eq!(
+            start
+                .iter_orientation_wrap_around(Compass::E, Compass::Center)
+                .take_while(|p| *p != MapPoint::<X, Y>::NE)
+                .count(),
+            X - 1
+        );
     }
 
     #[test]

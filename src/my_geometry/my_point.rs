@@ -3,6 +3,8 @@
 
 use std::fmt::Display;
 
+use crate::{my_compass::Compass, my_map_point::MapPoint};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Quadrant {
     // positive x and y
@@ -45,6 +47,31 @@ impl From<Cylindrical> for Point {
         Point {
             x: (value.r * value.angle.to_radians().cos()) as i32,
             y: (value.r * value.angle.to_radians().sin()) as i32,
+        }
+    }
+}
+
+impl<const X: usize, const Y: usize> From<MapPoint<X, Y>> for Point {
+    fn from(value: MapPoint<X, Y>) -> Self {
+        Self {
+            x: value.x() as i32,
+            y: value.y() as i32,
+        }
+    }
+}
+
+impl From<Compass> for Point {
+    fn from(value: Compass) -> Self {
+        match value {
+            Compass::Center => (0, 0).into(),
+            Compass::N => (0, -1).into(),
+            Compass::NE => (1, -1).into(),
+            Compass::E => (1, 0).into(),
+            Compass::SE => (1, 1).into(),
+            Compass::S => (0, 1).into(),
+            Compass::SW => (-1, 1).into(),
+            Compass::W => (-1, 0).into(),
+            Compass::NW => (-1, -1).into(),
         }
     }
 }

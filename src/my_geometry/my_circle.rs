@@ -1,9 +1,9 @@
 use super::{
-    FormOrdering,
-    my_point::{Point, Cylindrical},
-    my_line::{Line, LineSegment},
-    my_rectangle::Rectangle,
     my_diamond::Diamond,
+    my_line::{Line, LineSegment},
+    my_point::{Cylindrical, Point},
+    my_rectangle::Rectangle,
+    FormOrdering,
 };
 use std::cmp::Ordering;
 

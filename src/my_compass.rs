@@ -1,3 +1,5 @@
+use crate::my_geometry::my_point::Point;
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 pub enum Compass {
     N,
@@ -45,6 +47,23 @@ impl From<Compass> for (i32, i32) {
     }
 }
 
+impl From<Point> for Compass {
+    fn from(value: Point) -> Self {
+        match (value.x, value.y) {
+            (0, 0) => Compass::Center,
+            (0, -1) => Compass::N,
+            (1, -1) => Compass::NE,
+            (1, 0) => Compass::E,
+            (1, 1) => Compass::SE,
+            (0, 1) => Compass::S,
+            (-1, 1) => Compass::SW,
+            (-1, 0) => Compass::W,
+            (-1, -1) => Compass::NW,
+            _ => panic!("bad compass point"),
+        }
+    }
+}
+
 impl Compass {
     pub fn flip(&self) -> Self {
         match self {
@@ -83,6 +102,28 @@ impl Compass {
             Compass::E => Compass::NE,
             Compass::NE => Compass::N,
             Compass::Center => Compass::Center,
+        }
+    }
+    pub fn mirror_x_axis(&self) -> Self {
+        match self {
+            Compass::N => Compass::S,
+            Compass::NE => Compass::SE,
+            Compass::NW => Compass::SW,
+            Compass::S => Compass::N,
+            Compass::SE => Compass::NE,
+            Compass::SW => Compass::NW,
+            _ => *self,
+        }
+    }
+    pub fn mirror_y_axis(&self) -> Self {
+        match self {
+            Compass::E => Compass::W,
+            Compass::NE => Compass::NW,
+            Compass::SE => Compass::SW,
+            Compass::W => Compass::E,
+            Compass::NW => Compass::NE,
+            Compass::SW => Compass::SE,
+            _ => *self,
         }
     }
     pub fn is_cardinal(&self) -> bool {
