@@ -4,9 +4,9 @@ use std::cmp::Ordering;
 #[derive(Debug, Clone, Copy, Eq)]
 pub struct Line {
     // a*x + b*y + c = 0
-    a: i32,
-    b: i32,
-    c: i32,
+    a: i64,
+    b: i64,
+    c: i64,
 }
 
 impl PartialEq for Line {
@@ -39,7 +39,7 @@ impl From<(Point, Point)> for Line {
 }
 
 impl Line {
-    pub fn new(a: i32, b: i32, c: i32) -> Self {
+    pub fn new(a: i64, b: i64, c: i64) -> Self {
         assert!(a != 0 || b != 0);
         Self { a, b, c }
     }
@@ -53,21 +53,21 @@ impl Line {
             initial_precision += 1;
         }
         Self {
-            a: (m * factor) as i32,
-            b: (-1. * factor) as i32,
-            c: (q * factor) as i32,
+            a: (m * factor) as i64,
+            b: (-1. * factor) as i64,
+            c: (q * factor) as i64,
         }
     }
-    pub fn get_line_parameter(&self) -> (i32, i32, i32) {
+    pub fn get_line_parameter(&self) -> (i64, i64, i64) {
         (self.a, self.b, self.c)
     }
-    pub fn a(&self) -> i32 {
+    pub fn a(&self) -> i64 {
         self.a
     }
-    pub fn b(&self) -> i32 {
+    pub fn b(&self) -> i64 {
         self.b
     }
-    pub fn c(&self) -> i32 {
+    pub fn c(&self) -> i64 {
         self.c
     }
     pub fn get_m_q(&self) -> Option<(f32, f32)> {
@@ -78,14 +78,14 @@ impl Line {
         let q = (self.c as f32) / (-self.b as f32);
         Some((m, q))
     }
-    pub fn y_of_x(&self, x: i32) -> Option<i32> {
+    pub fn y_of_x(&self, x: i64) -> Option<i64> {
         if self.b == 0 {
             None
         } else {
             Some((self.a * x + self.c) / -self.b)
         }
     }
-    pub fn x_of_y(&self, y: i32) -> Option<i32> {
+    pub fn x_of_y(&self, y: i64) -> Option<i64> {
         if self.a == 0 {
             None
         } else {
@@ -115,10 +115,7 @@ impl Line {
         self.a * other.b == other.a * self.b
     }
     pub fn line_intersection(&self, other: &Self) -> Option<Point> {
-        // check if parallel: m_self == m_other
-        // m_self = -a_self / b_self
-        // m_other = -a_other / b_other
-        // parallel, if a_self * b_other == a_other * b_self
+        // check if parallel
         if self.is_parallel(other) {
             return None;
         }
@@ -147,7 +144,7 @@ impl Line {
                     Some(y) => y,
                     None => other.y_of_x_float(x).unwrap(),
                 };
-                (x as i32, y as i32)
+                (x as i64, y as i64)
             };
         Some(Point::new(x, y))
     }
@@ -185,22 +182,22 @@ impl LineSegment {
     pub fn line(&self) -> Line {
         Line::from((self.a, self.b))
     }
-    pub fn min_x(&self) -> i32 {
+    pub fn min_x(&self) -> i64 {
         self.a.x.min(self.b.x)
     }
-    pub fn max_x(&self) -> i32 {
+    pub fn max_x(&self) -> i64 {
         self.a.x.max(self.b.x)
     }
-    pub fn min_y(&self) -> i32 {
+    pub fn min_y(&self) -> i64 {
         self.a.y.min(self.b.y)
     }
-    pub fn max_y(&self) -> i32 {
+    pub fn max_y(&self) -> i64 {
         self.a.y.max(self.b.y)
     }
     pub fn len(&self) -> f32 {
         self.a.distance(self.b)
     }
-    pub fn delta(&self) -> i32 {
+    pub fn delta(&self) -> i64 {
         self.a.delta(self.b)
     }
     pub fn is_parallel(&self, other: &Self) -> bool {

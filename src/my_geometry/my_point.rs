@@ -26,8 +26,8 @@ pub enum Quadrant {
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Default)]
 pub struct Point {
-    pub x: i32,
-    pub y: i32,
+    pub x: i64,
+    pub y: i64,
 }
 
 impl Display for Point {
@@ -36,8 +36,8 @@ impl Display for Point {
     }
 }
 
-impl From<(i32, i32)> for Point {
-    fn from(value: (i32, i32)) -> Self {
+impl From<(i64, i64)> for Point {
+    fn from(value: (i64, i64)) -> Self {
         Point::new(value.0, value.1)
     }
 }
@@ -45,8 +45,8 @@ impl From<(i32, i32)> for Point {
 impl From<Cylindrical> for Point {
     fn from(value: Cylindrical) -> Self {
         Point {
-            x: (value.r * value.angle.to_radians().cos()) as i32,
-            y: (value.r * value.angle.to_radians().sin()) as i32,
+            x: (value.r * value.angle.to_radians().cos()) as i64,
+            y: (value.r * value.angle.to_radians().sin()) as i64,
         }
     }
 }
@@ -54,8 +54,8 @@ impl From<Cylindrical> for Point {
 impl<const X: usize, const Y: usize> From<MapPoint<X, Y>> for Point {
     fn from(value: MapPoint<X, Y>) -> Self {
         Self {
-            x: value.x() as i32,
-            y: value.y() as i32,
+            x: value.x() as i64,
+            y: value.y() as i64,
         }
     }
 }
@@ -77,7 +77,7 @@ impl From<Compass> for Point {
 }
 
 impl Point {
-    pub fn new(x: i32, y: i32) -> Self {
+    pub fn new(x: i64, y: i64) -> Self {
         Point { x, y }
     }
     pub fn switch_xy(&self) -> Point {
@@ -86,23 +86,23 @@ impl Point {
             y: self.x,
         }
     }
-    pub fn distance_x(&self, target: Point) -> i32 {
+    pub fn distance_x(&self, target: Point) -> i64 {
         self.x - target.x
     }
-    pub fn delta_x(&self, target: Point) -> i32 {
+    pub fn delta_x(&self, target: Point) -> i64 {
         (self.x - target.x).abs()
     }
-    pub fn distance_y(&self, target: Point) -> i32 {
+    pub fn distance_y(&self, target: Point) -> i64 {
         self.y - target.y
     }
-    pub fn delta_y(&self, target: Point) -> i32 {
+    pub fn delta_y(&self, target: Point) -> i64 {
         (self.y - target.y).abs()
     }
     pub fn distance(&self, target: Point) -> f32 {
         let result = self.distance_x(target).pow(2) + self.distance_y(target).pow(2);
         (result as f32).sqrt()
     }
-    pub fn delta(&self, target: Point) -> i32 {
+    pub fn delta(&self, target: Point) -> i64 {
         self.delta_x(target) + self.delta_y(target)
     }
     pub fn quadrant(&self) -> Quadrant {
@@ -150,7 +150,7 @@ pub struct Cylindrical {
 impl From<Point> for Cylindrical {
     fn from(value: Point) -> Self {
         let r = value.distance(Point::new(0, 0));
-        let angle = if (r as i32) == 0 {
+        let angle = if (r as i64) == 0 {
             // 0, if zero len vector
             0.0
         } else {
@@ -234,7 +234,7 @@ mod tests {
         let mut test_point = Point::new(1, 1);
         test_point = test_point.add(Point::new(2, 3));
         assert_eq!(test_point, Point::new(3, 4));
-        assert_eq!(Cylindrical::from(test_point).r as i32, 5);
+        assert_eq!(Cylindrical::from(test_point).r as i64, 5);
         let angle = 180.0;
         let on_negative_x_axis = Point::new(-10000, 0);
         let abs_difference = (Cylindrical::from(on_negative_x_axis).angle - angle).abs();

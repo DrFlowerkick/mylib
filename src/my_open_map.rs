@@ -12,7 +12,7 @@ pub struct Entity {
 }
 
 impl Entity {
-    fn _new(x: i32, y: i32) -> Self {
+    fn _new(x: i64, y: i64) -> Self {
         Entity {
             pos: Point::new(x, y),
         }
@@ -22,8 +22,8 @@ impl Entity {
 #[derive(Copy, Clone)]
 pub struct MyOpenMap {
     // we keep it here simply and asume 0,0 as origin of max
-    pub max_x: i32,
-    pub max_y: i32,
+    pub max_x: i64,
+    pub max_y: i64,
     pub my_base_is_at_origin: bool,
     pub attack_range: f32,
     pub my_base: Point,
@@ -33,7 +33,7 @@ pub struct MyOpenMap {
 }
 
 impl MyOpenMap {
-    pub fn new(max_x: i32, max_y: i32, my_base_is_at_origin: bool, attack_range: f32) -> MyOpenMap {
+    pub fn new(max_x: i64, max_y: i64, my_base_is_at_origin: bool, attack_range: f32) -> MyOpenMap {
         let mut result = MyOpenMap {
             max_x,
             max_y,

@@ -12,7 +12,7 @@ use std::cmp::Ordering;
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Circle {
     center: Point,
-    radius: i32,
+    radius: i64,
 }
 
 impl PartialOrd for Circle {
@@ -48,14 +48,14 @@ impl PartialOrd<Point> for Circle {
 }
 
 impl Circle {
-    pub fn new(center: Point, radius: i32) -> Self {
+    pub fn new(center: Point, radius: i64) -> Self {
         assert!(radius > 0);
         Self { center, radius }
     }
     pub fn get_center(&self) -> Point {
         self.center
     }
-    pub fn get_radius(&self) -> i32 {
+    pub fn get_radius(&self) -> i64 {
         self.radius
     }
     pub fn shift(&self, center: Point) -> Self {
@@ -64,7 +64,7 @@ impl Circle {
             radius: self.radius,
         }
     }
-    pub fn stretch(&self, offset: i32) -> Self {
+    pub fn stretch(&self, offset: i64) -> Self {
         assert!(self.radius + offset > 0);
         Self {
             center: self.center,
@@ -75,14 +75,14 @@ impl Circle {
         assert!(factor > 0.0);
         Self {
             center: self.center,
-            radius: (self.radius as f32 * factor) as i32,
+            radius: (self.radius as f32 * factor) as i64,
         }
     }
     pub fn point_of_angle(&self, angle: f32) -> Point {
         let poc = Point::from(Cylindrical::new(self.radius as f32, angle));
         self.center.add(poc)
     }
-    pub fn y_of_x(&self, x: i32) -> Vec<Point> {
+    pub fn y_of_x(&self, x: i64) -> Vec<Point> {
         // formulas
         // circle: (x - x_c)² + (y - y_c)² = r²
         // y1,2 = y_c +/- sqrt(r² - (x - x_c)²)
@@ -91,8 +91,8 @@ impl Circle {
         match sqrt_term {
             0 => y.push(Point::new(x, self.center.y)),
             1.. => {
-                let y_1 = self.center.y - (sqrt_term as f32).sqrt() as i32;
-                let y_2 = self.center.y + (sqrt_term as f32).sqrt() as i32;
+                let y_1 = self.center.y - (sqrt_term as f32).sqrt() as i64;
+                let y_2 = self.center.y + (sqrt_term as f32).sqrt() as i64;
                 y.push(Point::new(x, y_1));
                 y.push(Point::new(x, y_2));
             }
@@ -100,7 +100,7 @@ impl Circle {
         }
         y
     }
-    pub fn x_of_y(&self, y: i32) -> Vec<Point> {
+    pub fn x_of_y(&self, y: i64) -> Vec<Point> {
         // formulas
         // circle: (x - x_c)² + (y - y_c)² = r²
         // x1,2 = x_c +/- sqrt(r² - (y - y_c)²)
@@ -109,8 +109,8 @@ impl Circle {
         match sqrt_term {
             0 => x.push(Point::new(self.center.x, y)),
             1.. => {
-                let x_1 = self.center.x - (sqrt_term as f32).sqrt() as i32;
-                let x_2 = self.center.x + (sqrt_term as f32).sqrt() as i32;
+                let x_1 = self.center.x - (sqrt_term as f32).sqrt() as i64;
+                let x_2 = self.center.x + (sqrt_term as f32).sqrt() as i64;
                 x.push(Point::new(x_1, y));
                 x.push(Point::new(x_2, y));
             }
@@ -121,7 +121,7 @@ impl Circle {
     pub fn circle_cmp(&self, other: &Self) -> FormOrdering {
         match (self.radius - other.radius)
             .abs()
-            .cmp(&(self.center.distance(other.center) as i32))
+            .cmp(&(self.center.distance(other.center) as i64))
         {
             Ordering::Greater => FormOrdering::Inside,
             Ordering::Equal => {
@@ -131,7 +131,7 @@ impl Circle {
                     FormOrdering::InsideTouching
                 }
             }
-            Ordering::Less => match (self.center.distance(other.center) as i32)
+            Ordering::Less => match (self.center.distance(other.center) as i64)
                 .cmp(&(self.radius + other.radius))
             {
                 Ordering::Greater => FormOrdering::NonOverlapping,
@@ -206,14 +206,14 @@ impl Circle {
             }
             if sqrt_term < f32::EPSILON {
                 let y_0 = line.y_of_x_float(x_0).unwrap();
-                intersection_result.push(Point::new(x_0 as i32, y_0 as i32));
+                intersection_result.push(Point::new(x_0 as i64, y_0 as i64));
             } else {
                 let x_1 = x_0 - sqrt_term;
                 let x_2 = x_0 + sqrt_term;
                 let y_1 = line.y_of_x_float(x_1).unwrap();
                 let y_2 = line.y_of_x_float(x_2).unwrap();
-                intersection_result.push(Point::new(x_1 as i32, y_1 as i32));
-                intersection_result.push(Point::new(x_2 as i32, y_2 as i32));
+                intersection_result.push(Point::new(x_1 as i64, y_1 as i64));
+                intersection_result.push(Point::new(x_2 as i64, y_2 as i64));
             }
             intersection_result
         }

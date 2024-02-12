@@ -27,7 +27,7 @@ use std::cmp::Ordering;
 pub struct Diamond {
     center: Point,
     // radius is manhatten distance
-    radius: i32,
+    radius: i64,
 }
 
 impl PartialEq for Diamond {
@@ -65,14 +65,14 @@ impl PartialOrd<Point> for Diamond {
 }
 
 impl Diamond {
-    pub fn new(center: Point, radius: i32) -> Self {
+    pub fn new(center: Point, radius: i64) -> Self {
         assert!(radius > 0);
         Self { center, radius }
     }
     pub fn get_center(&self) -> Point {
         self.center
     }
-    pub fn get_radius(&self) -> i32 {
+    pub fn get_radius(&self) -> i64 {
         self.radius
     }
     pub fn shift(&self, center: Point) -> Self {
@@ -81,7 +81,7 @@ impl Diamond {
             radius: self.radius,
         }
     }
-    pub fn stretch(&self, offset: i32) -> Self {
+    pub fn stretch(&self, offset: i64) -> Self {
         assert!(self.radius - offset >= 0);
         Self {
             center: self.center,
@@ -92,10 +92,10 @@ impl Diamond {
         assert!(factor > 0.0);
         Self {
             center: self.center,
-            radius: (self.radius as f32 * factor) as i32,
+            radius: (self.radius as f32 * factor) as i64,
         }
     }
-    pub fn y_of_x(&self, x: i32) -> Vec<Point> {
+    pub fn y_of_x(&self, x: i64) -> Vec<Point> {
         let delta_x = (self.center.x - x).abs();
         let mut y: Vec<Point> = Vec::new();
         match delta_x.cmp(&self.radius) {
@@ -109,7 +109,7 @@ impl Diamond {
         }
         y
     }
-    pub fn x_of_y(&self, y: i32) -> Vec<Point> {
+    pub fn x_of_y(&self, y: i64) -> Vec<Point> {
         let delta_y = (self.center.y - y).abs();
         let mut x: Vec<Point> = Vec::new();
         match delta_y.cmp(&self.radius) {
@@ -186,40 +186,18 @@ impl Diamond {
             // no integer solution for odd difference between delta and sum of radi
             return intersection_points;
         } else {
-            // lines of sides
-            // 1. quadrant (x>x_c, y>y_c): y - y_c + x - x_c = r
-            // 2. quadrant (x<x_c, y>y_c): y - y_c + x_c - x = r
-            // 3. quadrant (x<x_c, y<y_c): y_c - y + x_c - x = r
-            // 4. quadrant (x>x_c, y<y_c): y_c - y + x - x_c = r
-            // When checking for intersections of diamonds, you have to check for intersection of each
-            // side of each diamond. Since sides of a diamond are lines with m=1 or m=-1, parallel
-            // sides of diamonds cannot intersect. Therefore we compare every line with different m.
-            // This results in 8 formulas to check (q: quadrant, d: diamond):
-            // q1d1::q2d2 and q1d2::q2d1
-            // q2d1::q3d2 and q2d2::q3d1
-            // q3d1::q4d2 and q3d2::q4d1
-            // q4d1::q1d2 and q4d2::q1d1
-            // all these combinations result in a intersection point, but only points, which are on
-            // circumferences of both diamonds are valid
-            let self_sides = self.sides();
-            let other_sides = other.sides();
-            let segment_pairs = [
-                (self_sides[0], other_sides[1]),
-                (other_sides[0], self_sides[1]),
-                (self_sides[1], other_sides[2]),
-                (other_sides[1], self_sides[2]),
-                (self_sides[2], other_sides[3]),
-                (other_sides[2], self_sides[3]),
-                (self_sides[3], other_sides[0]),
-                (other_sides[3], self_sides[0]),
-            ];
-            for intersection_point in segment_pairs
-                .iter()
-                .filter_map(|(s1, s2)| s1.segment_intersection(s2))
-            {
-                // check for duplicates, which can happen, if corners touch each other
-                if !intersection_points.contains(&intersection_point) {
-                    intersection_points.push(intersection_point);
+            // check intersections for each side of each diamond
+            // parallel sides are automatically ignored
+            for self_side in self.sides().iter() {
+                for intersection_point in other
+                    .sides()
+                    .iter()
+                    .filter_map(|os| os.segment_intersection(self_side))
+                {
+                    // check for duplicates, which can happen, if corners touch each other
+                    if !intersection_points.contains(&intersection_point) {
+                        intersection_points.push(intersection_point);
+                    }
                 }
             }
         }
@@ -227,18 +205,11 @@ impl Diamond {
     }
     pub fn diamond_line_intersection(&self, line: &Line) -> Vec<Point> {
         let mut intersection_points: Vec<Point> = Vec::new();
-        let q1 = Line::new(1, 1, -self.center.y - self.center.x - self.radius);
-        let q2 = Line::new(-1, 1, -self.center.y + self.center.x - self.radius);
-        let q3 = Line::new(-1, -1, self.center.y + self.center.x - self.radius);
-        let q4 = Line::new(1, -1, self.center.y - self.center.x - self.radius);
-        let diamond_sides = [q1, q2, q3, q4];
-        for diamond_side in diamond_sides.iter() {
-            if let Some(intersection_point) = diamond_side.line_intersection(line) {
-                if *self == intersection_point {
-                    // check for duplicates, which can happen, if corners touch each other
-                    if !intersection_points.contains(&intersection_point) {
-                        intersection_points.push(intersection_point);
-                    }
+        for side in self.sides().iter() {
+            if let Some(intersection_point) = side.segment_line_intersection(line) {
+                // check for duplicates, which can happen, if corners touch each other
+                if !intersection_points.contains(&intersection_point) {
+                    intersection_points.push(intersection_point);
                 }
             }
         }

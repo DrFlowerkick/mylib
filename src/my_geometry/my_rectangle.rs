@@ -62,13 +62,13 @@ impl Rectangle {
             bottom_right,
         }
     }
-    pub fn size_x(&self) -> i32 {
+    pub fn size_x(&self) -> i64 {
         self.bottom_right.x - self.top_left.x
     }
-    pub fn size_y(&self) -> i32 {
+    pub fn size_y(&self) -> i64 {
         self.top_left.y - self.bottom_right.y
     }
-    pub fn surface(&self) -> i32 {
+    pub fn surface(&self) -> i64 {
         self.size_x() * self.size_y()
     }
     pub fn corners(&self) -> [Point; 4] {
