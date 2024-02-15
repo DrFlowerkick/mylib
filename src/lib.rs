@@ -1,6 +1,7 @@
 pub mod my_array;
 pub mod my_binary_tree;
 pub mod my_compass;
+pub mod my_cube_map;
 pub mod my_fibonacci;
 pub mod my_geometry;
 pub mod my_graph;

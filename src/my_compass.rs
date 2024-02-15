@@ -126,6 +126,24 @@ impl Compass {
             _ => *self,
         }
     }
+    pub fn get_ordinals(&self) -> Option<[Compass; 2]> {
+        match self {
+            Compass::N => Some([Compass::NW, Compass::NE]),
+            Compass::E => Some([Compass::NE, Compass::SE]),
+            Compass::S => Some([Compass::SW, Compass::SE]),
+            Compass::W => Some([Compass::NW, Compass::SW]),
+            _ => None,
+        }
+    }
+    pub fn get_cardinal(&self, other: &Self) -> Option<Compass> {
+        match (self, other) {
+            (Compass::NW, Compass::NE) | (Compass::NE, Compass::NW) => Some(Compass::N),
+            (Compass::NE, Compass::SE) | (Compass::SE, Compass::NE) => Some(Compass::E),
+            (Compass::SW, Compass::SE) | (Compass::SE, Compass::SW) => Some(Compass::S),
+            (Compass::NW, Compass::SW) | (Compass::SW, Compass::NW) => Some(Compass::W),
+            _ => None,
+        }
+    }
     pub fn is_cardinal(&self) -> bool {
         matches!(self, Compass::N | Compass::E | Compass::S | Compass::W)
     }

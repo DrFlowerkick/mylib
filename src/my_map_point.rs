@@ -396,7 +396,7 @@ impl<const X: usize, const Y: usize> OrientationIter<X, Y> {
             2 => {
                 let orientation = self.orientation;
                 let mut rli_iter = rli.iter().filter(|p| p.neighbor(orientation).is_some());
-                self.current_point = *rli_iter.next().expect(format!("line {}, wrap around fails to find neighbor in map at edge point", line!()).as_str());
+                self.current_point = *rli_iter.next().unwrap_or_else(|| panic!("line {}, wrap around fails to find neighbor in map at edge point", line!()));
                 assert!(rli_iter.next().is_none());
             },
             _ => panic!("line {}, internal error. this should never happen.", line!()),

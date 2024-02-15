@@ -24,7 +24,7 @@ pub enum Quadrant {
     Origin,
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Default)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Default, Hash)]
 pub struct Point {
     pub x: i64,
     pub y: i64,
@@ -220,6 +220,55 @@ impl Cylindrical {
             Quadrant::NegativeY
         } else {
             Quadrant::Fourth
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Default, Hash)]
+pub struct Point3D {
+    pub x: i64,
+    pub y: i64,
+    pub z: i64,
+}
+
+impl Display for Point3D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {}, {})", self.x, self.y, self.z)
+    }
+}
+
+impl From<(i64, i64, i64)> for Point3D {
+    fn from(value: (i64, i64, i64)) -> Self {
+        Point3D::new(value.0, value.1, value.2)
+    }
+}
+
+impl Point3D {
+    pub fn new(x: i64, y: i64, z: i64) -> Self {
+        Point3D { x, y, z }
+    }
+
+    pub fn add(&self, other: &Self) -> Self {
+        Point3D {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+        }
+    }
+
+    pub fn substract(&self, other: &Self) -> Self {
+        Point3D {
+            x: self.x - other.x,
+            y: self.y - other.y,
+            z: self.z - other.z,
+        }
+    }
+
+    pub fn cross_product(&self, other: &Self) -> Self {
+        Point3D {
+            x: self.y * other.z - self.z * other.y,
+            y: self.z * other.x - self.x * other.z,
+            z: self.x * other.y - self.y * other.x,
         }
     }
 }
