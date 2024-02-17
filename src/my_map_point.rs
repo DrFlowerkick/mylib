@@ -50,6 +50,9 @@ impl<const X: usize, const Y: usize> MapPoint<X, Y> {
     pub const NE: MapPoint<X, Y> = MapPoint { x: X - 1, y: 0 };
     pub const SW: MapPoint<X, Y> = MapPoint { x: 0, y: Y - 1 };
     pub const SE: MapPoint<X, Y> = MapPoint { x: X - 1, y: Y - 1 };
+    pub const fn new_const(x: usize, y: usize) -> MapPoint<X, Y> {
+        MapPoint { x, y }
+    }
     pub fn new(x: usize, y: usize) -> Self {
         if X == 0 {
             panic!("line {}, minimum size of dimension X is 1", line!());
@@ -201,6 +204,24 @@ impl<const X: usize, const Y: usize> MapPoint<X, Y> {
             Some(result)
         } else {
             None
+        }
+    }
+    pub fn invert_x(&self) -> MapPoint<X, Y> {
+        Self {
+            x: X - 1 - self.x,
+            y: self.y,
+        }
+    }
+    pub fn invert_y(&self) -> MapPoint<X, Y> {
+        Self {
+            x: self.x,
+            y: Y - 1 - self.y,
+        }
+    }
+    pub fn invert_x_and_y(&self) -> MapPoint<X, Y> {
+        Self {
+            x: X - 1 - self.x,
+            y: Y - 1 - self.y,
         }
     }
     pub fn neighbor(&self, orientation: Compass) -> Option<MapPoint<X, Y>> {

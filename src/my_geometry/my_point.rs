@@ -130,6 +130,12 @@ impl Point {
             y: self.y - offset.y,
         }
     }
+    pub fn scale(&self, factor: i64) -> Point {
+        Point {
+            x: self.x * factor,
+            y: self.y * factor,
+        }
+    }
     pub fn scale_toward_point_with_len(&self, target: Point, len: f32) -> Point {
         let vector = Cylindrical::from(target.subtract(*self));
         self.add(vector.set_radius(len).into())
