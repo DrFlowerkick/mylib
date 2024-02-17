@@ -65,7 +65,16 @@ impl From<Point> for Compass {
 }
 
 impl Compass {
-    pub fn cardinals() -> [Compass; 4] {
+    pub const fn center_and_cardinals() -> [Compass; 5] {
+        [
+            Compass::Center,
+            Compass::N,
+            Compass::E,
+            Compass::S,
+            Compass::W,
+        ]
+    }
+    pub const fn cardinals() -> [Compass; 4] {
         [
             Compass::N,
             Compass::E,
