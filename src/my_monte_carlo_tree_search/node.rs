@@ -1,12 +1,8 @@
 // type definition and functions of mcts node
 
 use super::{
-    MonteCarloGameData,
-    MonteCarloPlayerAction,
-    MonteCarloGameDataUpdate,
-    MonteCarloNodeType,
-    MonteCarloPlayer,
-    MonteCarloGameMode
+    MonteCarloGameData, MonteCarloGameDataUpdate, MonteCarloGameMode, MonteCarloNodeType,
+    MonteCarloPlayer, MonteCarloPlayerAction,
 };
 
 #[derive(PartialEq, Clone, Copy)]
@@ -28,7 +24,7 @@ pub struct MonteCarloNode<
     pub parent_samples: f32,
     pub exploitation_score: f32, // exploitation_score is needed to choose best action and to choose node to exploit
     pub exploration_score: f32,  // exploration_score is needed to identify nodes for exploration
-    pub heuristic_score: f32, // ToDo: heuristic is still in heavy testing
+    pub heuristic_score: f32,    // ToDo: heuristic is still in heavy testing
     pub total_score: f32,
     pub game_end_node: bool, // leave node at which the game ends
 }
@@ -205,12 +201,8 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             // ToDo rework calculation of heuristic score
             // add weighing factor and remove use_heuristic_score.
             self.heuristic_score = match self.player {
-                MonteCarloPlayer::Me => {
-                    -self.heuristic / self.samples
-                }
-                MonteCarloPlayer::Opp => {
-                    self.heuristic / self.samples
-                }
+                MonteCarloPlayer::Me => -self.heuristic / self.samples,
+                MonteCarloPlayer::Opp => self.heuristic / self.samples,
             };
         }
     }

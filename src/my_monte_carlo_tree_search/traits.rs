@@ -4,7 +4,6 @@
 use super::MonteCarloPlayer;
 use std::any::Any;
 
-
 // Trait for actions players can take to interact with game data.
 pub trait MonteCarloPlayerAction: Copy + Clone + PartialEq + Default + 'static {
     fn as_any(&self) -> &dyn Any {

@@ -6,17 +6,11 @@ use std::rc::Rc;
 use std::time::Duration;
 use std::time::Instant;
 
-use crate::my_tree::*;
 use super::{
-    MonteCarloGameData,
-    MonteCarloPlayerAction,
-    MonteCarloGameDataUpdate,
-    MonteCarloNode,
-    MonteCarloGameMode,
-    MonteCarloPlayer,
-    MonteCarloNodeType
+    MonteCarloGameData, MonteCarloGameDataUpdate, MonteCarloGameMode, MonteCarloNode,
+    MonteCarloNodeType, MonteCarloPlayer, MonteCarloPlayerAction,
 };
-
+use crate::my_tree::*;
 
 pub struct MonteCarloTreeSearch<
     G: MonteCarloGameData,
@@ -181,8 +175,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         match selection_node {
             Some(selection_node) => {
                 let child_node = self.expansion(selection_node);
-                if let Some(simulation_score) =
-                    self.simulation(child_node.clone(), start, time_out)
+                if let Some(simulation_score) = self.simulation(child_node.clone(), start, time_out)
                 {
                     self.propagation(child_node, simulation_score)
                 }
@@ -383,10 +376,13 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                         // set random next action
                         let parent_game_data = simulation.game_data;
                         let parent_action = simulation.player_action;
-                        let player_action =
-                            A::iter_actions(&simulation.game_data, simulation.player, simulation.game_turn)
-                                .choose(&mut rng)
-                                .unwrap();
+                        let player_action = A::iter_actions(
+                            &simulation.game_data,
+                            simulation.player,
+                            simulation.game_turn,
+                        )
+                        .choose(&mut rng)
+                        .unwrap();
                         simulation = simulation.new_player_action_child(player_action);
                         simulation.apply_action(
                             &parent_game_data,
@@ -426,8 +422,11 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                 simulation_score /= num_children;
             }
             // score simulation result and calc new exploitation score
-            node.get_mut_value()
-                .score_simulation_result(simulation_score, 1.0, self.use_heuristic_score);
+            node.get_mut_value().score_simulation_result(
+                simulation_score,
+                1.0,
+                self.use_heuristic_score,
+            );
         }
     }
 
@@ -589,14 +588,32 @@ mod tests {
                     let child_node = child.get_value();
                     let child_action =
                         TicTacToePlayerAction::downcast_self(&child_node.player_action);
-                    eprintln!("({}, {}): w: {:.1}, s: {:.0}, ets: {:.2}, ers: {:.2}, hs: {:.2}", child_action.cell.x(), child_action.cell.y(), child_node.wins, child_node.samples, child_node.exploitation_score, child_node.exploration_score, child_node.heuristic_score);
+                    eprintln!(
+                        "({}, {}): w: {:.1}, s: {:.0}, ets: {:.2}, ers: {:.2}, hs: {:.2}",
+                        child_action.cell.x(),
+                        child_action.cell.y(),
+                        child_node.wins,
+                        child_node.samples,
+                        child_node.exploitation_score,
+                        child_node.exploration_score,
+                        child_node.heuristic_score
+                    );
                 }
                 eprintln!("opp options:");
                 for child in mcts_player.tree_root.iter_children() {
                     let child_node = child.get_value();
                     let child_action =
                         TicTacToePlayerAction::downcast_self(&child_node.player_action);
-                    eprintln!("({}, {}): w: {:.1}, s: {:.0}, ets: {:.2}, ers: {:.2}, hs: {:.2}", child_action.cell.x(), child_action.cell.y(), child_node.wins, child_node.samples, child_node.exploitation_score, child_node.exploration_score, child_node.heuristic_score);
+                    eprintln!(
+                        "({}, {}): w: {:.1}, s: {:.0}, ets: {:.2}, ers: {:.2}, hs: {:.2}",
+                        child_action.cell.x(),
+                        child_action.cell.y(),
+                        child_node.wins,
+                        child_node.samples,
+                        child_node.exploitation_score,
+                        child_node.exploration_score,
+                        child_node.heuristic_score
+                    );
                 }
                 ttt_match = *TicTacToeGameData::downcast_self(&current_game_data);
                 if !ttt_match.check_game_ending(0) {
@@ -661,7 +678,16 @@ mod tests {
                     let child_node = child.get_value();
                     let child_action =
                         TicTacToePlayerAction::downcast_self(&child_node.player_action);
-                    eprintln!("({}, {}): w: {:.1}, s: {:.0}, ets: {:.2}, ers: {:.2}, hs: {:.2}", child_action.cell.x(), child_action.cell.y(), child_node.wins, child_node.samples, child_node.exploitation_score, child_node.exploration_score, child_node.heuristic_score);
+                    eprintln!(
+                        "({}, {}): w: {:.1}, s: {:.0}, ets: {:.2}, ers: {:.2}, hs: {:.2}",
+                        child_action.cell.x(),
+                        child_action.cell.y(),
+                        child_node.wins,
+                        child_node.samples,
+                        child_node.exploitation_score,
+                        child_node.exploration_score,
+                        child_node.heuristic_score
+                    );
                 }
                 ttt_match = *TicTacToeGameData::downcast_self(&current_game_data);
                 if !ttt_match.check_game_ending(0) {
