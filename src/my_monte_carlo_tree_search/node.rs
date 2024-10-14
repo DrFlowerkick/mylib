@@ -23,17 +23,14 @@ pub struct MonteCarloNode<
     pub player: MonteCarloPlayer,
     pub game_turn: usize,
     pub heuristic: f32,
-    pub alpha: f32,
-    pub beta: f32,
     pub wins: f32,
     pub samples: f32,
     pub parent_samples: f32,
     pub exploitation_score: f32, // exploitation_score is needed to choose best action and to choose node to exploit
     pub exploration_score: f32,  // exploration_score is needed to identify nodes for exploration
-    pub heuristic_score: f32,
+    pub heuristic_score: f32, // ToDo: heuristic is still in heavy testing
     pub total_score: f32,
-    pub pruned_node: bool,
-    pub game_end_node: bool, // leave, at which the game ends
+    pub game_end_node: bool, // leave node at which the game ends
 }
 
 impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpdate>
@@ -49,8 +46,6 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             player: MonteCarloPlayer::Me,
             game_turn: 0,
             heuristic: 0.0,
-            alpha: f32::INFINITY,
-            beta: f32::NEG_INFINITY,
             wins: 0.0,
             samples: f32::NAN,
             parent_samples: 0.0,
@@ -58,7 +53,6 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             exploration_score: 0.0,
             heuristic_score: 0.0,
             total_score: 0.0,
-            pruned_node: false,
             game_end_node: false,
         }
     }
@@ -83,10 +77,6 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
     pub fn calc_heuristic(&mut self, use_heuristic_score: bool) {
         if use_heuristic_score {
             self.heuristic = self.game_data.calc_heuristic();
-            match self.player {
-                MonteCarloPlayer::Me => self.alpha = self.heuristic,
-                MonteCarloPlayer::Opp => self.beta = self.heuristic,
-            }
         }
     }
     pub fn calc_node_score(&mut self, parent_samples: f32, weighting_factor: f32) {
@@ -213,20 +203,14 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             MonteCarloPlayer::Opp => self.wins / self.samples,
         };
         if use_heuristic_score {
+            // ToDo rework calculation of heuristic score
+            // add weighing factor and remove use_heuristic_score.
             self.heuristic_score = match self.player {
                 MonteCarloPlayer::Me => {
-                    if self.alpha.is_finite() {
-                        self.alpha / self.samples
-                    } else {
-                        0.0
-                    }
+                    -self.heuristic / self.samples
                 }
                 MonteCarloPlayer::Opp => {
-                    if self.beta.is_finite() {
-                        self.beta / self.samples
-                    } else {
-                        0.0
-                    }
+                    self.heuristic / self.samples
                 }
             };
         }

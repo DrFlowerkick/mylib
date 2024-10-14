@@ -423,29 +423,6 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             .skip(1)
             .filter(|n| n.get_level() >= self.root_level)
         {
-            // first backtrack heuristic, since heuristic is used by score_simulation_result()
-            if backtrack_heuristic {
-                // ToDo: how to do this with MonteCarloNodeType::GameDataUpdate
-                let player = node.get_value().player;
-                match player {
-                    MonteCarloPlayer::Me => {
-                        let max_beta = node
-                            .iter_children()
-                            .map(|c| c.get_value().beta)
-                            .max_by(|a, b| a.partial_cmp(b).unwrap())
-                            .unwrap();
-                        node.get_mut_value().alpha = max_beta;
-                    }
-                    MonteCarloPlayer::Opp => {
-                        let min_alpha = node
-                            .iter_children()
-                            .map(|c| c.get_value().alpha)
-                            .min_by(|a, b| a.partial_cmp(b).unwrap())
-                            .unwrap();
-                        node.get_mut_value().beta = min_alpha;
-                    }
-                }
-            }
             // do score_simulation_result()
             if node.get_value().next_node == MonteCarloNodeType::GameDataUpdate {
                 let num_children = node.len_children() as f32;
@@ -615,14 +592,14 @@ mod tests {
                     let child_node = child.get_value();
                     let child_action =
                         TicTacToePlayerAction::downcast_self(&child_node.player_action);
-                    eprintln!("({}, {}): w: {:.1}, s: {:.0}, ets: {:.2}, ers: {:.2}, hs: {:.2}, beta: {:.0}", child_action.cell.x(), child_action.cell.y(), child_node.wins, child_node.samples, child_node.exploitation_score, child_node.exploration_score, child_node.heuristic_score, child_node.beta);
+                    eprintln!("({}, {}): w: {:.1}, s: {:.0}, ets: {:.2}, ers: {:.2}, hs: {:.2}", child_action.cell.x(), child_action.cell.y(), child_node.wins, child_node.samples, child_node.exploitation_score, child_node.exploration_score, child_node.heuristic_score);
                 }
                 eprintln!("opp options:");
                 for child in mcts_player.tree_root.iter_children() {
                     let child_node = child.get_value();
                     let child_action =
                         TicTacToePlayerAction::downcast_self(&child_node.player_action);
-                    eprintln!("({}, {}): w: {:.1}, s: {:.0}, ets: {:.2}, ers: {:.2}, hs: {:.2}, alpha: {:.0}", child_action.cell.x(), child_action.cell.y(), child_node.wins, child_node.samples, child_node.exploitation_score, child_node.exploration_score, child_node.heuristic_score, child_node.alpha);
+                    eprintln!("({}, {}): w: {:.1}, s: {:.0}, ets: {:.2}, ers: {:.2}, hs: {:.2}", child_action.cell.x(), child_action.cell.y(), child_node.wins, child_node.samples, child_node.exploitation_score, child_node.exploration_score, child_node.heuristic_score);
                 }
                 ttt_match = *TicTacToeGameData::downcast_self(&current_game_data);
                 if !ttt_match.check_game_ending(0) {
@@ -687,7 +664,7 @@ mod tests {
                     let child_node = child.get_value();
                     let child_action =
                         TicTacToePlayerAction::downcast_self(&child_node.player_action);
-                    eprintln!("({}, {}): w: {:.1}, s: {:.0}, ets: {:.2}, ers: {:.2}, hs: {:.2}, beta: {:.0}", child_action.cell.x(), child_action.cell.y(), child_node.wins, child_node.samples, child_node.exploitation_score, child_node.exploration_score, child_node.heuristic_score, child_node.beta);
+                    eprintln!("({}, {}): w: {:.1}, s: {:.0}, ets: {:.2}, ers: {:.2}, hs: {:.2}", child_action.cell.x(), child_action.cell.y(), child_node.wins, child_node.samples, child_node.exploitation_score, child_node.exploration_score, child_node.heuristic_score);
                 }
                 ttt_match = *TicTacToeGameData::downcast_self(&current_game_data);
                 if !ttt_match.check_game_ending(0) {
