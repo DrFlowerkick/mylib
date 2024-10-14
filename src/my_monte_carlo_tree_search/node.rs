@@ -121,7 +121,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         game_mode: MonteCarloGameMode,
         max_number_of_turns: usize,
         use_heuristic_score: bool,
-    ) -> bool {
+    ) {
         // transfer game_data of parent
         self.game_data = *parent_game_data;
         self.samples = 0.0;
@@ -135,7 +135,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                     // first check if game ends
                     if self.check_game_ending(max_number_of_turns) {
                         self.calc_heuristic(use_heuristic_score);
-                        return true; // save time by skipping all next code, since this is a game_end_node
+                        return; // save time by skipping all next code, since this is a game_end_node
                     }
                     self.game_data
                         .simultaneous_player_actions_for_simultaneous_game_data_change(
@@ -151,7 +151,6 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         if score_event {
             self.calc_heuristic(use_heuristic_score);
         }
-        score_event && use_heuristic_score
     }
 
     pub fn apply_game_data_update(

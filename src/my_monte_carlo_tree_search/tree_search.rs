@@ -181,10 +181,10 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         match selection_node {
             Some(selection_node) => {
                 let child_node = self.expansion(selection_node);
-                if let Some((simulation_score, backtrack_heuristic)) =
+                if let Some(simulation_score) =
                     self.simulation(child_node.clone(), start, time_out)
                 {
-                    self.propagation(child_node, simulation_score, backtrack_heuristic)
+                    self.propagation(child_node, simulation_score)
                 }
             }
             None => return true, // no more nodes to simulate in tree or time over
@@ -320,13 +320,13 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         simulation_node: Rc<TreeNode<MonteCarloNode<G, A, U>>>,
         start: &Instant,
         time_out: Duration,
-    ) -> Option<(f32, bool)> {
+    ) -> Option<f32> {
         if simulation_node.get_value().game_end_node {
-            Some((simulation_node.get_value().calc_simulation_score(), false))
+            Some(simulation_node.get_value().calc_simulation_score())
         } else {
             let node_type = simulation_node.get_value().node_type;
             let parent = simulation_node.get_parent().unwrap();
-            let backtrack_heuristic = match node_type {
+            match node_type {
                 MonteCarloNodeType::GameDataUpdate => {
                     if !simulation_node
                         .get_mut_value()
@@ -343,11 +343,10 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                     simulation_node
                         .get_mut_value()
                         .set_next_node(self.force_update);
-                    false
                 }
                 MonteCarloNodeType::ActionResult => {
                     let parent_action = parent.get_value().player_action;
-                    let backtrack_heuristic = simulation_node.get_mut_value().apply_action(
+                    simulation_node.get_mut_value().apply_action(
                         &parent.get_value().game_data,
                         &parent_action,
                         self.game_mode,
@@ -357,7 +356,6 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                     simulation_node
                         .get_mut_value()
                         .set_next_node(self.force_update);
-                    backtrack_heuristic
                 }
             };
 
@@ -401,7 +399,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                     }
                 }
             }
-            Some((simulation.calc_simulation_score(), backtrack_heuristic))
+            Some(simulation.calc_simulation_score())
         }
     }
 
@@ -409,7 +407,6 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         &self,
         start_node: Rc<TreeNode<MonteCarloNode<G, A, U>>>,
         mut simulation_score: f32,
-        backtrack_heuristic: bool,
     ) {
         // score simulation result and calc new exploitation score for start_node
         start_node.get_mut_value().score_simulation_result(
