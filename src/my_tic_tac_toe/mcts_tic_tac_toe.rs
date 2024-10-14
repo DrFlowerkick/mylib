@@ -1,4 +1,4 @@
-// moving implmentation of Monte Carlo Tree Search traits in seperate module to prevent
+// moving implementation of Monte Carlo Tree Search traits in separate module to prevent
 // copying these implementations, if other crates uses my_tic_tac_toe functions and copies
 // all dependencies in one file.
 
@@ -224,7 +224,7 @@ mod tests {
 
     // start a TicTacToe match with Me as StartPlayer
     #[test]
-    fn ttt_me_startplayer_test() {
+    fn ttt_me_start_player_test() {
         let use_heuristic_score = false;
         let mut last_winner: Option<MonteCarloPlayer> = None;
         let mut wins = 0;
@@ -287,7 +287,7 @@ mod tests {
 
     // start a TicTacToe match with Opp as StartPlayer
     #[test]
-    fn ttt_opp_startplayer_test() {
+    fn ttt_opp_start_player_test() {
         let use_heuristic_score = false;
         let mut last_winner: Option<MonteCarloPlayer> = None;
         let mut wins = 0;

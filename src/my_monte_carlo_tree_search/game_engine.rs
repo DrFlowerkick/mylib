@@ -1,6 +1,6 @@
 use super::*;
 
-// trait for functions to create an game engine, implement trait on same game_data datatype as MonteCarloGameData
+// trait for functions to create a game engine, implement trait on same game_data datatype as MonteCarloGameData
 pub trait MonteCarloGameEngine: Copy + Clone + PartialEq {
     fn setup_game_data(&mut self, starting_player: MonteCarloPlayer, random: bool);
     fn prepare_second_player(&self) -> Self;

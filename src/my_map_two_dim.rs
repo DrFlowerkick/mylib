@@ -283,22 +283,22 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
             .iter_orientation(orientation)
             .map(move |p| (p, self.get(p)))
     }
-    pub fn iter_diagonale_top_left(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
+    pub fn iter_diagonal_top_left(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         MapPoint::<X, Y>::new(0, 0)
             .iter_orientation(Compass::SE)
             .map(move |p| (p, self.get(p)))
     }
-    pub fn iter_diagonale_top_right(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
+    pub fn iter_diagonal_top_right(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         MapPoint::<X, Y>::new(X - 1, 0)
             .iter_orientation(Compass::SW)
             .map(move |p| (p, self.get(p)))
     }
-    pub fn iter_diagonale_bottom_left(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
+    pub fn iter_diagonal_bottom_left(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         MapPoint::<X, Y>::new(0, Y - 1)
             .iter_orientation(Compass::NE)
             .map(move |p| (p, self.get(p)))
     }
-    pub fn iter_diagonale_bottom_right(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
+    pub fn iter_diagonal_bottom_right(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         MapPoint::<X, Y>::new(X - 1, Y - 1)
             .iter_orientation(Compass::NW)
             .map(move |p| (p, self.get(p)))

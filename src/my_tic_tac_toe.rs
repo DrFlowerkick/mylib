@@ -85,7 +85,7 @@ impl TicTacToeGameData {
         // check neg diag, if cell.x() == cell.y()
         if cell.x() == cell.y() {
             if let TicTacToeStatus::Player(player) =
-                self.check_status_for_one_line(self.map.iter_diagonale_top_left().map(|(_, v)| v))
+                self.check_status_for_one_line(self.map.iter_diagonal_top_left().map(|(_, v)| v))
             {
                 self.status = TicTacToeStatus::Player(player);
                 return self.status;
@@ -94,7 +94,7 @@ impl TicTacToeGameData {
         // check pos diag, if cell.x() + cell.y() == 2
         if cell.x() + cell.y() == 2 {
             if let TicTacToeStatus::Player(player) =
-                self.check_status_for_one_line(self.map.iter_diagonale_top_right().map(|(_, v)| v))
+                self.check_status_for_one_line(self.map.iter_diagonal_top_right().map(|(_, v)| v))
             {
                 self.status = TicTacToeStatus::Player(player);
                 return self.status;
@@ -147,8 +147,8 @@ impl TicTacToeGameData {
             heuristic += self.calc_line_heuristic(self.map.iter_row(rc).map(|(_, v)| v));
             heuristic += self.calc_line_heuristic(self.map.iter_column(rc).map(|(_, v)| v));
         }
-        heuristic += self.calc_line_heuristic(self.map.iter_diagonale_top_left().map(|(_, v)| v));
-        heuristic += self.calc_line_heuristic(self.map.iter_diagonale_top_right().map(|(_, v)| v));
+        heuristic += self.calc_line_heuristic(self.map.iter_diagonal_top_left().map(|(_, v)| v));
+        heuristic += self.calc_line_heuristic(self.map.iter_diagonal_top_right().map(|(_, v)| v));
         heuristic
     }
     pub fn set_opp(&mut self, cell: MapPoint<X, Y>) -> TicTacToeStatus {
