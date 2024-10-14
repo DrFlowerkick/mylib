@@ -29,6 +29,14 @@ pub struct MonteCarloNode<
     pub game_end_node: bool, // leave node at which the game ends
 }
 
+impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpdate> Default
+    for MonteCarloNode<G, A, U>
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpdate>
     MonteCarloNode<G, A, U>
 {
