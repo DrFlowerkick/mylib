@@ -5,6 +5,7 @@ mod level_order_traversal;
 mod post_order_traversal;
 mod pre_order_traversal;
 mod tree_node;
+mod unique_id;
 
 use back_track::*;
 use iter_children::*;

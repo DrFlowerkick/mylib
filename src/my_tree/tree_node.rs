@@ -6,11 +6,13 @@ use std::rc::Rc;
 use std::rc::Weak;
 
 use super::{
-    BackTrack, IterChildren, IterSelf, LevelOrderTraversal, PostOrderTraversal, PreOrderTraversal,
+    unique_id::generate_unique_id, BackTrack, IterChildren, IterSelf, LevelOrderTraversal,
+    PostOrderTraversal, PreOrderTraversal,
 };
 
 pub struct TreeNode<N> {
     value: RefCell<N>,
+    id: usize,
     level: usize,
     node: RefCell<Weak<TreeNode<N>>>,
     parent: RefCell<Weak<TreeNode<N>>>,
@@ -24,6 +26,7 @@ impl<N: PartialEq> TreeNode<N> {
     fn new(value: N, level: usize, children_capacity: usize) -> Rc<TreeNode<N>> {
         let result = Rc::new(TreeNode {
             value: RefCell::new(value),
+            id: generate_unique_id(),
             level,
             node: RefCell::new(Weak::new()), // weak reference on itself!
             parent: RefCell::new(Weak::new()),
@@ -190,6 +193,9 @@ impl<N: PartialEq> TreeNode<N> {
     }
     pub fn get_mut_value(&self) -> std::cell::RefMut<'_, N> {
         self.value.borrow_mut()
+    }
+    pub fn get_id(&self) -> usize {
+        self.id
     }
     pub fn get_level(&self) -> usize {
         self.level
