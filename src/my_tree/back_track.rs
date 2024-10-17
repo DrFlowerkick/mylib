@@ -57,7 +57,7 @@ mod tests {
         let test_tree = setup_test_tree();
 
         let child_h = test_tree.get_node(&'H').unwrap();
-        let mut backtrack_iterator = BackTrack::new(child_h).map(|p| p[0]);
+        let mut backtrack_iterator = BackTrack::new(child_h).map(|p| p[0].clone());
         assert_eq!(*backtrack_iterator.next().unwrap().get_value(), 'H');
         assert_eq!(*backtrack_iterator.next().unwrap().get_value(), 'I');
         assert_eq!(*backtrack_iterator.next().unwrap().get_value(), 'G');

@@ -36,9 +36,10 @@ impl<N: PartialEq> Iterator for PostOrderTraversal<N> {
                 let result = self.current_node.get_self();
                 match self.parent_ids.pop() {
                     Some(parent_id) => {
-                        self.current_node = self.current_node.get_parent(parent_id).unwrap();
+                        self.current_node = self.current_node.get_parent_by_id(parent_id).unwrap();
                         self.child_indices.pop();
-                        self.child_indices[self.child_indices.len() - 1] += 1;
+                        let last_child_index = self.child_indices.len() - 1;
+                        self.child_indices[last_child_index] += 1;
                         self.vertical = false;
                     }
                     // end of tree (or subtree, which started at initial given root)
@@ -70,13 +71,13 @@ mod tests {
         let test_tree = setup_test_tree();
 
         assert_eq!(
-            PostOrderTraversal::new(test_tree)
+            PostOrderTraversal::new(test_tree.clone())
                 .filter(|n| n.is_leave())
                 .count(),
             4
         );
 
-        let post_order_vector: Vec<char> = PostOrderTraversal::new(test_tree)
+        let post_order_vector: Vec<char> = PostOrderTraversal::new(test_tree.clone())
             .map(|n| *n.get_value())
             .collect();
         assert_eq!(

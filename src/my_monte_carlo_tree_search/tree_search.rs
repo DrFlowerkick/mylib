@@ -318,7 +318,8 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             Some(simulation_node.get_value().calc_simulation_score())
         } else {
             let node_type = simulation_node.get_value().node_type;
-            let parent = simulation_node.get_parent().unwrap();
+            // ToDo: parent is required for consistency checks. How do we know, which parent to use?
+            let parent = simulation_node.get_parent(0).unwrap();
             match node_type {
                 MonteCarloNodeType::GameDataUpdate => {
                     if !simulation_node
@@ -411,22 +412,21 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             self.use_heuristic_score,
         );
         // backtrack simulation_score and heuristic if score event
-        for node in start_node
-            .iter_back_track()
-            .skip(1)
-            .filter(|n| n.get_level() >= self.root_level)
-        {
-            // do score_simulation_result()
-            if node.get_value().next_node == MonteCarloNodeType::GameDataUpdate {
-                let num_children = node.len_children() as f32;
-                simulation_score /= num_children;
+        for nodes in start_node.iter_back_track().skip(1) {
+            for node in nodes.iter().filter(|n| n.get_level() >= self.root_level) {
+                // do score_simulation_result()
+                // ToDo: how to weight GameDataUpdate Nodes properly?
+                if node.get_value().next_node == MonteCarloNodeType::GameDataUpdate {
+                    let num_children = node.len_children() as f32;
+                    simulation_score /= num_children;
+                }
+                // score simulation result and calc new exploitation score
+                node.get_mut_value().score_simulation_result(
+                    simulation_score,
+                    1.0,
+                    self.use_heuristic_score,
+                );
             }
-            // score simulation result and calc new exploitation score
-            node.get_mut_value().score_simulation_result(
-                simulation_score,
-                1.0,
-                self.use_heuristic_score,
-            );
         }
     }
 
@@ -440,19 +440,20 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         start_node
             .get_mut_value()
             .score_simulation_result(wins, samples, self.use_heuristic_score);
-        for node in start_node
-            .iter_back_track()
-            .skip(1)
-            .filter(|n| n.get_level() >= self.root_level)
-        {
-            if node.get_value().next_node == MonteCarloNodeType::GameDataUpdate {
-                let num_children = node.len_children() as f32;
-                wins /= num_children;
-                samples /= num_children;
+        for nodes in start_node.iter_back_track().skip(1) {
+            for node in nodes.iter().filter(|n| n.get_level() >= self.root_level) {
+                if node.get_value().next_node == MonteCarloNodeType::GameDataUpdate {
+                    let num_children = node.len_children() as f32;
+                    wins /= num_children;
+                    samples /= num_children;
+                }
+                // remove samples and wins of inconsistent children and calc new exploitation score
+                node.get_mut_value().score_simulation_result(
+                    wins,
+                    samples,
+                    self.use_heuristic_score,
+                );
             }
-            // remove samples and wins of inconsistent children and calc new exploitation score
-            node.get_mut_value()
-                .score_simulation_result(wins, samples, self.use_heuristic_score);
         }
     }
 
@@ -583,7 +584,8 @@ mod tests {
                 mcts_player.expand_tree(start);
                 eprint!("me  ");
                 let (current_game_data, _) = mcts_player.choose_and_execute_actions();
-                let parent = mcts_player.tree_root.get_parent().unwrap();
+                // ToDo: which parent should we use?
+                let parent = mcts_player.tree_root.get_parent(0).unwrap();
                 for child in parent.iter_children() {
                     let child_node = child.get_value();
                     let child_action =
@@ -673,7 +675,8 @@ mod tests {
                 mcts_player.expand_tree(start);
                 eprint!("me  ");
                 let (current_game_data, _) = mcts_player.choose_and_execute_actions();
-                let parent = mcts_player.tree_root.get_parent().unwrap();
+                // ToDo: which parent should we use?
+                let parent = mcts_player.tree_root.get_parent(0).unwrap();
                 for child in parent.iter_children() {
                     let child_node = child.get_value();
                     let child_action =

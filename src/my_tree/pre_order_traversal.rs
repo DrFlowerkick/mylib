@@ -38,7 +38,8 @@ impl<N: PartialEq> Iterator for PreOrderTraversal<N> {
                 match self.parent_ids.pop() {
                     Some(parent_id) => {
                         self.child_indices.pop();
-                        self.child_indices[self.child_indices.len() - 1] += 1;
+                        let last_child_index = self.child_indices.len() - 1;
+                        self.child_indices[last_child_index] += 1;
                         self.current_node = self.current_node.get_parent_by_id(parent_id).unwrap();
                         self.vertical = false;
                     }
@@ -75,13 +76,13 @@ mod tests {
         let test_tree = setup_test_tree();
 
         assert_eq!(
-            PreOrderTraversal::new(test_tree)
+            PreOrderTraversal::new(test_tree.clone())
                 .filter(|n| n.is_leave())
                 .count(),
             4
         );
 
-        let pre_order_vector: Vec<char> = PreOrderTraversal::new(test_tree)
+        let pre_order_vector: Vec<char> = PreOrderTraversal::new(test_tree.clone())
             .map(|n| *n.get_value())
             .collect();
         assert_eq!(

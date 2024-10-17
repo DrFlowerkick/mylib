@@ -235,7 +235,7 @@ impl<N: PartialEq> TreeNode<N> {
             .find(|n| *n.value.borrow() == *value)
     }
     pub fn get_root(&self) -> Rc<TreeNode<N>> {
-        self.iter_back_track().last().unwrap()[0]
+        self.iter_back_track().last().unwrap()[0].clone()
     }
     pub fn is_root(&self) -> bool {
         self.len_parents() == 0
