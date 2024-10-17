@@ -6,6 +6,7 @@ use std::rc::Rc;
 pub struct PostOrderTraversal<N> {
     current_node: Rc<TreeNode<N>>,
     child_indices: Vec<usize>, // vector of indices of children while traveling through tree
+    parent_ids: Vec<usize>,    // vector of parent ids while traveling through tree
     vertical: bool,            // false: children, true: parent
     finished: bool,            // true if iterator finished
 }
@@ -15,6 +16,7 @@ impl<N: PartialEq> PostOrderTraversal<N> {
         PostOrderTraversal {
             current_node: root,
             child_indices: vec![0],
+            parent_ids: vec![],
             vertical: false,
             finished: false,
         }
@@ -30,33 +32,62 @@ impl<N: PartialEq> Iterator for PostOrderTraversal<N> {
         }
         loop {
             if self.vertical {
-                // in direction of parent
-                let last_index = self.child_indices.len() - 1;
-                self.child_indices[last_index] += 1;
-                self.vertical = false;
+                // in direction of parent: return current node and prepare for next iteration
+                let result = self.current_node.get_self();
+                match self.parent_ids.pop() {
+                    Some(parent_id) => {
+                        self.current_node = self.current_node.get_parent(parent_id).unwrap();
+                        self.child_indices.pop();
+                        self.child_indices[self.child_indices.len() - 1] += 1;
+                        self.vertical = false;
+                    }
+                    // end of tree (or subtree, which started at initial given root)
+                    None => self.finished = true,
+                }
+                return result;
             } else {
                 // in direction of child
                 let child_index = self.child_indices[self.child_indices.len() - 1];
                 match self.current_node.get_child(child_index) {
                     Some(node) => {
+                        self.parent_ids.push(self.current_node.get_id());
                         self.current_node = node;
                         self.child_indices.push(0);
                     }
-                    None => {
-                        let result = self.current_node.get_self();
-                        match self.current_node.get_parent() {
-                            Some(node) => {
-                                self.vertical = true;
-                                self.child_indices.pop();
-                                self.finished = self.child_indices.is_empty(); // root of subtree, which started at given "root" node
-                                self.current_node = node;
-                            }
-                            None => self.finished = true,
-                        }
-                        return result;
-                    }
+                    None => self.vertical = true,
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{super::tree_node::tests::setup_test_tree, *};
+
+    #[test]
+    fn test_post_order_traversal() {
+        let test_tree = setup_test_tree();
+
+        assert_eq!(
+            PostOrderTraversal::new(test_tree)
+                .filter(|n| n.is_leave())
+                .count(),
+            4
+        );
+
+        let post_order_vector: Vec<char> = PostOrderTraversal::new(test_tree)
+            .map(|n| *n.get_value())
+            .collect();
+        assert_eq!(
+            post_order_vector,
+            ['A', 'C', 'E', 'D', 'B', 'H', 'I', 'G', 'F']
+        );
+
+        let child_b = test_tree.get_node(&'B').unwrap();
+        let post_order_vector: Vec<char> = PostOrderTraversal::new(child_b)
+            .map(|n| *n.get_value())
+            .collect();
+        assert_eq!(post_order_vector, ['A', 'C', 'E', 'D', 'B']);
     }
 }

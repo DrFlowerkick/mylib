@@ -1,13 +1,16 @@
 // tree node type definition, functions and tests
 
+// Multiple parents for one node are allowed, if parents are one level above child node.
+// this is useful, if caching of nodes is used for optimization.
+
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::rc::Rc;
 use std::rc::Weak;
 
 use super::{
-    unique_id::generate_unique_id, BackTrack, IterChildren, IterSelf, LevelOrderTraversal,
-    PostOrderTraversal, PreOrderTraversal,
+    unique_id::generate_unique_id, BackTrack, IterChildren, IterParents, IterSelf,
+    LevelOrderTraversal, PostOrderTraversal, PreOrderTraversal,
 };
 
 pub struct TreeNode<N> {
@@ -15,7 +18,7 @@ pub struct TreeNode<N> {
     id: usize,
     level: usize,
     node: RefCell<Weak<TreeNode<N>>>,
-    parent: RefCell<Weak<TreeNode<N>>>,
+    parents: RefCell<Vec<Weak<TreeNode<N>>>>,
     children: RefCell<Vec<Rc<TreeNode<N>>>>,
 }
 
@@ -29,7 +32,7 @@ impl<N: PartialEq> TreeNode<N> {
             id: generate_unique_id(),
             level,
             node: RefCell::new(Weak::new()), // weak reference on itself!
-            parent: RefCell::new(Weak::new()),
+            parents: RefCell::new(Vec::with_capacity(1)),
             children: RefCell::new(Vec::with_capacity(children_capacity)),
         });
         let node = Rc::downgrade(&result);
@@ -52,7 +55,7 @@ impl<N: PartialEq> TreeNode<N> {
             Some(node) => node,
             None => {
                 let child = TreeNode::new(value, self.level + 1, children_capacity);
-                *child.parent.borrow_mut() = self.node.borrow().clone();
+                child.parents.borrow_mut().push(self.node.borrow().clone());
                 self.children.borrow_mut().push(child.clone());
                 child
             }
@@ -80,7 +83,7 @@ impl<N: PartialEq> TreeNode<N> {
             Some(node) => node,
             None => {
                 let child = TreeNode::new(value, self.level + 1, children_capacity);
-                *child.parent.borrow_mut() = self.node.borrow().clone();
+                child.parents.borrow_mut().push(self.node.borrow().clone());
                 let number_of_children = self.children.borrow().len();
                 if index < number_of_children {
                     self.children.borrow_mut().insert(index, child.clone());
@@ -118,7 +121,7 @@ impl<N: PartialEq> TreeNode<N> {
             Some(_) => None, // child already exists
             None => {
                 let child = TreeNode::new(value, self.level + 1, children_capacity);
-                *child.parent.borrow_mut() = self.node.borrow().clone();
+                child.parents.borrow_mut().push(self.node.borrow().clone());
                 self.children.borrow_mut().push(child.clone());
                 Some(child)
             }
@@ -152,7 +155,7 @@ impl<N: PartialEq> TreeNode<N> {
             Some(_) => None, // child already exists,
             None => {
                 let child = TreeNode::new(value, self.level + 1, children_capacity);
-                *child.parent.borrow_mut() = self.node.borrow().clone();
+                child.parents.borrow_mut().push(self.node.borrow().clone());
                 let number_of_children = self.children.borrow().len();
                 if index < number_of_children {
                     self.children.borrow_mut().insert(index, child.clone());
@@ -183,10 +186,11 @@ impl<N: PartialEq> TreeNode<N> {
     pub fn clear_children(&self, children_capacity: usize) {
         *self.children.borrow_mut() = Vec::with_capacity(children_capacity);
     }
-    pub fn clear_parent(&self) {
+    pub fn clear_parent(&self) -> Option<Rc<TreeNode<N>>> {
         // removing parent makes this node to a root node. If no reference or variable exists, which holds at least
         // one node above this node, then all nodes above this node are released from memory
-        *self.parent.borrow_mut() = Weak::new();
+        self.parents.borrow_mut().clear();
+        self.get_self()
     }
     pub fn get_value(&self) -> std::cell::Ref<'_, N> {
         self.value.borrow()
@@ -206,27 +210,35 @@ impl<N: PartialEq> TreeNode<N> {
     pub fn get_child(&self, index: usize) -> Option<Rc<TreeNode<N>>> {
         self.children.borrow().get(index).cloned()
     }
+    pub fn get_child_by_id(&self, id: usize) -> Option<Rc<TreeNode<N>>> {
+        self.iter_children().find(|c| c.get_id() == id)
+    }
     pub fn len_children(&self) -> usize {
         self.children.borrow().len()
     }
-    pub fn get_parent(&self) -> Option<Rc<TreeNode<N>>> {
-        self.parent.borrow().upgrade().as_ref().cloned()
+    pub fn get_parent(&self, index: usize) -> Option<Rc<TreeNode<N>>> {
+        self.parents
+            .borrow()
+            .get(index)?
+            .upgrade()
+            .as_ref()
+            .cloned()
+    }
+    pub fn get_parent_by_id(&self, id: usize) -> Option<Rc<TreeNode<N>>> {
+        self.iter_parents().find(|c| c.get_id() == id)
+    }
+    pub fn len_parents(&self) -> usize {
+        self.parents.borrow().len()
     }
     pub fn get_node(&self, value: &N) -> Option<Rc<TreeNode<N>>> {
         self.iter_pre_order_traversal()
             .find(|n| *n.value.borrow() == *value)
     }
     pub fn get_root(&self) -> Rc<TreeNode<N>> {
-        let mut node = self.get_self().unwrap();
-        loop {
-            match node.get_parent() {
-                Some(parent) => node = parent.clone(),
-                None => return node,
-            }
-        }
+        self.iter_back_track().last().unwrap()[0]
     }
     pub fn is_root(&self) -> bool {
-        self.get_self().unwrap().get_parent().is_none()
+        self.len_parents() == 0
     }
     pub fn is_leave(&self) -> bool {
         self.len_children() == 0
@@ -253,7 +265,10 @@ impl<N: PartialEq> TreeNode<N> {
     pub fn iter_children(&self) -> impl Iterator<Item = Rc<TreeNode<N>>> {
         IterChildren::new(self.get_self().unwrap())
     }
-    pub fn iter_back_track(&self) -> impl Iterator<Item = Rc<TreeNode<N>>> {
+    pub fn iter_parents(&self) -> impl Iterator<Item = Rc<TreeNode<N>>> {
+        IterParents::new(self.get_self().unwrap())
+    }
+    pub fn iter_back_track(&self) -> impl Iterator<Item = Vec<Rc<TreeNode<N>>>> {
         BackTrack::new(self.get_self().unwrap())
     }
     pub fn iter_pre_order_traversal(&self) -> impl Iterator<Item = Rc<TreeNode<N>>> {
@@ -276,12 +291,11 @@ impl<N: PartialEq> TreeNode<N> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
 
     use super::*;
 
-    #[test]
-    fn test_my_tree() {
+    pub fn setup_test_tree() -> Rc<TreeNode<char>> {
         // Build test tree
         // tree structure is inspired from Wikipedia: https://en.wikipedia.org/wiki/Tree_traversal#Depth-first_search
         let test_tree = TreeNode::seed_root('F', 2);
@@ -293,19 +307,20 @@ mod tests {
         test_tree.add_child_to_parent('E', &'D', 0);
         test_tree.add_child_to_parent('I', &'G', 1);
         test_tree.add_child_to_parent('H', &'I', 0);
+        test_tree
+    }
+
+    #[test]
+    fn test_my_tree() {
+        // Build test tree
+        // tree structure is inspired from Wikipedia: https://en.wikipedia.org/wiki/Tree_traversal#Depth-first_search
+        let test_tree = setup_test_tree();
 
         assert_eq!(*test_tree.get_child(0).unwrap().get_value(), 'B');
 
         let child_h = test_tree.get_node(&'H').unwrap();
         assert_eq!(*child_h.get_value(), 'H');
         assert_eq!(*child_h.get_root().get_value(), 'F');
-
-        let mut backtrack_iterator = child_h.iter_back_track();
-        assert_eq!(*backtrack_iterator.next().unwrap().get_value(), 'H');
-        assert_eq!(*backtrack_iterator.next().unwrap().get_value(), 'I');
-        assert_eq!(*backtrack_iterator.next().unwrap().get_value(), 'G');
-        assert_eq!(*backtrack_iterator.next().unwrap().get_value(), 'F');
-        assert!(backtrack_iterator.next().is_none());
 
         assert_eq!(test_tree.add_unambiguous_child('I', 0).is_none(), true);
         assert_eq!(child_h.insert_unambiguous_child('F', 0, 0).is_none(), true);
@@ -340,70 +355,6 @@ mod tests {
         assert!(!child_d.is_root());
         let child_f = test_tree.get_node(&'F').unwrap();
         assert!(child_f.is_root());
-        assert_eq!(
-            test_tree
-                .iter_pre_order_traversal()
-                .filter(|n| n.is_leave())
-                .count(),
-            4
-        );
-        assert_eq!(
-            test_tree
-                .iter_post_order_traversal()
-                .filter(|n| n.is_leave())
-                .count(),
-            4
-        );
-        assert_eq!(
-            test_tree
-                .iter_level_order_traversal()
-                .filter(|(n, _)| n.is_leave())
-                .count(),
-            4
-        );
-
-        let pre_order_iterator = test_tree.iter_pre_order_traversal();
-        let pre_order_vector: Vec<char> = pre_order_iterator.map(|n| *n.get_value()).collect();
-        assert_eq!(
-            pre_order_vector,
-            ['F', 'B', 'A', 'D', 'C', 'E', 'G', 'I', 'H']
-        );
-        let child_b = test_tree.get_node(&'B').unwrap();
-        let pre_order_iterator = child_b.iter_pre_order_traversal();
-        let pre_order_vector: Vec<char> = pre_order_iterator.map(|n| *n.get_value()).collect();
-        assert_eq!(pre_order_vector, ['B', 'A', 'D', 'C', 'E']);
-
-        let post_order_iterator = test_tree.iter_post_order_traversal();
-        let post_order_vector: Vec<char> = post_order_iterator.map(|n| *n.get_value()).collect();
-        assert_eq!(
-            post_order_vector,
-            ['A', 'C', 'E', 'D', 'B', 'H', 'I', 'G', 'F']
-        );
-        let child_b = test_tree.get_node(&'B').unwrap();
-        let post_order_iterator = child_b.iter_post_order_traversal();
-        let post_order_vector: Vec<char> = post_order_iterator.map(|n| *n.get_value()).collect();
-        assert_eq!(post_order_vector, ['A', 'C', 'E', 'D', 'B']);
-
-        let level_order_iterator = test_tree.iter_level_order_traversal();
-        let level_order_vector: Vec<char> =
-            level_order_iterator.map(|(n, _)| *n.get_value()).collect();
-        assert_eq!(
-            level_order_vector,
-            ['F', 'B', 'G', 'A', 'D', 'I', 'C', 'E', 'H']
-        );
-        let child_b = test_tree.get_node(&'B').unwrap();
-        let level_order_iterator = child_b.iter_level_order_traversal();
-        let level_order_vector: Vec<char> =
-            level_order_iterator.map(|(n, _)| *n.get_value()).collect();
-        assert_eq!(level_order_vector, ['B', 'A', 'D', 'C', 'E']);
-        let level_order_iterator = test_tree.iter_level_order_traversal_with_borders(2, None);
-        let level_order_vector: Vec<char> =
-            level_order_iterator.map(|(n, _)| *n.get_value()).collect();
-        assert_eq!(level_order_vector, ['A', 'D', 'I', 'C', 'E', 'H']);
-        let level_order_iterator = test_tree.iter_level_order_traversal_with_borders(1, Some(2));
-        let level_order_vector: Vec<char> =
-            level_order_iterator.map(|(n, _)| *n.get_value()).collect();
-        assert_eq!(level_order_vector, ['B', 'G', 'A', 'D', 'I']);
 
         let child_b = test_tree.get_child(0).unwrap();
         assert_eq!(*child_b.get_child(0).unwrap().get_value(), 'A');

@@ -6,6 +6,7 @@ use std::rc::Rc;
 pub struct LevelOrderTraversal<N> {
     current_node: Rc<TreeNode<N>>,
     child_indices: Vec<usize>, // vector of indices of children while traveling through tree
+    parent_ids: Vec<usize>,    // vector of parent ids while traveling through tree
     vertical: bool,            // false: children, true: parent
     finished: bool,            // true if iterator finished
     target_level: usize,
@@ -29,6 +30,7 @@ impl<N: PartialEq> LevelOrderTraversal<N> {
         LevelOrderTraversal {
             current_node: root,
             child_indices,
+            parent_ids: vec![],
             vertical: false,
             finished: false,
             target_level: start_level,
@@ -58,53 +60,88 @@ impl<N: PartialEq> Iterator for LevelOrderTraversal<N> {
         loop {
             if self.child_indices.len() - 1 == self.target_level {
                 let result = self.current_node.get_self().map(|n| (n, self.target_level));
-                if self.target_level == 0 {
-                    if self.increment_target_level() {
-                        return None;
-                    }
-                } else if let Some(node) = self.current_node.get_parent() {
-                    self.node_on_target_level = true;
-                    self.vertical = true;
-                    self.child_indices.pop();
-                    self.current_node = node;
-                }
+                self.node_on_target_level = true;
+                self.vertical = true;
                 return result;
             }
             if self.vertical {
                 // in direction of parent
-                let last_index = self.child_indices.len() - 1;
-                self.child_indices[last_index] += 1;
+                match self.parent_ids.pop() {
+                    Some(parent_id) => {
+                        self.child_indices.pop();
+                        self.child_indices[self.child_indices.len() - 1] += 1;
+                        self.current_node = self.current_node.get_parent(parent_id).unwrap();
+                    }
+                    None => {
+                        // root of sub tree
+                        if self.node_on_target_level {
+                            if self.increment_target_level() {
+                                return None;
+                            }
+                            self.node_on_target_level = false;
+                            assert_eq!(self.child_indices.len(), 1);
+                            self.child_indices[0] = 0; // reset index
+                        } else {
+                            // no more children of root to search for target_level
+                            self.finished = true;
+                            return None;
+                        }
+                    }
+                }
                 self.vertical = false;
             } else {
                 // in direction of child
                 let child_index = self.child_indices[self.child_indices.len() - 1];
                 match self.current_node.get_child(child_index) {
                     Some(node) => {
+                        self.parent_ids.push(self.current_node.get_id());
                         self.current_node = node;
                         self.child_indices.push(0);
                     }
-                    None => {
-                        if self.child_indices.len() == 1 {
-                            // root of sub tree
-                            if self.node_on_target_level {
-                                if self.increment_target_level() {
-                                    return None;
-                                }
-                                self.node_on_target_level = false;
-                                self.child_indices[0] = 0; // reset index
-                            } else {
-                                // no more children of root to search for target_level
-                                self.finished = true;
-                                return None;
-                            }
-                        } else if let Some(node) = self.current_node.get_parent() {
-                            self.vertical = true;
-                            self.child_indices.pop();
-                            self.current_node = node;
-                        }
-                    }
+                    None => self.vertical = true,
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{super::tree_node::tests::setup_test_tree, *};
+
+    #[test]
+    fn test_level_order_traversal() {
+        let test_tree = setup_test_tree();
+
+        assert_eq!(
+            LevelOrderTraversal::new(test_tree, 0, None)
+                .filter(|(n, _)| n.is_leave())
+                .count(),
+            4
+        );
+
+        let level_order_vector: Vec<char> = LevelOrderTraversal::new(test_tree, 0, None)
+            .map(|(n, _)| *n.get_value())
+            .collect();
+        assert_eq!(
+            level_order_vector,
+            ['F', 'B', 'G', 'A', 'D', 'I', 'C', 'E', 'H']
+        );
+
+        let child_b = test_tree.get_node(&'B').unwrap();
+        let level_order_vector: Vec<char> = LevelOrderTraversal::new(child_b, 0, None)
+            .map(|(n, _)| *n.get_value())
+            .collect();
+        assert_eq!(level_order_vector, ['B', 'A', 'D', 'C', 'E']);
+
+        let level_order_vector: Vec<char> = LevelOrderTraversal::new(test_tree, 2, None)
+            .map(|(n, _)| *n.get_value())
+            .collect();
+        assert_eq!(level_order_vector, ['A', 'D', 'I', 'C', 'E', 'H']);
+
+        let level_order_vector: Vec<char> = LevelOrderTraversal::new(test_tree, 1, Some(2))
+            .map(|(n, _)| *n.get_value())
+            .collect();
+        assert_eq!(level_order_vector, ['B', 'G', 'A', 'D', 'I']);
     }
 }
