@@ -1,4 +1,5 @@
-// level order traversal of tree
+// Level order traversal of tree starting at given start_node.
+// If start_node is not root of tree, the tree traversal will not go below level of start_node.
 
 use super::TreeNode;
 use std::rc::Rc;
@@ -15,22 +16,20 @@ pub struct LevelOrderTraversal<N> {
 }
 
 impl<N: PartialEq> LevelOrderTraversal<N> {
-    pub fn new(root: Rc<TreeNode<N>>, start_level: usize, end_level: Option<usize>) -> Self {
-        let ci_capacity = match end_level {
-            Some(level) => {
-                if start_level > level {
-                    panic!("end_level must be >= start_level.");
-                }
-                level + 1
+    pub fn new(start_node: Rc<TreeNode<N>>, start_level: usize, end_level: Option<usize>) -> Self {
+        // start_level and end_level ar relative to start_node
+        if let Some(level) = end_level {
+            if start_level > level {
+                panic!("end_level must be >= start_level.");
             }
-            None => 1,
-        };
-        let mut child_indices: Vec<usize> = Vec::with_capacity(ci_capacity);
+        }
+        let vec_capacity = start_node.get_max_level();
+        let mut child_indices: Vec<usize> = Vec::with_capacity(vec_capacity);
         child_indices.push(0);
         LevelOrderTraversal {
-            current_node: root,
+            current_node: start_node,
             child_indices,
-            parent_ids: vec![],
+            parent_ids: Vec::with_capacity(vec_capacity),
             vertical: false,
             finished: false,
             target_level: start_level,
@@ -68,7 +67,7 @@ impl<N: PartialEq> Iterator for LevelOrderTraversal<N> {
                         self.current_node = self.current_node.get_parent_by_id(parent_id).unwrap();
                     }
                     None => {
-                        // root of sub tree
+                        // start_node of sub tree
                         if self.node_on_target_level {
                             if self.increment_target_level() {
                                 return None;
@@ -77,7 +76,7 @@ impl<N: PartialEq> Iterator for LevelOrderTraversal<N> {
                             assert_eq!(self.child_indices.len(), 1);
                             self.child_indices[0] = 0; // reset index
                         } else {
-                            // no more children of root to search for target_level
+                            // no more children of start_node to search for target_level
                             self.finished = true;
                             return None;
                         }
@@ -113,14 +112,14 @@ mod tests {
     #[test]
     fn test_level_order_traversal() {
         let test_tree = setup_test_tree();
-        
+
         assert_eq!(
             LevelOrderTraversal::new(test_tree.clone(), 0, None)
                 .filter(|(n, _)| n.is_leave())
                 .count(),
             4
         );
-        
+
         let level_order_vector: Vec<char> = LevelOrderTraversal::new(test_tree.clone(), 0, None)
             .map(|(n, _)| *n.get_value())
             .collect();
@@ -128,18 +127,18 @@ mod tests {
             level_order_vector,
             ['F', 'B', 'G', 'A', 'D', 'I', 'C', 'E', 'H']
         );
-        
+
         let child_b = test_tree.get_node(&'B').unwrap();
         let level_order_vector: Vec<char> = LevelOrderTraversal::new(child_b, 0, None)
             .map(|(n, _)| *n.get_value())
             .collect();
         assert_eq!(level_order_vector, ['B', 'A', 'D', 'C', 'E']);
-        
+
         let level_order_vector: Vec<char> = LevelOrderTraversal::new(test_tree.clone(), 2, None)
             .map(|(n, _)| *n.get_value())
             .collect();
         assert_eq!(level_order_vector, ['A', 'D', 'I', 'C', 'E', 'H']);
-        
+
         let level_order_vector: Vec<char> = LevelOrderTraversal::new(test_tree.clone(), 1, Some(2))
             .map(|(n, _)| *n.get_value())
             .collect();

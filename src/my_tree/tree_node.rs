@@ -17,6 +17,7 @@ pub struct TreeNode<N> {
     value: RefCell<N>,
     id: usize,
     level: usize,
+    max_level: Rc<RefCell<usize>>,
     node: RefCell<Weak<TreeNode<N>>>,
     parents: RefCell<Vec<Weak<TreeNode<N>>>>,
     children: RefCell<Vec<Rc<TreeNode<N>>>>,
@@ -24,15 +25,33 @@ pub struct TreeNode<N> {
 
 impl<N: PartialEq> TreeNode<N> {
     pub fn seed_root(value: N, children_capacity: usize) -> Rc<TreeNode<N>> {
-        TreeNode::new(value, 0, children_capacity)
+        TreeNode::new(value, Weak::new(), children_capacity)
     }
-    fn new(value: N, level: usize, children_capacity: usize) -> Rc<TreeNode<N>> {
+    fn new(value: N, parent: Weak<TreeNode<N>>, children_capacity: usize) -> Rc<TreeNode<N>> {
+        let (level, max_level, parents) = match parent.upgrade() {
+            Some(p) => {
+                let new_level = p.get_level() + 1;
+                let mut current_max_level = (*p.max_level).borrow_mut();
+                *current_max_level = current_max_level.max(new_level);
+                (
+                    new_level,
+                    p.max_level.clone(),
+                    RefCell::new(vec![parent.clone()]),
+                )
+            }
+            None => (
+                0,
+                Rc::new(RefCell::new(0_usize)),
+                RefCell::new(Vec::with_capacity(1)),
+            ),
+        };
         let result = Rc::new(TreeNode {
             value: RefCell::new(value),
             id: generate_unique_id(),
             level,
+            max_level,
             node: RefCell::new(Weak::new()), // weak reference on itself!
-            parents: RefCell::new(Vec::with_capacity(1)),
+            parents,
             children: RefCell::new(Vec::with_capacity(children_capacity)),
         });
         let node = Rc::downgrade(&result);
@@ -54,8 +73,7 @@ impl<N: PartialEq> TreeNode<N> {
         match self.iter_children().find(|n| *n.value.borrow() == value) {
             Some(node) => node,
             None => {
-                let child = TreeNode::new(value, self.level + 1, children_capacity);
-                child.parents.borrow_mut().push(self.node.borrow().clone());
+                let child = TreeNode::new(value, self.node.borrow().clone(), children_capacity);
                 self.children.borrow_mut().push(child.clone());
                 child
             }
@@ -82,8 +100,7 @@ impl<N: PartialEq> TreeNode<N> {
         match self.iter_children().find(|n| *n.value.borrow() == value) {
             Some(node) => node,
             None => {
-                let child = TreeNode::new(value, self.level + 1, children_capacity);
-                child.parents.borrow_mut().push(self.node.borrow().clone());
+                let child = TreeNode::new(value, self.node.borrow().clone(), children_capacity);
                 let number_of_children = self.children.borrow().len();
                 if index < number_of_children {
                     self.children.borrow_mut().insert(index, child.clone());
@@ -120,8 +137,7 @@ impl<N: PartialEq> TreeNode<N> {
         {
             Some(_) => None, // child already exists
             None => {
-                let child = TreeNode::new(value, self.level + 1, children_capacity);
-                child.parents.borrow_mut().push(self.node.borrow().clone());
+                let child = TreeNode::new(value, self.node.borrow().clone(), children_capacity);
                 self.children.borrow_mut().push(child.clone());
                 Some(child)
             }
@@ -154,8 +170,7 @@ impl<N: PartialEq> TreeNode<N> {
         {
             Some(_) => None, // child already exists,
             None => {
-                let child = TreeNode::new(value, self.level + 1, children_capacity);
-                child.parents.borrow_mut().push(self.node.borrow().clone());
+                let child = TreeNode::new(value, self.node.borrow().clone(), children_capacity);
                 let number_of_children = self.children.borrow().len();
                 if index < number_of_children {
                     self.children.borrow_mut().insert(index, child.clone());
@@ -165,6 +180,17 @@ impl<N: PartialEq> TreeNode<N> {
                 Some(child)
             }
         }
+    }
+    pub fn link_child_to_parent(&self, child: Rc<TreeNode<N>>) -> Option<Rc<TreeNode<N>>> {
+        // link is only possible, if child level == parent level + 1
+        if self.level + 1 != child.level {
+            return None;
+        }
+        // link only, if no link exists
+        if !child.iter_parents().any(|p| p.get_id() == self.id) {
+            child.parents.borrow_mut().push(self.node.borrow().clone());
+        }
+        Some(child)
     }
     pub fn swap_remove_child(&self, index: usize) -> Option<Rc<TreeNode<N>>> {
         if index >= self.len_children() {
@@ -251,13 +277,11 @@ impl<N: PartialEq> TreeNode<N> {
             .borrow_mut()
             .sort_by(|a, b| compare(&a.value.borrow(), &b.value.borrow()));
     }
-    pub fn get_max_level(&self) -> (usize, usize) {
-        // tuple of absolute level and relative level
-        self.get_root()
-            .iter_level_order_traversal()
-            .max_by_key(|(_, l)| *l)
-            .map(|(n, l)| (n.level, l))
-            .unwrap()
+    pub fn get_min_level(&self) -> usize {
+        self.get_root().level
+    }
+    pub fn get_max_level(&self) -> usize {
+        *self.max_level.borrow()
     }
     pub fn iter_self(&self) -> impl Iterator<Item = Rc<TreeNode<N>>> {
         IterSelf::new(self.get_self().unwrap()) // iterator over single node; useful for functions, which have an iterator as output and you want to be able to iterate over different outcomes
@@ -316,6 +340,7 @@ pub mod tests {
         // tree structure is inspired from Wikipedia: https://en.wikipedia.org/wiki/Tree_traversal#Depth-first_search
         let test_tree = setup_test_tree();
 
+        assert_eq!(test_tree.get_max_level(), 3);
         assert_eq!(*test_tree.get_child(0).unwrap().get_value(), 'B');
 
         let child_h = test_tree.get_node(&'H').unwrap();

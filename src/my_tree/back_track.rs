@@ -39,8 +39,7 @@ impl<N: PartialEq> Iterator for BackTrack<N> {
         self.current_nodes = self
             .current_nodes
             .iter()
-            .map(|c| c.iter_parents())
-            .flatten()
+            .flat_map(|c| c.iter_parents())
             .filter(|n| seen.insert(n.get_id()))
             .collect();
         self.finished = self.current_nodes.is_empty();

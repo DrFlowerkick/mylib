@@ -1,4 +1,5 @@
-// pre order traversal of tree
+// pre order traversal of tree starting at given start node
+// If start_node is not root of tree, the tree traversal will not go below level of start_node.
 
 use super::TreeNode;
 use std::rc::Rc;
@@ -12,11 +13,14 @@ pub struct PreOrderTraversal<N> {
 }
 
 impl<N: PartialEq> PreOrderTraversal<N> {
-    pub fn new(root: Rc<TreeNode<N>>) -> Self {
+    pub fn new(start_node: Rc<TreeNode<N>>) -> Self {
+        let vec_capacity = start_node.get_max_level();
+        let mut child_indices: Vec<usize> = Vec::with_capacity(vec_capacity);
+        child_indices.push(0);
         PreOrderTraversal {
-            current_node: root,
-            child_indices: vec![0],
-            parent_ids: vec![],
+            current_node: start_node,
+            child_indices,
+            parent_ids: Vec::with_capacity(vec_capacity),
             vertical: false,
             iter_finished: false,
         }
@@ -44,7 +48,7 @@ impl<N: PartialEq> Iterator for PreOrderTraversal<N> {
                         self.vertical = false;
                     }
                     None => {
-                        // end of tree (or subtree, which started at initial given root)
+                        // end of tree (or subtree, which started at initial given start_node)
                         self.iter_finished = true;
                         break;
                     }
