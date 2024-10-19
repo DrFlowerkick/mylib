@@ -35,6 +35,7 @@ impl<N: PartialEq> Iterator for IterParents<N> {
                 self.parent_index += 1;
                 return Some(parent);
             }
+            self.parent_index += 1;
         }
         self.finished = true;
         None

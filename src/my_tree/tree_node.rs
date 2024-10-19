@@ -264,7 +264,7 @@ impl<N: PartialEq> TreeNode<N> {
         self.iter_back_track().last().unwrap()[0].clone()
     }
     pub fn is_root(&self) -> bool {
-        self.len_parents() == 0
+        self.len_parents() == 0 || self.parents.borrow().iter().all(|n| n.weak_count() == 0)
     }
     pub fn is_leave(&self) -> bool {
         self.len_children() == 0

@@ -181,12 +181,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         let mut rng = thread_rng();
         // search for node to select
         let mut selection_node = self.tree_root.clone();
-        let mut counter: usize = 0;
         while !selection_node.is_leave() {
-            counter += 1;
-            if self.tree_root.get_level() > 0 {
-                eprintln!("current node id: {}, current node level: {}", selection_node.get_id(), selection_node.get_level());
-            }
             if start.elapsed() >= time_out {
                 // return None, if selection cannot finish in time
                 return None;
@@ -260,11 +255,6 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                 }
                 None => panic!("selection should always find a child!"),
             };
-            
-            if self.tree_root.get_level() > 0 && counter > 10 {
-                panic!("COUNTER PANIC");
-            }
-
         }
         Some(selection_node)
     }
@@ -338,9 +328,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         } else {
             let mut rng = thread_rng();
             let mut simulation = *simulation_node.get_value();
-            let mut counter: usize = 0;
             while !simulation.game_end_node {
-                counter += 1;
                 if start.elapsed() >= time_out {
                     // return tie, if simulation cannot finish in time
                     return None;
@@ -378,10 +366,6 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                         );
                         simulation.set_next_node(self.force_update);
                     }
-                }
-
-                if self.tree_root.get_level() > 0 && counter > 10 {
-                    panic!("SIMULATION COUNTER PANIC");
                 }
             }
             Some(simulation.calc_simulation_score())
@@ -532,7 +516,6 @@ mod tests {
     use crate::my_tic_tac_toe::mcts_tic_tac_toe::*;
     use crate::my_tic_tac_toe::*;
 
-    use core::panic;
     use std::time::Duration;
     const MAX_NUMBER_OF_TURNS: usize = 9;
     const FORCE_UPDATE: bool = true;
@@ -544,9 +527,12 @@ mod tests {
     #[test]
     fn test_tree_width_and_depth_opp_first() {
         let use_heuristic_score = false;
-        let mut last_winner: Option<MonteCarloPlayer> = None;
         let mut wins = 0;
-        for i in 0..1 {
+        let mut losses = 0;
+        eprintln!("player symbols:");
+        eprintln!("me: {}", TicTacToeStatus::Player(MonteCarloPlayer::Me));
+        eprintln!("opp: {}", TicTacToeStatus::Player(MonteCarloPlayer::Opp));
+        for i in 0..50 {
             eprintln!("________match {}________", i + 1);
             let mut ttt_match = TicTacToeGameData::new();
             // let opp do 1. action by choosing a random action
@@ -573,7 +559,6 @@ mod tests {
             while !ttt_match.check_game_ending(0) {
                 let start = mcts_player.init_root(&ttt_match, MonteCarloPlayer::Opp);
                 mcts_player.expand_tree(start);
-                eprint!("me  ");
                 let (current_game_data, _) = mcts_player.choose_and_execute_actions();
                 ttt_match = *TicTacToeGameData::downcast_self(&current_game_data);
                 if !ttt_match.check_game_ending(0) {
@@ -586,14 +571,15 @@ mod tests {
                     }
                 }
             }
-            last_winner = ttt_match.game_winner(0);
-            match last_winner {
+            eprintln!("{}", ttt_match);
+            match ttt_match.game_winner(0) {
                 Some(player) => match player {
                     MonteCarloPlayer::Me => {
                         wins += 1;
                         eprintln!("me winner ({})", wins);
                     }
                     MonteCarloPlayer::Opp => {
+                        losses += 1;
                         eprintln!("opp winner");
                         break;
                     }
@@ -601,19 +587,19 @@ mod tests {
                 None => eprintln!("tie"),
             }
         }
-        assert_ne!(last_winner, Some(MonteCarloPlayer::Opp));
+        assert_eq!(losses, 0);
         assert!(wins > 40)
     }
 
     #[test]
     fn test_tree_width_and_depth_me_first() {
         let use_heuristic_score = false;
-        let mut last_winner: Option<MonteCarloPlayer> = None;
         let mut wins = 0;
+        let mut losses = 0;
         eprintln!("player symbols:");
         eprintln!("me: {}", TicTacToeStatus::Player(MonteCarloPlayer::Me));
         eprintln!("opp: {}", TicTacToeStatus::Player(MonteCarloPlayer::Opp));
-        for i in 0..1 {
+        for i in 0..50 {
             eprintln!("________match {}________", i + 1);
             let mut ttt_match = TicTacToeGameData::new();
             let mut mcts_player: MonteCarloTreeSearch<
@@ -630,22 +616,11 @@ mod tests {
                 use_heuristic_score,
                 DEBUG,
             );
-            let mut action_counter = 0;
             while !ttt_match.check_game_ending(0) {
                 let start = mcts_player.init_root(&ttt_match, MonteCarloPlayer::Me);
-                if action_counter == 2 {
-                    let current_game_data = mcts_player.tree_root.get_value().game_data;
-                    let current_game_data = *TicTacToeGameData::downcast_self(&current_game_data);
-                    eprintln!("{}\n", current_game_data);
-                    eprintln!("max level of tree: {}", mcts_player.tree_root.get_max_level());
-                }
                 mcts_player.expand_tree(start);
-                if action_counter == 2 {
-                    panic!("After expand_tree.");
-                }
                 let (current_game_data, _) = mcts_player.choose_and_execute_actions();
                 ttt_match = *TicTacToeGameData::downcast_self(&current_game_data);
-                action_counter += 1;
                 if !ttt_match.check_game_ending(0) {
                     // let opp act by choosing a random actions
                     match ttt_match.choose_random_next_action() {
@@ -655,20 +630,16 @@ mod tests {
                         None => (),
                     }
                 }
-                action_counter += 1;
-                if action_counter >= 3  {
-                    panic!("BAM");
-                }
             }
-            eprintln!("{}\n", ttt_match);
-            last_winner = ttt_match.game_winner(0);
-            match last_winner {
+            eprintln!("{}", ttt_match);
+            match ttt_match.game_winner(0) {
                 Some(player) => match player {
                     MonteCarloPlayer::Me => {
                         wins += 1;
                         eprintln!("me winner ({})", wins);
                     }
                     MonteCarloPlayer::Opp => {
+                        losses += 1;
                         eprintln!("opp winner");
                         break;
                     }
@@ -676,7 +647,7 @@ mod tests {
                 None => eprintln!("tie"),
             }
         }
-        assert_ne!(last_winner, Some(MonteCarloPlayer::Opp));
+        assert_eq!(losses, 0);
         assert!(wins > 40)
     }
 }
