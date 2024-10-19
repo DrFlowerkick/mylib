@@ -198,7 +198,6 @@ mod tests {
     const TIME_OUT_SUCCESSIVE_TURNS: Duration = Duration::from_millis(50);
     const WEIGHTING_FACTOR: f32 = 1.40;
     const DEBUG: bool = true;
-    const KEEP_ROOT: bool = false;
 
     #[test]
     fn calc_max_number_of_possible_nodes() {
@@ -244,7 +243,6 @@ mod tests {
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
                 DEBUG,
-                KEEP_ROOT,
             );
             while !ttt_match.check_game_ending(0) {
                 let start = mcts_player.init_root(&ttt_match, MonteCarloPlayer::Me);
@@ -316,7 +314,6 @@ mod tests {
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
                 DEBUG,
-                KEEP_ROOT,
             );
             while !ttt_match.check_game_ending(0) {
                 let start = mcts_player.init_root(&ttt_match, MonteCarloPlayer::Opp);
@@ -378,7 +375,6 @@ mod tests {
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
                 DEBUG,
-                KEEP_ROOT,
             );
             let mut mcts_second: MonteCarloTreeSearch<
                 TicTacToeGameData,
@@ -393,7 +389,6 @@ mod tests {
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
                 DEBUG,
-                KEEP_ROOT,
             );
             let mut first = true;
             while !ttt_match_first.check_game_ending(0) {

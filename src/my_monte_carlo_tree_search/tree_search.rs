@@ -18,8 +18,6 @@ pub struct MonteCarloTreeSearch<
     U: MonteCarloGameDataUpdate,
 > {
     tree_root: Rc<TreeNode<MonteCarloNode<G, A, U>>>,
-    keep_root: Option<Rc<TreeNode<MonteCarloNode<G, A, U>>>>,
-    root_level: usize,
     game_mode: MonteCarloGameMode,
     starting_player: MonteCarloPlayer,
     played_turns: usize,
@@ -46,12 +44,9 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         weighting_factor: f32,
         use_heuristic_score: bool,
         debug: bool,
-        keep_root: bool,
     ) -> Self {
-        let mut result = MonteCarloTreeSearch {
+        MonteCarloTreeSearch {
             tree_root: TreeNode::seed_root(MonteCarloNode::<G, A, U>::new(), 0),
-            keep_root: None,
-            root_level: 0,
             game_mode,
             starting_player: MonteCarloPlayer::Me,
             played_turns: 0,
@@ -63,11 +58,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             weighting_factor, // try starting with 1.0 and find a way to tune to a better value
             use_heuristic_score,
             debug,
-        };
-        if keep_root {
-            result.keep_root = Some(result.tree_root.clone());
         }
-        result
     }
     pub fn init_root(&mut self, game_data: &G, starting_player: MonteCarloPlayer) -> Instant {
         let start = Instant::now();
@@ -111,18 +102,13 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                 }) {
                 Some((new_root, _)) => {
                     self.tree_root = new_root;
-                    self.root_level = self.tree_root.get_level();
                 }
                 None => {
                     // create new tree_root, since no node with game_data has been found
                     if self.debug {
                         eprintln!("Current game state not found in tree. Reinitialize tree after {} played turns", self.played_turns);
                     }
-                    if self.keep_root.is_some() {
-                        panic!("quit since root has been reset.");
-                    }
                     self.tree_root = TreeNode::seed_root(MonteCarloNode::<G, A, U>::new(), 0);
-                    self.root_level = 0;
                     self.tree_root.get_mut_value().game_data = *game_data;
                     self.tree_root.get_mut_value().samples = 0.0;
                     self.tree_root.get_mut_value().player = MonteCarloPlayer::Me;
@@ -148,6 +134,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             eprintln!("number of expand cycles: {}", counter);
         }
     }
+
     pub fn choose_and_execute_actions(
         &mut self,
     ) -> (impl MonteCarloGameData, impl MonteCarloPlayerAction) {
@@ -164,20 +151,21 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             .unwrap();
         self.played_turns = child.get_value().game_turn;
         self.tree_root = child.clone();
-        self.root_level = self.tree_root.get_level();
         // return game_data and my action
         let result = (child.get_value().game_data, child.get_value().player_action);
         result
     }
 
     fn one_cycle(&self, start: &Instant, time_out: Duration) -> bool {
-        let selection_node = self.selection(start, time_out);
-        match selection_node {
+        match self.selection(start, time_out) {
             Some(selection_node) => {
-                let child_node = self.expansion(selection_node);
-                if let Some(simulation_score) = self.simulation(child_node.clone(), start, time_out)
-                {
-                    self.propagation(child_node, simulation_score)
+                // if expansion only creates links to cached tree nodes, it returns None
+                if let Some(child_node) = self.expansion(selection_node) {
+                    // if time out, simulation returns None
+                    if let Some(simulation_score) = self.simulation(child_node.clone(), start, time_out)
+                    {
+                        self.propagation(child_node, simulation_score)
+                    }
                 }
             }
             None => return true, // no more nodes to simulate in tree or time over
@@ -193,7 +181,12 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         let mut rng = thread_rng();
         // search for node to select
         let mut selection_node = self.tree_root.clone();
+        let mut counter: usize = 0;
         while !selection_node.is_leave() {
+            counter += 1;
+            if self.tree_root.get_level() > 0 {
+                eprintln!("current node id: {}, current node level: {}", selection_node.get_id(), selection_node.get_level());
+            }
             if start.elapsed() >= time_out {
                 // return None, if selection cannot finish in time
                 return None;
@@ -214,8 +207,11 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                 return Some(child_without_samples);
             }
             selection_node.iter_children().for_each(|c| {
+                // All parents number of samples must be used for exploration score
+                let parent_samples: f32 = c.iter_parents().map(|p| p.get_value().samples).sum();
+                assert!(!parent_samples.is_nan());
                 c.get_mut_value()
-                    .calc_node_score(selection_node.get_value().samples, self.weighting_factor)
+                    .calc_node_score(parent_samples, self.weighting_factor)
             });
             let selected_child = selection_node.iter_children().max_by(|a, b| {
                 a.get_value()
@@ -262,8 +258,13 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                         }
                     }
                 }
-                None => panic!("selection should alway find a child!"),
+                None => panic!("selection should always find a child!"),
             };
+            
+            if self.tree_root.get_level() > 0 && counter > 10 {
+                panic!("COUNTER PANIC");
+            }
+
         }
         Some(selection_node)
     }
@@ -271,14 +272,14 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
     fn expansion(
         &self,
         expansion_node: Rc<TreeNode<MonteCarloNode<G, A, U>>>,
-    ) -> Rc<TreeNode<MonteCarloNode<G, A, U>>> {
+    ) -> Option<Rc<TreeNode<MonteCarloNode<G, A, U>>>> {
         if expansion_node.get_value().game_end_node
-            || (expansion_node.get_level() > self.root_level
+            || (!expansion_node.is_root()
                 && expansion_node.get_value().samples.is_nan())
         {
-            return expansion_node;
+            return Some(expansion_node);
         }
-
+        let mut new_expanded_nodes: Vec<Rc<TreeNode<MonteCarloNode<G, A, U>>>> = Vec::new();
         let next_node = expansion_node.get_value().next_node;
         match next_node {
             MonteCarloNodeType::GameDataUpdate => {
@@ -286,10 +287,16 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                     &expansion_node.get_value().game_data,
                     self.force_update,
                 ) {
-                    let new_game_data_update_node = expansion_node
+                    let mut new_game_data_update_node = expansion_node
                         .get_value()
                         .new_game_data_update_child(game_data_update);
-                    expansion_node.add_child(new_game_data_update_node, 0);
+                    if new_game_data_update_node
+                        .apply_game_data_update(&expansion_node.get_value().game_data, !self.force_update)
+                    {
+                        // node is consistent
+                        new_game_data_update_node.set_next_node(self.force_update);
+                        new_expanded_nodes.push(expansion_node.add_child(new_game_data_update_node, 0));
+                    }
                 }
             }
             MonteCarloNodeType::ActionResult => {
@@ -298,14 +305,26 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                     expansion_node.get_value().player,
                     expansion_node.get_value().game_turn,
                 ) {
-                    let new_player_action_node = expansion_node
+                    let mut new_player_action_node = expansion_node
                         .get_value()
                         .new_player_action_child(player_action);
-                    expansion_node.add_child(new_player_action_node, 0);
+                    new_player_action_node.apply_action(
+                        &expansion_node.get_value().game_data,
+                        &expansion_node.get_value().player_action,
+                        self.game_mode,
+                        self.max_number_of_turns,
+                        self.use_heuristic_score,
+                    );
+                    new_player_action_node.set_next_node(self.force_update);
+                    // ToDo: here we have to add cache of action node results
+                    new_expanded_nodes.push(expansion_node.add_child(new_player_action_node, 0));
                 }
             }
         }
-        expansion_node.get_child(0).unwrap()
+        if new_expanded_nodes.is_empty() {
+            return None;
+        }
+        Some(new_expanded_nodes[0].clone())
     }
 
     fn simulation(
@@ -317,46 +336,11 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         if simulation_node.get_value().game_end_node {
             Some(simulation_node.get_value().calc_simulation_score())
         } else {
-            let node_type = simulation_node.get_value().node_type;
-            // ToDo: parent is required for consistency checks. How do we know, which parent to use?
-            let parent = simulation_node.get_parent(0).unwrap();
-            match node_type {
-                MonteCarloNodeType::GameDataUpdate => {
-                    if !simulation_node
-                        .get_mut_value()
-                        .apply_game_data_update(&parent.get_value().game_data, !self.force_update)
-                    {
-                        // node is inconsistent -> delete this node from parent and search for new child
-                        let index = parent
-                            .iter_children()
-                            .position(|c| *c.get_value() == *simulation_node.get_value())
-                            .unwrap();
-                        parent.swap_remove_child(index);
-                        return None;
-                    }
-                    simulation_node
-                        .get_mut_value()
-                        .set_next_node(self.force_update);
-                }
-                MonteCarloNodeType::ActionResult => {
-                    let parent_action = parent.get_value().player_action;
-                    simulation_node.get_mut_value().apply_action(
-                        &parent.get_value().game_data,
-                        &parent_action,
-                        self.game_mode,
-                        self.max_number_of_turns,
-                        self.use_heuristic_score,
-                    );
-                    simulation_node
-                        .get_mut_value()
-                        .set_next_node(self.force_update);
-                }
-            };
-
             let mut rng = thread_rng();
             let mut simulation = *simulation_node.get_value();
-
+            let mut counter: usize = 0;
             while !simulation.game_end_node {
+                counter += 1;
                 if start.elapsed() >= time_out {
                     // return tie, if simulation cannot finish in time
                     return None;
@@ -395,6 +379,10 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                         simulation.set_next_node(self.force_update);
                     }
                 }
+
+                if self.tree_root.get_level() > 0 && counter > 10 {
+                    panic!("SIMULATION COUNTER PANIC");
+                }
             }
             Some(simulation.calc_simulation_score())
         }
@@ -405,6 +393,10 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         start_node: Rc<TreeNode<MonteCarloNode<G, A, U>>>,
         mut simulation_score: f32,
     ) {
+        // first set number of samples of start_node from NaN to 0.0, if required
+        if start_node.get_value().samples.is_nan() {
+            start_node.get_mut_value().samples = 0.0;
+        }
         // score simulation result and calc new exploitation score for start_node
         start_node.get_mut_value().score_simulation_result(
             simulation_score,
@@ -413,7 +405,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         );
         // backtrack simulation_score and heuristic if score event
         for nodes in start_node.iter_back_track().skip(1) {
-            for node in nodes.iter().filter(|n| n.get_level() >= self.root_level) {
+            for node in nodes.iter() {
                 // do score_simulation_result()
                 // ToDo: how to weight GameDataUpdate Nodes properly?
                 if node.get_value().next_node == MonteCarloNodeType::GameDataUpdate {
@@ -441,7 +433,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             .get_mut_value()
             .score_simulation_result(wins, samples, self.use_heuristic_score);
         for nodes in start_node.iter_back_track().skip(1) {
-            for node in nodes.iter().filter(|n| n.get_level() >= self.root_level) {
+            for node in nodes.iter() {
                 if node.get_value().next_node == MonteCarloNodeType::GameDataUpdate {
                     let num_children = node.len_children() as f32;
                     wins /= num_children;
@@ -540,21 +532,21 @@ mod tests {
     use crate::my_tic_tac_toe::mcts_tic_tac_toe::*;
     use crate::my_tic_tac_toe::*;
 
+    use core::panic;
     use std::time::Duration;
     const MAX_NUMBER_OF_TURNS: usize = 9;
     const FORCE_UPDATE: bool = true;
-    const TIME_OUT_FIRST_TURN: Duration = Duration::from_millis(1000);
-    const TIME_OUT_SUCCESSIVE_TURNS: Duration = Duration::from_millis(100);
-    const WEIGHTING_FACTOR: f32 = 50.0;
+    const TIME_OUT_FIRST_TURN: Duration = Duration::from_millis(200);
+    const TIME_OUT_SUCCESSIVE_TURNS: Duration = Duration::from_millis(50);
+    const WEIGHTING_FACTOR: f32 = 2.0;
     const DEBUG: bool = true;
-    const KEEP_ROOT: bool = true;
 
     #[test]
     fn test_tree_width_and_depth_opp_first() {
         let use_heuristic_score = false;
         let mut last_winner: Option<MonteCarloPlayer> = None;
         let mut wins = 0;
-        for i in 0..50 {
+        for i in 0..1 {
             eprintln!("________match {}________", i + 1);
             let mut ttt_match = TicTacToeGameData::new();
             // let opp do 1. action by choosing a random action
@@ -577,46 +569,12 @@ mod tests {
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
                 DEBUG,
-                KEEP_ROOT,
             );
             while !ttt_match.check_game_ending(0) {
                 let start = mcts_player.init_root(&ttt_match, MonteCarloPlayer::Opp);
                 mcts_player.expand_tree(start);
                 eprint!("me  ");
                 let (current_game_data, _) = mcts_player.choose_and_execute_actions();
-                // ToDo: which parent should we use?
-                let parent = mcts_player.tree_root.get_parent(0).unwrap();
-                for child in parent.iter_children() {
-                    let child_node = child.get_value();
-                    let child_action =
-                        TicTacToePlayerAction::downcast_self(&child_node.player_action);
-                    eprintln!(
-                        "({}, {}): w: {:.1}, s: {:.0}, ets: {:.2}, ers: {:.2}, hs: {:.2}",
-                        child_action.cell.x(),
-                        child_action.cell.y(),
-                        child_node.wins,
-                        child_node.samples,
-                        child_node.exploitation_score,
-                        child_node.exploration_score,
-                        child_node.heuristic_score
-                    );
-                }
-                eprintln!("opp options:");
-                for child in mcts_player.tree_root.iter_children() {
-                    let child_node = child.get_value();
-                    let child_action =
-                        TicTacToePlayerAction::downcast_self(&child_node.player_action);
-                    eprintln!(
-                        "({}, {}): w: {:.1}, s: {:.0}, ets: {:.2}, ers: {:.2}, hs: {:.2}",
-                        child_action.cell.x(),
-                        child_action.cell.y(),
-                        child_node.wins,
-                        child_node.samples,
-                        child_node.exploitation_score,
-                        child_node.exploration_score,
-                        child_node.heuristic_score
-                    );
-                }
                 ttt_match = *TicTacToeGameData::downcast_self(&current_game_data);
                 if !ttt_match.check_game_ending(0) {
                     // let opp act by choosing a random actions
@@ -652,7 +610,10 @@ mod tests {
         let use_heuristic_score = false;
         let mut last_winner: Option<MonteCarloPlayer> = None;
         let mut wins = 0;
-        for i in 0..50 {
+        eprintln!("player symbols:");
+        eprintln!("me: {}", TicTacToeStatus::Player(MonteCarloPlayer::Me));
+        eprintln!("opp: {}", TicTacToeStatus::Player(MonteCarloPlayer::Opp));
+        for i in 0..1 {
             eprintln!("________match {}________", i + 1);
             let mut ttt_match = TicTacToeGameData::new();
             let mut mcts_player: MonteCarloTreeSearch<
@@ -668,31 +629,23 @@ mod tests {
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
                 DEBUG,
-                KEEP_ROOT,
             );
+            let mut action_counter = 0;
             while !ttt_match.check_game_ending(0) {
                 let start = mcts_player.init_root(&ttt_match, MonteCarloPlayer::Me);
-                mcts_player.expand_tree(start);
-                eprint!("me  ");
-                let (current_game_data, _) = mcts_player.choose_and_execute_actions();
-                // ToDo: which parent should we use?
-                let parent = mcts_player.tree_root.get_parent(0).unwrap();
-                for child in parent.iter_children() {
-                    let child_node = child.get_value();
-                    let child_action =
-                        TicTacToePlayerAction::downcast_self(&child_node.player_action);
-                    eprintln!(
-                        "({}, {}): w: {:.1}, s: {:.0}, ets: {:.2}, ers: {:.2}, hs: {:.2}",
-                        child_action.cell.x(),
-                        child_action.cell.y(),
-                        child_node.wins,
-                        child_node.samples,
-                        child_node.exploitation_score,
-                        child_node.exploration_score,
-                        child_node.heuristic_score
-                    );
+                if action_counter == 2 {
+                    let current_game_data = mcts_player.tree_root.get_value().game_data;
+                    let current_game_data = *TicTacToeGameData::downcast_self(&current_game_data);
+                    eprintln!("{}\n", current_game_data);
+                    eprintln!("max level of tree: {}", mcts_player.tree_root.get_max_level());
                 }
+                mcts_player.expand_tree(start);
+                if action_counter == 2 {
+                    panic!("After expand_tree.");
+                }
+                let (current_game_data, _) = mcts_player.choose_and_execute_actions();
                 ttt_match = *TicTacToeGameData::downcast_self(&current_game_data);
+                action_counter += 1;
                 if !ttt_match.check_game_ending(0) {
                     // let opp act by choosing a random actions
                     match ttt_match.choose_random_next_action() {
@@ -702,7 +655,12 @@ mod tests {
                         None => (),
                     }
                 }
+                action_counter += 1;
+                if action_counter >= 3  {
+                    panic!("BAM");
+                }
             }
+            eprintln!("{}\n", ttt_match);
             last_winner = ttt_match.game_winner(0);
             match last_winner {
                 Some(player) => match player {

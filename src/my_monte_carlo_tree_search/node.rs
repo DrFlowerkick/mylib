@@ -128,7 +128,6 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
     ) {
         // transfer game_data of parent
         self.game_data = *parent_game_data;
-        self.samples = 0.0;
         // score_event depends on player action (e.g. scoring points) or end of game
         let mut score_event = self.apply_player_action();
         self.player = self.player.next_player();
@@ -164,7 +163,6 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
     ) -> bool {
         // transfer game_data of parent
         self.game_data = *parent_game_data;
-        self.samples = 0.0;
         // apply update
         self.game_data
             .apply_game_data_update(&self.game_data_update, check_update_consistency)

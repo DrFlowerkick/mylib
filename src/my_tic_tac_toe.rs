@@ -18,6 +18,20 @@ pub enum TicTacToeStatus {
     Player(MonteCarloPlayer),
     Tie,
 }
+impl std::fmt::Display for TicTacToeStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TicTacToeStatus::Vacant => write!(f, " "),
+            TicTacToeStatus::Tie => write!(f, "T"),
+            TicTacToeStatus::Player(p) => {
+                match p {
+                    MonteCarloPlayer::Me => write!(f, "X"),
+                    MonteCarloPlayer::Opp => write!(f, "O"),
+                }
+            }
+        }
+    }
+}
 
 impl TicTacToeStatus {
     pub fn is_vacant(&self) -> bool {
@@ -40,6 +54,18 @@ pub struct TicTacToeGameData {
 impl PartialEq for TicTacToeGameData {
     fn eq(&self, other: &Self) -> bool {
         self.map == other.map
+    }
+}
+
+impl std::fmt::Display for TicTacToeGameData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "┌─┬─┬─┐\n")?;
+        write!(f, "│{}│{}│{}│\n", self.map.get_row(0)[0], self.map.get_row(0)[1], self.map.get_row(0)[2])?;
+        write!(f, "├─┼─┼─┤\n")?;
+        write!(f, "│{}│{}│{}│\n", self.map.get_row(1)[0], self.map.get_row(1)[1], self.map.get_row(1)[2])?;
+        write!(f, "├─┼─┼─┤\n")?;
+        write!(f, "│{}│{}│{}│\n", self.map.get_row(2)[0], self.map.get_row(2)[1], self.map.get_row(2)[2])?;
+        write!(f, "└─┴─┴─┘\n")
     }
 }
 
