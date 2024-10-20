@@ -2,7 +2,8 @@
 
 use rand::prelude::*;
 use rand::seq::IteratorRandom;
-use std::rc::Rc;
+use std::collections::HashMap;
+use std::rc::{Rc, Weak};
 use std::time::Duration;
 use std::time::Instant;
 
@@ -28,6 +29,9 @@ pub struct MonteCarloTreeSearch<
     time_out_successive_turns: Duration,
     weighting_factor: f32,
     use_heuristic_score: bool,
+    use_caching: bool,
+    #[allow(clippy::type_complexity)]
+    cache: HashMap<(G, MonteCarloPlayer, usize), Weak<TreeNode<MonteCarloNode<G, A, U>>>>,
     debug: bool,
 }
 
@@ -43,6 +47,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         time_out_successive_turns: Duration,
         weighting_factor: f32,
         use_heuristic_score: bool,
+        use_caching: bool,
         debug: bool,
     ) -> Self {
         MonteCarloTreeSearch {
@@ -57,6 +62,8 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             time_out_successive_turns,
             weighting_factor, // try starting with 1.0 and find a way to tune to a better value
             use_heuristic_score,
+            use_caching,
+            cache: HashMap::new(),
             debug,
         }
     }
@@ -125,6 +132,10 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         } else {
             self.time_out_successive_turns
         };
+        // clear cache from old nodes
+        if self.use_caching {
+            self.cache.retain(|_, v| v.weak_count() > 0);
+        }
         // loop until time out or no more nodes to cycle
         let mut counter = 0;
         while start.elapsed() < time_out && !self.one_cycle(&start, time_out) {
@@ -156,19 +167,32 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         result
     }
 
-    fn one_cycle(&self, start: &Instant, time_out: Duration) -> bool {
-        match self.selection(start, time_out) {
-            Some(selection_node) => {
-                // if expansion only creates links to cached tree nodes, it returns None
-                if let Some(child_node) = self.expansion(selection_node) {
-                    // if time out, simulation returns None
-                    if let Some(simulation_score) = self.simulation(child_node.clone(), start, time_out)
-                    {
-                        self.propagation(child_node, simulation_score)
+    fn one_cycle(&mut self, start: &Instant, time_out: Duration) -> bool {
+        let mut start_node = self.tree_root.clone();
+        loop {
+            match self.selection(start, time_out, start_node) {
+                Some(selection_node) => {
+                    // if expansion only creates links to cached tree nodes, it returns None
+                    match self.expansion(selection_node) {
+                        Ok(child_node) => {
+                            // if time out, simulation returns None
+                            if let Some(simulation_score) =
+                                self.simulation(child_node.clone(), start, time_out)
+                            {
+                                self.propagation(child_node, simulation_score)
+                            }
+                        }
+                        Err(parent_with_cached_child) => {
+                            // Err contains a parent node, which was newly linked to at least one cached node
+                            // restart selection from this node with newly linked cached node(s)
+                            start_node = parent_with_cached_child;
+                            continue;
+                        }
                     }
                 }
+                None => return true, // no more nodes to simulate in tree or time over
             }
-            None => return true, // no more nodes to simulate in tree or time over
+            break;
         }
         false
     }
@@ -177,10 +201,10 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         &self,
         start: &Instant,
         time_out: Duration,
+        mut selection_node: Rc<TreeNode<MonteCarloNode<G, A, U>>>,
     ) -> Option<Rc<TreeNode<MonteCarloNode<G, A, U>>>> {
         let mut rng = thread_rng();
         // search for node to select
-        let mut selection_node = self.tree_root.clone();
         while !selection_node.is_leave() {
             if start.elapsed() >= time_out {
                 // return None, if selection cannot finish in time
@@ -202,11 +226,9 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                 return Some(child_without_samples);
             }
             selection_node.iter_children().for_each(|c| {
-                // All parents number of samples must be used for exploration score
-                let parent_samples: f32 = c.iter_parents().map(|p| p.get_value().samples).sum();
-                assert!(!parent_samples.is_nan());
+                // calc exploitation score depending on parent
                 c.get_mut_value()
-                    .calc_node_score(parent_samples, self.weighting_factor)
+                    .calc_node_score(selection_node.get_value().samples, self.weighting_factor)
             });
             let selected_child = selection_node.iter_children().max_by(|a, b| {
                 a.get_value()
@@ -259,17 +281,17 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         Some(selection_node)
     }
 
+    #[allow(clippy::type_complexity)]
     fn expansion(
-        &self,
+        &mut self,
         expansion_node: Rc<TreeNode<MonteCarloNode<G, A, U>>>,
-    ) -> Option<Rc<TreeNode<MonteCarloNode<G, A, U>>>> {
+    ) -> Result<Rc<TreeNode<MonteCarloNode<G, A, U>>>, Rc<TreeNode<MonteCarloNode<G, A, U>>>> {
         if expansion_node.get_value().game_end_node
-            || (!expansion_node.is_root()
-                && expansion_node.get_value().samples.is_nan())
+            || (!expansion_node.is_root() && expansion_node.get_value().samples.is_nan())
         {
-            return Some(expansion_node);
+            return Ok(expansion_node);
         }
-        let mut new_expanded_nodes: Vec<Rc<TreeNode<MonteCarloNode<G, A, U>>>> = Vec::new();
+        let mut found_cached_game_state = false;
         let next_node = expansion_node.get_value().next_node;
         match next_node {
             MonteCarloNodeType::GameDataUpdate => {
@@ -280,12 +302,13 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                     let mut new_game_data_update_node = expansion_node
                         .get_value()
                         .new_game_data_update_child(game_data_update);
-                    if new_game_data_update_node
-                        .apply_game_data_update(&expansion_node.get_value().game_data, !self.force_update)
-                    {
+                    if new_game_data_update_node.apply_game_data_update(
+                        &expansion_node.get_value().game_data,
+                        !self.force_update,
+                    ) {
                         // node is consistent
                         new_game_data_update_node.set_next_node(self.force_update);
-                        new_expanded_nodes.push(expansion_node.add_child(new_game_data_update_node, 0));
+                        expansion_node.add_child(new_game_data_update_node, 0);
                     }
                 }
             }
@@ -306,15 +329,39 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                         self.use_heuristic_score,
                     );
                     new_player_action_node.set_next_node(self.force_update);
-                    // ToDo: here we have to add cache of action node results
-                    new_expanded_nodes.push(expansion_node.add_child(new_player_action_node, 0));
+                    // try cache new child
+                    if self.use_caching {
+                        let cache_key = (
+                            new_player_action_node.game_data,
+                            new_player_action_node.player,
+                            new_player_action_node.game_turn,
+                        );
+                        if let Some(cached_child) = self.cache.get(&cache_key) {
+                            // game state is already in cache -> link node (it should still exist)
+                            if let Some(child) = cached_child.upgrade() {
+                                expansion_node.link_child_to_parent(child);
+                                found_cached_game_state = true;
+                                continue;
+                            }
+                        }
+                        let child = expansion_node.add_child(new_player_action_node, 0);
+                        // cache only certain nodes
+                        if self.game_mode == MonteCarloGameMode::ByTurns
+                            || (self.game_mode == MonteCarloGameMode::SameTurnParallel
+                                && new_player_action_node.player == MonteCarloPlayer::Me)
+                        {
+                            self.cache.insert(cache_key, Rc::downgrade(&child));
+                        }
+                    } else {
+                        expansion_node.add_child(new_player_action_node, 0);
+                    }
                 }
             }
         }
-        if new_expanded_nodes.is_empty() {
-            return None;
+        if found_cached_game_state {
+            return Err(expansion_node);
         }
-        Some(new_expanded_nodes[0].clone())
+        Ok(expansion_node.get_child(0).unwrap())
     }
 
     fn simulation(
@@ -381,18 +428,14 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         if start_node.get_value().samples.is_nan() {
             start_node.get_mut_value().samples = 0.0;
         }
-        // score simulation result and calc new exploitation score for start_node
-        start_node.get_mut_value().score_simulation_result(
-            simulation_score,
-            1.0,
-            self.use_heuristic_score,
-        );
         // backtrack simulation_score and heuristic if score event
-        for nodes in start_node.iter_back_track().skip(1) {
+        for nodes in start_node.iter_back_track() {
             for node in nodes.iter() {
-                // do score_simulation_result()
                 // ToDo: how to weight GameDataUpdate Nodes properly?
-                if node.get_value().next_node == MonteCarloNodeType::GameDataUpdate {
+                // ToDo: ChatGPT suggest to give a penalty on exploration score, not the exploitation score
+                if node.get_value().next_node == MonteCarloNodeType::GameDataUpdate
+                    && node.len_children() > 0
+                {
                     let num_children = node.len_children() as f32;
                     simulation_score /= num_children;
                 }
@@ -521,7 +564,8 @@ mod tests {
     const FORCE_UPDATE: bool = true;
     const TIME_OUT_FIRST_TURN: Duration = Duration::from_millis(200);
     const TIME_OUT_SUCCESSIVE_TURNS: Duration = Duration::from_millis(50);
-    const WEIGHTING_FACTOR: f32 = 2.0;
+    const WEIGHTING_FACTOR: f32 = 1.4;
+    const USE_CACHING: bool = true;
     const DEBUG: bool = true;
 
     #[test]
@@ -554,6 +598,7 @@ mod tests {
                 TIME_OUT_SUCCESSIVE_TURNS,
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
+                USE_CACHING,
                 DEBUG,
             );
             while !ttt_match.check_game_ending(0) {
@@ -614,6 +659,7 @@ mod tests {
                 TIME_OUT_SUCCESSIVE_TURNS,
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
+                USE_CACHING,
                 DEBUG,
             );
             while !ttt_match.check_game_ending(0) {

@@ -7,11 +7,12 @@ use crate::my_map_two_dim::*;
 use crate::my_monte_carlo_tree_search::*;
 use rand::prelude::*;
 use rand::seq::IteratorRandom;
+use std::hash::{Hash, Hasher};
 pub const X: usize = 3;
 pub const Y: usize = X;
 pub const N: usize = X * Y;
 
-#[derive(Copy, Clone, PartialEq, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub enum TicTacToeStatus {
     #[default]
     Vacant,
@@ -23,12 +24,10 @@ impl std::fmt::Display for TicTacToeStatus {
         match self {
             TicTacToeStatus::Vacant => write!(f, " "),
             TicTacToeStatus::Tie => write!(f, "T"),
-            TicTacToeStatus::Player(p) => {
-                match p {
-                    MonteCarloPlayer::Me => write!(f, "X"),
-                    MonteCarloPlayer::Opp => write!(f, "O"),
-                }
-            }
+            TicTacToeStatus::Player(p) => match p {
+                MonteCarloPlayer::Me => write!(f, "X"),
+                MonteCarloPlayer::Opp => write!(f, "O"),
+            },
         }
     }
 }
@@ -45,7 +44,7 @@ impl TicTacToeStatus {
     }
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Eq, Default)]
 pub struct TicTacToeGameData {
     map: MyMap2D<TicTacToeStatus, X, Y>,
     status: TicTacToeStatus,
@@ -57,15 +56,39 @@ impl PartialEq for TicTacToeGameData {
     }
 }
 
+impl Hash for TicTacToeGameData {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.map.hash(state);
+    }
+}
+
 impl std::fmt::Display for TicTacToeGameData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "┌─┬─┬─┐\n")?;
-        write!(f, "│{}│{}│{}│\n", self.map.get_row(0)[0], self.map.get_row(0)[1], self.map.get_row(0)[2])?;
-        write!(f, "├─┼─┼─┤\n")?;
-        write!(f, "│{}│{}│{}│\n", self.map.get_row(1)[0], self.map.get_row(1)[1], self.map.get_row(1)[2])?;
-        write!(f, "├─┼─┼─┤\n")?;
-        write!(f, "│{}│{}│{}│\n", self.map.get_row(2)[0], self.map.get_row(2)[1], self.map.get_row(2)[2])?;
-        write!(f, "└─┴─┴─┘\n")
+        writeln!(f, "┌─┬─┬─┐")?;
+        writeln!(
+            f,
+            "│{}│{}│{}│",
+            self.map.get_row(0)[0],
+            self.map.get_row(0)[1],
+            self.map.get_row(0)[2]
+        )?;
+        writeln!(f, "├─┼─┼─┤")?;
+        writeln!(
+            f,
+            "│{}│{}│{}│",
+            self.map.get_row(1)[0],
+            self.map.get_row(1)[1],
+            self.map.get_row(1)[2]
+        )?;
+        writeln!(f, "├─┼─┼─┤")?;
+        writeln!(
+            f,
+            "│{}│{}│{}│",
+            self.map.get_row(2)[0],
+            self.map.get_row(2)[1],
+            self.map.get_row(2)[2]
+        )?;
+        writeln!(f, "└─┴─┴─┘")
     }
 }
 

@@ -197,6 +197,7 @@ mod tests {
     const TIME_OUT_FIRST_TURN: Duration = Duration::from_millis(200);
     const TIME_OUT_SUCCESSIVE_TURNS: Duration = Duration::from_millis(50);
     const WEIGHTING_FACTOR: f32 = 1.40;
+    const USE_CACHING: bool = true;
     const DEBUG: bool = true;
 
     #[test]
@@ -242,6 +243,7 @@ mod tests {
                 TIME_OUT_SUCCESSIVE_TURNS,
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
+                USE_CACHING,
                 DEBUG,
             );
             while !ttt_match.check_game_ending(0) {
@@ -313,6 +315,7 @@ mod tests {
                 TIME_OUT_SUCCESSIVE_TURNS,
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
+                USE_CACHING,
                 DEBUG,
             );
             while !ttt_match.check_game_ending(0) {
@@ -374,6 +377,7 @@ mod tests {
                 TIME_OUT_SUCCESSIVE_TURNS,
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
+                USE_CACHING,
                 DEBUG,
             );
             let mut mcts_second: MonteCarloTreeSearch<
@@ -388,6 +392,7 @@ mod tests {
                 TIME_OUT_SUCCESSIVE_TURNS,
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
+                USE_CACHING,
                 DEBUG,
             );
             let mut first = true;

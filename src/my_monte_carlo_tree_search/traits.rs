@@ -3,6 +3,7 @@
 
 use super::MonteCarloPlayer;
 use std::any::Any;
+use std::hash::Hash;
 
 // Trait for actions players can take to interact with game data.
 pub trait MonteCarloPlayerAction: Copy + Clone + PartialEq + Default + 'static {
@@ -30,7 +31,7 @@ pub trait MonteCarloGameDataUpdate: Copy + Clone + PartialEq + Default + 'static
 }
 
 // trait for game data, which works with Monte Carlo Tree Search
-pub trait MonteCarloGameData: Copy + Clone + PartialEq + Default + 'static {
+pub trait MonteCarloGameData: Copy + Clone + PartialEq + Eq + Hash + Default + 'static {
     fn as_any(&self) -> &dyn Any {
         self
     }

@@ -187,8 +187,13 @@ impl<N: PartialEq> TreeNode<N> {
             return None;
         }
         // link only, if no link exists
-        if !child.iter_parents().any(|p| p.get_id() == self.id) {
+        if !child.iter_parents().any(|p| p.id == self.id)
+            && !self.iter_children().any(|c| c.id == child.id)
+        {
+            // add parent to child
             child.parents.borrow_mut().push(self.node.borrow().clone());
+            // add child to parent
+            self.children.borrow_mut().push(child.clone());
         }
         Some(child)
     }

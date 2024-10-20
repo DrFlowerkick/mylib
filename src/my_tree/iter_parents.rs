@@ -31,11 +31,12 @@ impl<N: PartialEq> Iterator for IterParents<N> {
         }
         // loop over parents. Since parents are weak, some parents may have gone out of scope
         while self.parent_index < self.len_parents {
-            if let Some(parent) = self.node.get_parent(self.parent_index) {
-                self.parent_index += 1;
-                return Some(parent);
-            }
+            let parent = self.node.get_parent(self.parent_index);
             self.parent_index += 1;
+            if parent.is_none() {
+                continue;
+            }
+            return parent;
         }
         self.finished = true;
         None
