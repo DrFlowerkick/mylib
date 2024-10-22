@@ -7,10 +7,8 @@ use crate::my_map_two_dim::*;
 use crate::my_monte_carlo_tree_search::*;
 use rand::prelude::*;
 use rand::seq::IteratorRandom;
-use std::hash::{Hash, Hasher};
 pub const X: usize = 3;
 pub const Y: usize = X;
-pub const N: usize = X * Y;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub enum TicTacToeStatus {
@@ -44,22 +42,10 @@ impl TicTacToeStatus {
     }
 }
 
-#[derive(Copy, Clone, Eq, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Default)]
 pub struct TicTacToeGameData {
     map: MyMap2D<TicTacToeStatus, X, Y>,
     status: TicTacToeStatus,
-}
-
-impl PartialEq for TicTacToeGameData {
-    fn eq(&self, other: &Self) -> bool {
-        self.map == other.map
-    }
-}
-
-impl Hash for TicTacToeGameData {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.map.hash(state);
-    }
 }
 
 impl std::fmt::Display for TicTacToeGameData {
@@ -216,12 +202,17 @@ impl TicTacToeGameData {
     }
     pub fn set_vacant(&mut self, cell: MapPoint<X, Y>) -> TicTacToeStatus {
         self.map.set(cell, TicTacToeStatus::Vacant);
-        self.status = TicTacToeStatus::Vacant;
-        self.status
+        self.check_status(cell)
     }
     pub fn set_tie(&mut self, cell: MapPoint<X, Y>) -> TicTacToeStatus {
         self.map.set(cell, TicTacToeStatus::Tie);
         self.check_status(cell)
+    }
+    pub fn set_all_to_status(&mut self) -> TicTacToeStatus {
+        for (_, cell) in self.map.iter_mut() {
+            *cell = self.status;
+        }
+        self.status
     }
     pub fn get_cell_value(&self, cell: MapPoint<X, Y>) -> TicTacToeStatus {
         *self.map.get(cell)

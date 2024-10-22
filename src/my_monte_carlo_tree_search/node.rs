@@ -63,7 +63,6 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
     pub fn new_player_action_child(&self, player_action: A) -> Self {
         let mut new_child = Self::new();
         new_child.player_action = player_action;
-        new_child.parent_samples = self.samples;
         new_child.game_turn = self.game_turn;
         new_child.player = self.player;
         new_child
@@ -71,7 +70,6 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
     pub fn new_game_data_update_child(&self, game_data_update: U) -> Self {
         let mut new_child = Self::new();
         new_child.game_data_update = game_data_update;
-        new_child.parent_samples = self.samples;
         new_child.game_turn = self.game_turn;
         new_child.player = self.player;
         new_child.node_type = MonteCarloNodeType::GameDataUpdate;

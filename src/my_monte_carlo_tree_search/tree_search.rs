@@ -225,11 +225,13 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             {
                 return Some(child_without_samples);
             }
+
+            // calc exploitation score depending on parent
             selection_node.iter_children().for_each(|c| {
-                // calc exploitation score depending on parent
                 c.get_mut_value()
                     .calc_node_score(selection_node.get_value().samples, self.weighting_factor)
             });
+            // select child with maximum total score
             let selected_child = selection_node.iter_children().max_by(|a, b| {
                 a.get_value()
                     .total_score
@@ -286,8 +288,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         &mut self,
         expansion_node: Rc<TreeNode<MonteCarloNode<G, A, U>>>,
     ) -> Result<Rc<TreeNode<MonteCarloNode<G, A, U>>>, Rc<TreeNode<MonteCarloNode<G, A, U>>>> {
-        if expansion_node.get_value().game_end_node
-            || (!expansion_node.is_root() && expansion_node.get_value().samples.is_nan())
+        if expansion_node.get_value().game_end_node || expansion_node.get_value().samples.is_nan()
         {
             return Ok(expansion_node);
         }
