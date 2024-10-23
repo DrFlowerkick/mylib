@@ -32,6 +32,7 @@ pub struct MonteCarloTreeSearch<
     use_caching: bool,
     #[allow(clippy::type_complexity)]
     cache: HashMap<(G, MonteCarloPlayer, usize), Weak<TreeNode<MonteCarloNode<G, A, U>>>>,
+    cache_events: usize, // counts the number of events, when a cached node is linked to another parent
     debug: bool,
 }
 
@@ -64,6 +65,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             use_heuristic_score,
             use_caching,
             cache: HashMap::new(),
+            cache_events: 0,
             debug,
         }
     }
@@ -109,6 +111,14 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                 }) {
                 Some((new_root, _)) => {
                     self.tree_root = new_root;
+                    if self.tree_root.get_value().samples.is_nan() {
+                        // If new tree_root has NaN samples, this means that no simulation has been running from this node.
+                        // Hence it is a leaf node with no children. If NaN would be kept as a value,
+                        // first cycle of expand_tree() would run a simulation starting from new tree_root,
+                        // which would add no new information about which action should be chosen.
+                        // Therefore in this samples is set to 0.0.
+                        self.tree_root.get_mut_value().samples = 0.0;
+                    }
                 }
                 None => {
                     // create new tree_root, since no node with game_data has been found
@@ -133,9 +143,12 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             self.time_out_successive_turns
         };
         // clear cache from old nodes
-        if self.use_caching {
+        let current_cache_events = if self.use_caching {
             self.cache.retain(|_, v| v.weak_count() > 0);
-        }
+            self.cache_events
+        } else {
+            0
+        };
         // loop until time out or no more nodes to cycle
         let mut counter = 0;
         while start.elapsed() < time_out && !self.one_cycle(&start, time_out) {
@@ -143,12 +156,17 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         }
         if self.debug {
             eprintln!("number of expand cycles: {}", counter);
+            if self.use_caching {
+                eprintln!(
+                    "number of cache events (current expansion / total): {}/{}",
+                    self.cache_events - current_cache_events,
+                    self.cache_events
+                );
+            }
         }
     }
 
-    pub fn choose_and_execute_actions(
-        &mut self,
-    ) -> (impl MonteCarloGameData, impl MonteCarloPlayerAction) {
+    pub fn choose_and_execute_actions(&mut self) -> (G, A) {
         // my best action is at max exploitation_score
         let child = self
             .tree_root
@@ -288,8 +306,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         &mut self,
         expansion_node: Rc<TreeNode<MonteCarloNode<G, A, U>>>,
     ) -> Result<Rc<TreeNode<MonteCarloNode<G, A, U>>>, Rc<TreeNode<MonteCarloNode<G, A, U>>>> {
-        if expansion_node.get_value().game_end_node || expansion_node.get_value().samples.is_nan()
-        {
+        if expansion_node.get_value().game_end_node || expansion_node.get_value().samples.is_nan() {
             return Ok(expansion_node);
         }
         let mut found_cached_game_state = false;
@@ -342,6 +359,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                             if let Some(child) = cached_child.upgrade() {
                                 expansion_node.link_child_to_parent(child);
                                 found_cached_game_state = true;
+                                self.cache_events += 1;
                                 continue;
                             }
                         }
@@ -552,6 +570,26 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         }
         false
     }
+
+    /// Debug Tools
+    // collect some data of root children
+    // use this BEFORE you call choose_and_execute_actions()
+    pub fn node_data_of_root_children(&self) -> (usize, Vec<(A, usize, f32, f32)>) {
+        let children_data: Vec<(A, usize, f32, f32)> = self
+            .tree_root
+            .iter_children()
+            .map(|c| {
+                (
+                    c.get_value().player_action,
+                    c.iter_pre_order_traversal().count(),
+                    c.get_value().wins,
+                    c.get_value().samples,
+                )
+            })
+            .collect();
+        let total_nodes = children_data.iter().map(|(_, n, ..)| n).sum();
+        (total_nodes, children_data)
+    }
 }
 
 #[cfg(test)]
@@ -605,8 +643,7 @@ mod tests {
             while !ttt_match.check_game_ending(0) {
                 let start = mcts_player.init_root(&ttt_match, MonteCarloPlayer::Opp);
                 mcts_player.expand_tree(start);
-                let (current_game_data, _) = mcts_player.choose_and_execute_actions();
-                ttt_match = *TicTacToeGameData::downcast_self(&current_game_data);
+                ttt_match = mcts_player.choose_and_execute_actions().0;
                 if !ttt_match.check_game_ending(0) {
                     // let opp act by choosing a random actions
                     match ttt_match.choose_random_next_action() {
@@ -666,8 +703,7 @@ mod tests {
             while !ttt_match.check_game_ending(0) {
                 let start = mcts_player.init_root(&ttt_match, MonteCarloPlayer::Me);
                 mcts_player.expand_tree(start);
-                let (current_game_data, _) = mcts_player.choose_and_execute_actions();
-                ttt_match = *TicTacToeGameData::downcast_self(&current_game_data);
+                ttt_match = mcts_player.choose_and_execute_actions().0;
                 if !ttt_match.check_game_ending(0) {
                     // let opp act by choosing a random actions
                     match ttt_match.choose_random_next_action() {

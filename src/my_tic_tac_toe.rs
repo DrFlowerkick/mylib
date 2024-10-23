@@ -74,7 +74,7 @@ impl std::fmt::Display for TicTacToeGameData {
             self.map.get_row(2)[1],
             self.map.get_row(2)[2]
         )?;
-        writeln!(f, "└─┴─┴─┘")
+        write!(f, "└─┴─┴─┘")
     }
 }
 

@@ -251,9 +251,8 @@ mod tests {
                 mcts_player.expand_tree(start);
                 eprint!("me  ");
                 let (current_game_data, my_action) = mcts_player.choose_and_execute_actions();
-                let my_action = TicTacToePlayerAction::downcast_self(&my_action);
                 my_action.execute_action();
-                ttt_match = *TicTacToeGameData::downcast_self(&current_game_data);
+                ttt_match = current_game_data;
                 if !ttt_match.check_game_ending(0) {
                     // let opp act by choosing a random action
                     match ttt_match.choose_random_next_action() {
@@ -323,9 +322,8 @@ mod tests {
                 mcts_player.expand_tree(start);
                 eprint!("me  ");
                 let (current_game_data, my_action) = mcts_player.choose_and_execute_actions();
-                let my_action = TicTacToePlayerAction::downcast_self(&my_action);
                 my_action.execute_action();
-                ttt_match = *TicTacToeGameData::downcast_self(&current_game_data);
+                ttt_match = current_game_data;
                 if !ttt_match.check_game_ending(0) {
                     // let opp act by choosing a random action
                     match ttt_match.choose_random_next_action() {
@@ -402,8 +400,7 @@ mod tests {
                     mcts_first.expand_tree(start);
                     eprint!("first  ");
                     let (current_game_data, first_action) = mcts_first.choose_and_execute_actions();
-                    ttt_match_first = *TicTacToeGameData::downcast_self(&current_game_data);
-                    let first_action = *TicTacToePlayerAction::downcast_self(&first_action);
+                    ttt_match_first = current_game_data;
                     first_action.execute_action();
                     ttt_match_second.set_opp(first_action.cell);
                     first = false;
@@ -413,8 +410,7 @@ mod tests {
                     eprint!("second ");
                     let (current_game_data, second_action) =
                         mcts_second.choose_and_execute_actions();
-                    ttt_match_second = *TicTacToeGameData::downcast_self(&current_game_data);
-                    let second_action = *TicTacToePlayerAction::downcast_self(&second_action);
+                    ttt_match_second = current_game_data;
                     second_action.execute_action();
                     ttt_match_first.set_opp(second_action.cell);
                     first = true;
