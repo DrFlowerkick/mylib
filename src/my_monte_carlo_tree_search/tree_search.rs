@@ -2,6 +2,7 @@
 
 use rand::prelude::*;
 use rand::seq::IteratorRandom;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 use std::time::Duration;
@@ -31,7 +32,7 @@ pub struct MonteCarloTreeSearch<
     use_heuristic_score: bool,
     use_caching: bool,
     #[allow(clippy::type_complexity)]
-    cache: HashMap<(G, MonteCarloPlayer, usize), Weak<TreeNode<MonteCarloNode<G, A, U>>>>,
+    node_cache: HashMap<(G, MonteCarloPlayer, usize), Weak<TreeNode<MonteCarloNode<G, A, U>>>>,
     cache_events: usize, // counts the number of events, when a cached node is linked to another parent
     debug: bool,
 }
@@ -64,7 +65,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
             weighting_factor, // try starting with 1.0 and find a way to tune to a better value
             use_heuristic_score,
             use_caching,
-            cache: HashMap::new(),
+            node_cache: HashMap::new(),
             cache_events: 0,
             debug,
         }
@@ -144,7 +145,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         };
         // clear cache from old nodes
         let current_cache_events = if self.use_caching {
-            self.cache.retain(|_, v| v.weak_count() > 0);
+            self.node_cache.retain(|_, v| v.weak_count() > 0);
             self.cache_events
         } else {
             0
@@ -168,14 +169,25 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
 
     pub fn choose_and_execute_actions(&mut self) -> (G, A) {
         // my best action is at max exploitation_score
+        // if equal, max by number of samples
         let child = self
             .tree_root
             .iter_children()
             .max_by(|x, y| {
-                x.get_value()
+                match x
+                    .get_value()
                     .exploitation_score
                     .partial_cmp(&y.get_value().exploitation_score)
                     .unwrap()
+                {
+                    Ordering::Greater => Ordering::Greater,
+                    Ordering::Less => Ordering::Less,
+                    Ordering::Equal => x
+                        .get_value()
+                        .samples
+                        .partial_cmp(&y.get_value().samples)
+                        .unwrap(),
+                }
             })
             .unwrap();
         self.played_turns = child.get_value().game_turn;
@@ -354,7 +366,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                             new_player_action_node.player,
                             new_player_action_node.game_turn,
                         );
-                        if let Some(cached_child) = self.cache.get(&cache_key) {
+                        if let Some(cached_child) = self.node_cache.get(&cache_key) {
                             // game state is already in cache -> link node (it should still exist)
                             if let Some(child) = cached_child.upgrade() {
                                 expansion_node.link_child_to_parent(child);
@@ -369,7 +381,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                             || (self.game_mode == MonteCarloGameMode::SameTurnParallel
                                 && new_player_action_node.player == MonteCarloPlayer::Me)
                         {
-                            self.cache.insert(cache_key, Rc::downgrade(&child));
+                            self.node_cache.insert(cache_key, Rc::downgrade(&child));
                         }
                     } else {
                         expansion_node.add_child(new_player_action_node, 0);

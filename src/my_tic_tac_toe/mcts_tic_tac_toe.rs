@@ -112,20 +112,12 @@ impl MonteCarloGameData for TicTacToeGameData {
     }
     fn apply_my_action(&mut self, player_action: &impl MonteCarloPlayerAction) -> bool {
         let player_action = TicTacToePlayerAction::downcast_self(player_action);
-        self.map.set(
-            player_action.cell,
-            TicTacToeStatus::Player(MonteCarloPlayer::Me),
-        );
-        self.check_status(player_action.cell).is_not_vacant();
+        self.set_player(player_action.cell, MonteCarloPlayer::Me);
         true
     }
     fn apply_opp_action(&mut self, player_action: &impl MonteCarloPlayerAction) -> bool {
         let player_action = TicTacToePlayerAction::downcast_self(player_action);
-        self.map.set(
-            player_action.cell,
-            TicTacToeStatus::Player(MonteCarloPlayer::Opp),
-        );
-        self.check_status(player_action.cell).is_not_vacant();
+        self.set_player(player_action.cell, MonteCarloPlayer::Opp);
         true
     }
     fn simultaneous_player_actions_for_simultaneous_game_data_change(

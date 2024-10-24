@@ -46,6 +46,10 @@ impl TicTacToeStatus {
 pub struct TicTacToeGameData {
     map: MyMap2D<TicTacToeStatus, X, Y>,
     status: TicTacToeStatus,
+    num_me_cells: u8,
+    num_opp_cells: u8,
+    // required for Ultimate TicTacToe
+    num_tie_cells: u8,
 }
 
 impl std::fmt::Display for TicTacToeGameData {
@@ -83,6 +87,9 @@ impl TicTacToeGameData {
         TicTacToeGameData {
             map: MyMap2D::init(TicTacToeStatus::Vacant),
             status: TicTacToeStatus::Vacant,
+            num_me_cells: 0,
+            num_opp_cells: 0,
+            num_tie_cells: 0,
         }
     }
     fn check_status_for_one_line<'a>(
@@ -102,41 +109,43 @@ impl TicTacToeGameData {
         }
         winner
     }
-    fn check_status(&mut self, cell: MapPoint<X, Y>) -> TicTacToeStatus {
-        // check row with cell.y()
-        if let TicTacToeStatus::Player(player) =
-            self.check_status_for_one_line(self.map.iter_row(cell.y()).map(|(_, v)| v))
-        {
-            self.status = TicTacToeStatus::Player(player);
-            return self.status;
-        }
-        // check col with cell.x()
-        if let TicTacToeStatus::Player(player) =
-            self.check_status_for_one_line(self.map.iter_column(cell.x()).map(|(_, v)| v))
-        {
-            self.status = TicTacToeStatus::Player(player);
-            return self.status;
-        }
-        // check neg diag, if cell.x() == cell.y()
-        if cell.x() == cell.y() {
+    fn check_status(&mut self, cell: MapPoint<X, Y>, check_lines: bool) -> TicTacToeStatus {
+        if check_lines {
+            // check row with cell.y()
             if let TicTacToeStatus::Player(player) =
-                self.check_status_for_one_line(self.map.iter_diagonal_top_left().map(|(_, v)| v))
+                self.check_status_for_one_line(self.map.iter_row(cell.y()).map(|(_, v)| v))
             {
                 self.status = TicTacToeStatus::Player(player);
                 return self.status;
             }
-        }
-        // check pos diag, if cell.x() + cell.y() == 2
-        if cell.x() + cell.y() == 2 {
+            // check col with cell.x()
             if let TicTacToeStatus::Player(player) =
-                self.check_status_for_one_line(self.map.iter_diagonal_top_right().map(|(_, v)| v))
+                self.check_status_for_one_line(self.map.iter_column(cell.x()).map(|(_, v)| v))
             {
                 self.status = TicTacToeStatus::Player(player);
                 return self.status;
+            }
+            // check neg diag, if cell.x() == cell.y()
+            if cell.x() == cell.y() {
+                if let TicTacToeStatus::Player(player) = self
+                    .check_status_for_one_line(self.map.iter_diagonal_top_left().map(|(_, v)| v))
+                {
+                    self.status = TicTacToeStatus::Player(player);
+                    return self.status;
+                }
+            }
+            // check pos diag, if cell.x() + cell.y() == 2
+            if cell.x() + cell.y() == 2 {
+                if let TicTacToeStatus::Player(player) = self
+                    .check_status_for_one_line(self.map.iter_diagonal_top_right().map(|(_, v)| v))
+                {
+                    self.status = TicTacToeStatus::Player(player);
+                    return self.status;
+                }
             }
         }
         // set to Tie, if no Vacant left
-        if !self.map.iter().any(|(_, v)| v.is_vacant()) {
+        if self.num_me_cells + self.num_opp_cells + self.num_tie_cells == 9 {
             self.status = TicTacToeStatus::Tie;
         }
         self.status
@@ -197,16 +206,36 @@ impl TicTacToeGameData {
         cell: MapPoint<X, Y>,
         player: MonteCarloPlayer,
     ) -> TicTacToeStatus {
-        self.map.set(cell, TicTacToeStatus::Player(player));
-        self.check_status(cell)
+        let check_lines = match player {
+            MonteCarloPlayer::Me => {
+                self.num_me_cells += 1;
+                self.num_me_cells > 2
+            }
+            MonteCarloPlayer::Opp => {
+                self.num_opp_cells += 1;
+                self.num_opp_cells > 2
+            }
+        };
+        if self
+            .map
+            .swap_value(cell, TicTacToeStatus::Player(player))
+            .is_not_vacant()
+        {
+            panic!("Set player on not vacant cell.");
+        }
+        self.check_status(cell, check_lines)
     }
-    pub fn set_vacant(&mut self, cell: MapPoint<X, Y>) -> TicTacToeStatus {
-        self.map.set(cell, TicTacToeStatus::Vacant);
-        self.check_status(cell)
-    }
+    // required for Ultimate TicTacToe
     pub fn set_tie(&mut self, cell: MapPoint<X, Y>) -> TicTacToeStatus {
-        self.map.set(cell, TicTacToeStatus::Tie);
-        self.check_status(cell)
+        self.num_tie_cells += 1;
+        if self
+            .map
+            .swap_value(cell, TicTacToeStatus::Tie)
+            .is_not_vacant()
+        {
+            panic!("Set tie on not vacant cell.");
+        }
+        self.check_status(cell, false)
     }
     pub fn set_all_to_status(&mut self) -> TicTacToeStatus {
         for (_, cell) in self.map.iter_mut() {

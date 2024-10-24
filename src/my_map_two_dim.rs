@@ -97,6 +97,11 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         self.items[coordinates.y()][coordinates.x()] = value;
         &self.items[coordinates.y()][coordinates.x()]
     }
+    pub fn swap_value(&mut self, coordinates: MapPoint<X, Y>, value: T) -> T {
+        let old_value = self.items[coordinates.y()][coordinates.x()];
+        self.items[coordinates.y()][coordinates.x()] = value;
+        old_value
+    }
     pub fn get_row(&self, row: usize) -> &[T] {
         if row >= Y {
             panic!("line {}, row out of range", line!());
