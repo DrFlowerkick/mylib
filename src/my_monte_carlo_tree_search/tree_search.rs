@@ -583,7 +583,7 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         false
     }
 
-    /// Debug Tools
+    // Debug Tools
     // collect some data of root children
     // use this BEFORE you call choose_and_execute_actions()
     pub fn node_data_of_root_children(&self) -> (usize, Vec<(A, usize, f32, f32)>) {

@@ -390,11 +390,6 @@ impl<const X: usize, const Y: usize> OrientationIter<X, Y> {
         let i_current = Point::from(self.current_point);
         let delta = Point::from(self.orientation);
         let offset = Point::from(self.offset);
-        #[cfg(test)]
-        eprintln!(
-            "delta: {}, offset: {}, i_current: {}",
-            delta, offset, i_current
-        );
         let a = i_current.add(offset);
         let b = a.add(delta);
         let line = Line::from((a, b));
