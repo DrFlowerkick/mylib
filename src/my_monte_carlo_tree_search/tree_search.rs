@@ -1,7 +1,6 @@
 // main functionality of mcts
 
 use rand::prelude::*;
-use rand::seq::IteratorRandom;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
