@@ -1,4 +1,5 @@
 use crate::my_geometry::my_point::Point;
+use std::fmt::Display;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 pub enum Compass {
@@ -60,6 +61,22 @@ impl From<Point> for Compass {
             (-1, 0) => Compass::W,
             (-1, -1) => Compass::NW,
             _ => panic!("bad compass point"),
+        }
+    }
+}
+
+impl Display for Compass {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Compass::Center => write!(f, "●"),
+            Compass::N => write!(f, "🡑"),
+            Compass::NE => write!(f, "🡕"),
+            Compass::E => write!(f, "🡒"),
+            Compass::SE => write!(f, "🡖"),
+            Compass::S => write!(f, "🡓"),
+            Compass::SW => write!(f, "🡗"),
+            Compass::W => write!(f, "🡐"),
+            Compass::NW => write!(f, "🡔"),
         }
     }
 }
