@@ -111,19 +111,19 @@ impl<T: Copy + Clone + Default + From<char> + Debug, const N: usize> CubeMap<T, 
                 for (cdir_corner, ndir_corner) in cdir_corners.iter().zip(ndir_corners.iter()) {
                     let corner = *corners.get(&(current_surface, *cdir_corner)).unwrap();
                     corners.insert((*ni, *ndir_corner), corner);
-                    // a_vector: get corner 2x compass clockwise and substrat corner
+                    // a_vector: get corner 2x compass clockwise and subtract corner
                     let a_vector = corners
                         .get(&(current_surface, cdir_corner.clockwise().clockwise()))
                         .unwrap()
-                        .substract(&corner);
-                    // b_vector: get corner 2x compass counterclockwise and substrat corner
+                        .subtract(&corner);
+                    // b_vector: get corner 2x compass counterclockwise and subtract corner
                     let b_vector = corners
                         .get(&(
                             current_surface,
                             cdir_corner.counterclockwise().counterclockwise(),
                         ))
                         .unwrap()
-                        .substract(&corner);
+                        .subtract(&corner);
                     // x-product: a x b + corner is second corner to add
                     let far_corner = a_vector.cross_product(&b_vector).add(&corner);
                     corners.insert((*ni, *cdir_corner), far_corner);

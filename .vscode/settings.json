@@ -1,8 +1,12 @@
 {
     "rust-analyzer.showUnlinkedFileNotification": false,
     "cSpell.words": [
+        "cdir",
+        "fract",
         "Hasher",
+        "imec",
         "mcts",
+        "ndir",
         "nesw"
     ]
 }
