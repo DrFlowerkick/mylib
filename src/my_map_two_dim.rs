@@ -102,6 +102,17 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         self.items[coordinates.y()][coordinates.x()] = value;
         old_value
     }
+    pub fn swap_cell_values(&mut self, cell_1: MapPoint<X, Y>, cell_2: MapPoint<X, Y>)  {
+        if cell_1 == cell_2 {
+            return;
+        }
+        unsafe {
+            // this is safe, since cell_1 != cell_2 and both always point to legit items of self
+            let p1: *mut T = self.get_mut(cell_1);
+            let p2: *mut T = self.get_mut(cell_2);
+            std::ptr::swap(p1, p2);
+        }
+    }
     pub fn get_row(&self, row: usize) -> &[T] {
         if row >= Y {
             panic!("line {}, row out of range", line!());
