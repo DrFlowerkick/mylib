@@ -15,6 +15,22 @@ pub struct MapPoint<const X: usize, const Y: usize> {
     y: usize,
 }
 
+impl<const X: usize, const Y: usize> PartialOrd for MapPoint<X, Y> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<const X: usize, const Y: usize> Ord for MapPoint<X, Y> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.y.cmp(&other.y) {
+            Ordering::Greater => Ordering::Greater,
+            Ordering::Less => Ordering::Less,
+            Ordering::Equal => self.x.cmp(&other.x),
+        }
+    }
+}
+
 impl<const X: usize, const Y: usize> Display for MapPoint<X, Y> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
@@ -44,6 +60,8 @@ impl<const X: usize, const Y: usize> TryFrom<Point> for MapPoint<X, Y> {
         }
     }
 }
+
+
 
 impl<const X: usize, const Y: usize> MapPoint<X, Y> {
     pub const NW: MapPoint<X, Y> = MapPoint { x: 0, y: 0 };
