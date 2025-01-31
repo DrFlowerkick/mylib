@@ -11,7 +11,7 @@ pub enum Quadrant {
     First,
     // negative x, positive y
     Second,
-    // negtive x and y
+    // negative x and y
     Third,
     // positive x, negative y
     Fourth,
@@ -262,7 +262,7 @@ impl Point3D {
         }
     }
 
-    pub fn substract(&self, other: &Self) -> Self {
+    pub fn subtract(&self, other: &Self) -> Self {
         Point3D {
             x: self.x - other.x,
             y: self.y - other.y,

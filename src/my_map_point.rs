@@ -196,15 +196,10 @@ impl<const X: usize, const Y: usize> MapPoint<X, Y> {
         if offset.0 > self.x || offset.1 > self.y {
             return None;
         }
-        let result = MapPoint {
+        Some(MapPoint {
             x: self.x - offset.0,
             y: self.y - offset.1,
-        };
-        if result.is_in_map() {
-            Some(result)
-        } else {
-            None
-        }
+        })
     }
     pub fn invert_x(&self) -> MapPoint<X, Y> {
         Self {

@@ -3,8 +3,8 @@ use crate::my_geometry::my_point::*;
 
 // An open map is not defined by cells with specific values. Instead your objects have just coordinates,
 // which you have to manage. Therefore MyOpenMap does not contain data of elements on map, but provides
-// you with general game data and some usefull tools for frequently occuring tasks in open map scenarios.
-// Expand and adapt with usefull game data and functions as needed.
+// you with general game data and some useful tools for frequently occurring tasks in open map scenarios.
+// Expand and adapt with useful game data and functions as needed.
 
 #[derive(Copy, Clone, Default)]
 pub struct Entity {
@@ -21,7 +21,7 @@ impl Entity {
 
 #[derive(Copy, Clone)]
 pub struct MyOpenMap {
-    // we keep it here simply and asume 0,0 as origin of max
+    // we keep it here simply and assume 0,0 as origin of max
     pub max_x: i64,
     pub max_y: i64,
     pub my_base_is_at_origin: bool,
@@ -62,7 +62,7 @@ impl MyOpenMap {
         //    1.) my_base is at origin
         //    2.) defense vector points from my_base to my_defense_outpost
         //    3.) attack vector points from enemy_base to my_attack_outpost
-        // this function handels my_base at max_x and max_y
+        // this function handles my_base at max_x and max_y
         // therefore user of code does not have to think about inverting vectors, etc.
         if self.my_base_is_at_origin {
             self.my_defense_outpost = self.my_base.add(vector_defense_outpost);
@@ -73,7 +73,7 @@ impl MyOpenMap {
         }
     }
     pub fn best_defense_position(&self, mut monsters: MyArray<Entity, 100>) -> Point {
-        // monsters try attack the base. find best defense postion to attack as many monsters at the same time
+        // monsters try attack the base. find best defense position to attack as many monsters at the same time
         // and try to prevent monsters to enter your base (meaning attack the monsters nearest to base).
 
         // sort monsters by distance to base
@@ -171,7 +171,7 @@ impl MyOpenMap {
     ) -> Point {
         // let's try to build a non-self-intersecting closed and sorted by angle polygon from a list of unsorted entities,
         // which centroid is probably the best defense position. See https://de.wikipedia.org/wiki/Geometrischer_Schwerpunkt#Polygon
-        // Handels the following special cases: multiple entities on same point, entities on outline without a corner,
+        // Handles the following special cases: multiple entities on same point, entities on outline without a corner,
         // entities inside polygon, no polygon but multiple entities on same angle, just one or two entities
         // start_point must be on outline
         // reference point defines starting angle; must be outside of polygon
@@ -223,7 +223,7 @@ impl MyOpenMap {
             polygon_area += last_point.x * point.y - point.x * last_point.y;
             last_point = *point;
         }
-        // devide by 2 and multiply by 6 equals multiply by 3
+        // divide by 2 and multiply by 6 equals multiply by 3
         polygon_area *= 3;
 
         if polygon_area == 0 {
@@ -276,7 +276,7 @@ mod tests {
         monsters.push(monster_3);
         let defense_point = game_data.best_defense_position(monsters);
         assert_eq!(defense_point, Point::new(15, 15));
-        // raute plus unneccescary extra points at the same position,  on curve, and inside raute
+        // rhombus plus unnecessary extra points at the same position,  on curve, and inside rhombus
         monsters.flush();
         let monster_0 = Entity::_new(10, 10);
         let monster_1 = Entity::_new(20, 30);

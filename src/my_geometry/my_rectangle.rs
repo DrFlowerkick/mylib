@@ -170,14 +170,14 @@ impl Rectangle {
 
     pub fn rectangle_intersection(&self, other: &Self) -> Vec<Point> {
         let mut ri: Vec<Point> = Vec::new();
-        for sside in self.sides().iter() {
-            for oside in other.sides().iter() {
-                if let Some(ip) = sside.segment_intersection(oside) {
+        for self_side in self.sides().iter() {
+            for other_side in other.sides().iter() {
+                if let Some(ip) = self_side.segment_intersection(other_side) {
                     if !ri.contains(&ip) {
                         ri.push(ip);
                     }
                 }
-                for op in sside.segment_overlapping(oside).iter() {
+                for op in self_side.segment_overlapping(other_side).iter() {
                     if !ri.contains(op) {
                         ri.push(*op);
                     }
