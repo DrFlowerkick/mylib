@@ -97,6 +97,22 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         self.items[coordinates.y()][coordinates.x()] = value;
         &self.items[coordinates.y()][coordinates.x()]
     }
+    pub fn swap_value(&mut self, coordinates: MapPoint<X, Y>, value: T) -> T {
+        let old_value = self.items[coordinates.y()][coordinates.x()];
+        self.items[coordinates.y()][coordinates.x()] = value;
+        old_value
+    }
+    pub fn swap_cell_values(&mut self, cell_1: MapPoint<X, Y>, cell_2: MapPoint<X, Y>) {
+        if cell_1 == cell_2 {
+            return;
+        }
+        unsafe {
+            // this is safe, since cell_1 != cell_2 and both always point to legit items of self
+            let p1: *mut T = self.get_mut(cell_1);
+            let p2: *mut T = self.get_mut(cell_2);
+            std::ptr::swap(p1, p2);
+        }
+    }
     pub fn get_row(&self, row: usize) -> &[T] {
         if row >= Y {
             panic!("line {}, row out of range", line!());
@@ -176,32 +192,18 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         })
     }
     pub fn iter_row(&self, r: usize) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
-        if r >= Y {
-            panic!("line {}, row index is out of range", line!());
-        }
-        self.items
+        // dimension check of r is done in get_row()
+        self.get_row(r)
             .iter()
             .enumerate()
-            .filter(move |(y, _)| *y == r)
-            .flat_map(|(y, row)| {
-                row.iter()
-                    .enumerate()
-                    .map(move |(x, column)| (MapPoint::new(x, y), column))
-            })
+            .map(move |(x, column)| (MapPoint::new(x, r), column))
     }
     pub fn iter_row_mut(&mut self, r: usize) -> impl Iterator<Item = (MapPoint<X, Y>, &mut T)> {
-        if r >= Y {
-            panic!("line {}, row index is out of range", line!());
-        }
-        self.items
+        // dimension check of r is done in get_row_mut()
+        self.get_row_mut(r)
             .iter_mut()
             .enumerate()
-            .filter(move |(y, _)| *y == r)
-            .flat_map(|(y, row)| {
-                row.iter_mut()
-                    .enumerate()
-                    .map(move |(x, column)| (MapPoint::new(x, y), column))
-            })
+            .map(move |(x, column)| (MapPoint::new(x, r), column))
     }
     pub fn iter_column(&self, c: usize) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         if c >= X {
@@ -283,22 +285,22 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
             .iter_orientation(orientation)
             .map(move |p| (p, self.get(p)))
     }
-    pub fn iter_diagonale_top_left(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
+    pub fn iter_diagonal_top_left(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         MapPoint::<X, Y>::new(0, 0)
             .iter_orientation(Compass::SE)
             .map(move |p| (p, self.get(p)))
     }
-    pub fn iter_diagonale_top_right(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
+    pub fn iter_diagonal_top_right(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         MapPoint::<X, Y>::new(X - 1, 0)
             .iter_orientation(Compass::SW)
             .map(move |p| (p, self.get(p)))
     }
-    pub fn iter_diagonale_bottom_left(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
+    pub fn iter_diagonal_bottom_left(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         MapPoint::<X, Y>::new(0, Y - 1)
             .iter_orientation(Compass::NE)
             .map(move |p| (p, self.get(p)))
     }
-    pub fn iter_diagonale_bottom_right(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
+    pub fn iter_diagonal_bottom_right(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         MapPoint::<X, Y>::new(X - 1, Y - 1)
             .iter_orientation(Compass::NW)
             .map(move |p| (p, self.get(p)))

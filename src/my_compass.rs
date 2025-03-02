@@ -1,4 +1,5 @@
 use crate::my_geometry::my_point::Point;
+use std::fmt::Display;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 pub enum Compass {
@@ -64,6 +65,22 @@ impl From<Point> for Compass {
     }
 }
 
+impl Display for Compass {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Compass::Center => write!(f, "●"),
+            Compass::N => write!(f, "🡑"),
+            Compass::NE => write!(f, "🡕"),
+            Compass::E => write!(f, "🡒"),
+            Compass::SE => write!(f, "🡖"),
+            Compass::S => write!(f, "🡓"),
+            Compass::SW => write!(f, "🡗"),
+            Compass::W => write!(f, "🡐"),
+            Compass::NW => write!(f, "🡔"),
+        }
+    }
+}
+
 impl Compass {
     pub const fn center_and_cardinals() -> [Compass; 5] {
         [
@@ -75,12 +92,7 @@ impl Compass {
         ]
     }
     pub const fn cardinals() -> [Compass; 4] {
-        [
-            Compass::N,
-            Compass::E,
-            Compass::S,
-            Compass::W,
-        ]
+        [Compass::N, Compass::E, Compass::S, Compass::W]
     }
     pub fn flip(&self) -> Self {
         match self {
@@ -178,15 +190,15 @@ impl Compass {
         for bm in [1_u8, 2, 4, 8, 16, 32, 64, 128] {
             if bm == bm & bit_mask {
                 let dir = match bm {
-                  1 => Compass::N,
-                  2 => Compass::E,
-                  4 => Compass::S,
-                  8 => Compass::W,
-                  16 => Compass::NW,
-                  32 => Compass::NE,
-                  64 => Compass::SE,
-                  128 => Compass::SW,
-                  _ => panic!("not possible"),  
+                    1 => Compass::N,
+                    2 => Compass::E,
+                    4 => Compass::S,
+                    8 => Compass::W,
+                    16 => Compass::NW,
+                    32 => Compass::NE,
+                    64 => Compass::SE,
+                    128 => Compass::SW,
+                    _ => panic!("not possible"),
                 };
                 directions.push(dir);
             }
@@ -217,7 +229,6 @@ impl Compass {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
 
@@ -226,12 +237,7 @@ mod tests {
     #[test]
     fn test_from() {
         let nesw = 15_u8;
-        let nesw_vec: Vec<Compass> = [
-            Compass::N,
-            Compass::E,
-            Compass::S,
-            Compass::W,
-        ].into();
+        let nesw_vec: Vec<Compass> = [Compass::N, Compass::E, Compass::S, Compass::W].into();
         assert_eq!(Compass::from_u8(nesw), nesw_vec);
     }
 }

@@ -251,9 +251,7 @@ impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> DepthFirstSearchTrave
         self.visited_nodes.push(visited_node);
         self.edge_ids.push(edge_id);
         self.current_node = visited_node;
-        self.graph
-            .get_node_by_id(visited_node)
-            .map_or_else(|_| None, Some)
+        self.graph.get_node_by_id(visited_node).ok()
     }
 }
 
@@ -270,10 +268,7 @@ impl<'a, N: PartialEq + Clone, E: PartialEq + Clone + Ord> Iterator
             if self.visited_nodes.is_empty() {
                 self.current_node = self.start_node;
                 self.visited_nodes.push(self.start_node);
-                return self
-                    .graph
-                    .get_node_by_id(self.start_node)
-                    .map_or_else(|_| None, Some);
+                return self.graph.get_node_by_id(self.start_node).ok();
             }
             // filter edges by visited nodes
             let edge_iterator = self.graph.iter_edges().filter(|(e, ..)| match e.direction {

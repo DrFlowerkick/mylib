@@ -1,8 +1,10 @@
-// moving implmentation of Monte Carlo Tree Search traits in seperate module to prevent
+// moving implementation of Monte Carlo Tree Search traits in separate module to prevent
 // copying these implementations, if other crates uses my_tic_tac_toe functions and copies
 // all dependencies in one file.
 
 use super::*;
+use rand::prelude::*;
+use rand::seq::IteratorRandom;
 
 #[derive(Copy, Clone, PartialEq, Default)]
 pub struct TicTacToePlayerAction {
@@ -54,7 +56,7 @@ impl<'a> IterTicTacToePlayerAction<'a> {
     }
 }
 
-impl<'a> Iterator for IterTicTacToePlayerAction<'a> {
+impl Iterator for IterTicTacToePlayerAction<'_> {
     type Item = TicTacToePlayerAction;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -112,20 +114,12 @@ impl MonteCarloGameData for TicTacToeGameData {
     }
     fn apply_my_action(&mut self, player_action: &impl MonteCarloPlayerAction) -> bool {
         let player_action = TicTacToePlayerAction::downcast_self(player_action);
-        self.map.set(
-            player_action.cell,
-            TicTacToeStatus::Player(MonteCarloPlayer::Me),
-        );
-        self.check_status(player_action.cell).is_not_vacant();
+        self.set_player(player_action.cell, MonteCarloPlayer::Me);
         true
     }
     fn apply_opp_action(&mut self, player_action: &impl MonteCarloPlayerAction) -> bool {
         let player_action = TicTacToePlayerAction::downcast_self(player_action);
-        self.map.set(
-            player_action.cell,
-            TicTacToeStatus::Player(MonteCarloPlayer::Opp),
-        );
-        self.check_status(player_action.cell).is_not_vacant();
+        self.set_player(player_action.cell, MonteCarloPlayer::Opp);
         true
     }
     fn simultaneous_player_actions_for_simultaneous_game_data_change(
@@ -190,6 +184,7 @@ impl MonteCarloGameData for TicTacToeGameData {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::my_monte_carlo_tree_search::{MonteCarloGameMode, MonteCarloTreeSearch};
 
     use std::time::Duration;
     const MAX_NUMBER_OF_TURNS: usize = 9;
@@ -197,8 +192,8 @@ mod tests {
     const TIME_OUT_FIRST_TURN: Duration = Duration::from_millis(200);
     const TIME_OUT_SUCCESSIVE_TURNS: Duration = Duration::from_millis(50);
     const WEIGHTING_FACTOR: f32 = 1.40;
+    const USE_CACHING: bool = true;
     const DEBUG: bool = true;
-    const KEEP_ROOT: bool = false;
 
     #[test]
     fn calc_max_number_of_possible_nodes() {
@@ -224,7 +219,7 @@ mod tests {
 
     // start a TicTacToe match with Me as StartPlayer
     #[test]
-    fn ttt_me_startplayer_test() {
+    fn ttt_me_start_player_test() {
         let use_heuristic_score = false;
         let mut last_winner: Option<MonteCarloPlayer> = None;
         let mut wins = 0;
@@ -243,17 +238,16 @@ mod tests {
                 TIME_OUT_SUCCESSIVE_TURNS,
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
+                USE_CACHING,
                 DEBUG,
-                KEEP_ROOT,
             );
             while !ttt_match.check_game_ending(0) {
                 let start = mcts_player.init_root(&ttt_match, MonteCarloPlayer::Me);
                 mcts_player.expand_tree(start);
                 eprint!("me  ");
                 let (current_game_data, my_action) = mcts_player.choose_and_execute_actions();
-                let my_action = TicTacToePlayerAction::downcast_self(&my_action);
                 my_action.execute_action();
-                ttt_match = *TicTacToeGameData::downcast_self(&current_game_data);
+                ttt_match = current_game_data;
                 if !ttt_match.check_game_ending(0) {
                     // let opp act by choosing a random action
                     match ttt_match.choose_random_next_action() {
@@ -287,7 +281,7 @@ mod tests {
 
     // start a TicTacToe match with Opp as StartPlayer
     #[test]
-    fn ttt_opp_startplayer_test() {
+    fn ttt_opp_start_player_test() {
         let use_heuristic_score = false;
         let mut last_winner: Option<MonteCarloPlayer> = None;
         let mut wins = 0;
@@ -315,17 +309,16 @@ mod tests {
                 TIME_OUT_SUCCESSIVE_TURNS,
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
+                USE_CACHING,
                 DEBUG,
-                KEEP_ROOT,
             );
             while !ttt_match.check_game_ending(0) {
                 let start = mcts_player.init_root(&ttt_match, MonteCarloPlayer::Opp);
                 mcts_player.expand_tree(start);
                 eprint!("me  ");
                 let (current_game_data, my_action) = mcts_player.choose_and_execute_actions();
-                let my_action = TicTacToePlayerAction::downcast_self(&my_action);
                 my_action.execute_action();
-                ttt_match = *TicTacToeGameData::downcast_self(&current_game_data);
+                ttt_match = current_game_data;
                 if !ttt_match.check_game_ending(0) {
                     // let opp act by choosing a random action
                     match ttt_match.choose_random_next_action() {
@@ -377,8 +370,8 @@ mod tests {
                 TIME_OUT_SUCCESSIVE_TURNS,
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
+                USE_CACHING,
                 DEBUG,
-                KEEP_ROOT,
             );
             let mut mcts_second: MonteCarloTreeSearch<
                 TicTacToeGameData,
@@ -392,8 +385,8 @@ mod tests {
                 TIME_OUT_SUCCESSIVE_TURNS,
                 WEIGHTING_FACTOR,
                 use_heuristic_score,
+                USE_CACHING,
                 DEBUG,
-                KEEP_ROOT,
             );
             let mut first = true;
             while !ttt_match_first.check_game_ending(0) {
@@ -402,8 +395,7 @@ mod tests {
                     mcts_first.expand_tree(start);
                     eprint!("first  ");
                     let (current_game_data, first_action) = mcts_first.choose_and_execute_actions();
-                    ttt_match_first = *TicTacToeGameData::downcast_self(&current_game_data);
-                    let first_action = *TicTacToePlayerAction::downcast_self(&first_action);
+                    ttt_match_first = current_game_data;
                     first_action.execute_action();
                     ttt_match_second.set_opp(first_action.cell);
                     first = false;
@@ -413,8 +405,7 @@ mod tests {
                     eprint!("second ");
                     let (current_game_data, second_action) =
                         mcts_second.choose_and_execute_actions();
-                    ttt_match_second = *TicTacToeGameData::downcast_self(&current_game_data);
-                    let second_action = *TicTacToePlayerAction::downcast_self(&second_action);
+                    ttt_match_second = current_game_data;
                     second_action.execute_action();
                     ttt_match_first.set_opp(second_action.cell);
                     first = true;
