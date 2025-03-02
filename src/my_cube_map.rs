@@ -116,7 +116,7 @@ impl<T: Copy + Clone + Default + From<char> + Debug, const N: usize> CubeMap<T, 
                         .get(&(current_surface, cdir_corner.clockwise().clockwise()))
                         .unwrap()
                         .subtract(&corner);
-                    // b_vector: get corner 2x compass counterclockwise and subtract corner
+                    // b_vector: get corner 2x compass counterclockwise and substrat corner
                     let b_vector = corners
                         .get(&(
                             current_surface,

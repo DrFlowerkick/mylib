@@ -146,7 +146,7 @@ impl Circle {
                 // formulas
                 // circle c_1: (x - x_c1)² + (y - y_c1)² = r1²
                 // circle c_2: (x - x_c2)² + (y - y_c2)² = r2²
-                // solve quadratic terms and substract
+                // solve quadratic terms and subtract
                 // x * 2 *(x_c1 - x_c2) + y * 2 * (y_c1 - y_c2) + x_c2² - x_c1² + y_c2² - y_c1² + r1² - r2² = 0
                 // line: a*x + b*y + c = 0
                 let a = 2 * (self.center.x - other.center.x);
@@ -228,8 +228,8 @@ impl Circle {
         csi
     }
 
-    pub fn circle_rectangle_intersection(&self, rectange: &Rectangle) -> Vec<Point> {
-        rectange.rectangle_circle_intersection(self)
+    pub fn circle_rectangle_intersection(&self, rectangle: &Rectangle) -> Vec<Point> {
+        rectangle.rectangle_circle_intersection(self)
     }
 
     pub fn circle_diamond_intersection(&self, diamond: &Diamond) -> Vec<Point> {
