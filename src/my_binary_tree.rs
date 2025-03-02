@@ -407,30 +407,30 @@ impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> BinaryTreeNode<N> {
                 node
             }
             Ordering::Greater => {
-                let left = if let Some(ref node) = *self.left.borrow() {
+                let left = match *self.left.borrow() { Some(ref node) => {
                     node.append_value(value);
                     node.get_self()
-                } else {
+                } _ => {
                     let left = BinaryTreeNode::new(value);
                     *left.parent.borrow_mut() = self.node.borrow().clone();
                     let node = Rc::downgrade(&left);
                     *left.node.borrow_mut() = node;
                     Some(left)
-                };
+                }};
                 *self.left.borrow_mut() = left;
                 self.get_left().unwrap()
             }
             Ordering::Less => {
-                let right = if let Some(ref node) = *self.right.borrow() {
+                let right = match *self.right.borrow() { Some(ref node) => {
                     node.append_value(value);
                     node.get_self()
-                } else {
+                } _ => {
                     let right = BinaryTreeNode::new(value);
                     *right.parent.borrow_mut() = self.node.borrow().clone();
                     let node = Rc::downgrade(&right);
                     *right.node.borrow_mut() = node;
                     Some(right)
-                };
+                }};
                 *self.right.borrow_mut() = right;
                 self.get_right().unwrap()
             }
@@ -499,21 +499,21 @@ impl<N: Ord + Eq + PartialOrd + PartialEq + Copy + Clone> BinaryTreeNode<N> {
             .max()
             .unwrap()
     }
-    pub fn iter_pre_order_traversal(&self) -> impl Iterator<Item = Rc<BinaryTreeNode<N>>> {
+    pub fn iter_pre_order_traversal(&self) -> impl Iterator<Item = Rc<BinaryTreeNode<N>>> + use<N> {
         PreOrderTraversal::new(self.get_self().unwrap())
     }
-    pub fn iter_in_order_traversal(&self) -> impl Iterator<Item = Rc<BinaryTreeNode<N>>> {
+    pub fn iter_in_order_traversal(&self) -> impl Iterator<Item = Rc<BinaryTreeNode<N>>> + use<N> {
         InOrderTraversal::new(self.get_self().unwrap())
     }
-    pub fn iter_post_order_traversal(&self) -> impl Iterator<Item = Rc<BinaryTreeNode<N>>> {
+    pub fn iter_post_order_traversal(&self) -> impl Iterator<Item = Rc<BinaryTreeNode<N>>> + use<N> {
         PostOrderTraversal::new(self.get_self().unwrap())
     }
     pub fn iter_level_order_traversal(
         &self,
-    ) -> impl Iterator<Item = (Rc<BinaryTreeNode<N>>, usize)> {
+    ) -> impl Iterator<Item = (Rc<BinaryTreeNode<N>>, usize)> + use<N> {
         LevelOrderTraversal::new(self.get_self().unwrap())
     }
-    pub fn iter_path_to_node(&self, value: N) -> impl Iterator<Item = Rc<BinaryTreeNode<N>>> {
+    pub fn iter_path_to_node(&self, value: N) -> impl Iterator<Item = Rc<BinaryTreeNode<N>>> + use<N> {
         PathToNode::new(self.get_self().unwrap(), value)
     }
 }
