@@ -7,7 +7,7 @@ use super::{
 };
 use std::cmp::Ordering;
 
-// Diamond is a "quadrattic circle, standing on on tip", which uses as radius the manhatten distance to it circumference points
+// Diamond is a "quadratic circle, standing on on tip", which uses as radius the manhattan distance to it circumference points
 //                                                  3
 //                               2                 323
 //            1                 212               32123
@@ -26,7 +26,7 @@ use std::cmp::Ordering;
 #[derive(Debug, Clone, Copy, Eq)]
 pub struct Diamond {
     center: Point,
-    // radius is manhatten distance
+    // radius is manhattan distance
     radius: i64,
 }
 
@@ -183,7 +183,7 @@ impl Diamond {
         ) || (self.radius + other.radius - self.center.delta(other.center)) % 2 != 0
         {
             // no touching or overlapping
-            // no integer solution for odd difference between delta and sum of radi
+            // no integer solution for odd difference between delta and sum of radii
             return intersection_points;
         } else {
             // check intersections for each side of each diamond
