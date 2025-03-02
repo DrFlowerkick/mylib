@@ -3,6 +3,8 @@
 // all dependencies in one file.
 
 use super::*;
+use rand::prelude::*;
+use rand::seq::IteratorRandom;
 
 #[derive(Copy, Clone, PartialEq, Default)]
 pub struct TicTacToePlayerAction {
@@ -54,7 +56,7 @@ impl<'a> IterTicTacToePlayerAction<'a> {
     }
 }
 
-impl<'a> Iterator for IterTicTacToePlayerAction<'a> {
+impl Iterator for IterTicTacToePlayerAction<'_> {
     type Item = TicTacToePlayerAction;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -182,6 +184,7 @@ impl MonteCarloGameData for TicTacToeGameData {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::my_monte_carlo_tree_search::{MonteCarloGameMode, MonteCarloTreeSearch};
 
     use std::time::Duration;
     const MAX_NUMBER_OF_TURNS: usize = 9;

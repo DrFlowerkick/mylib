@@ -4,9 +4,9 @@ pub mod mcts_tic_tac_toe;
 
 use crate::my_map_point::*;
 use crate::my_map_two_dim::*;
-use crate::my_monte_carlo_tree_search::*;
-use rand::prelude::*;
-use rand::seq::IteratorRandom;
+use crate::my_monte_carlo_tree_search::{
+    MonteCarloGameData, MonteCarloGameDataUpdate, MonteCarloPlayer, MonteCarloPlayerAction,
+};
 pub const X: usize = 3;
 pub const Y: usize = X;
 
@@ -127,8 +127,8 @@ impl TicTacToeGameData {
             }
             // check neg diag, if cell.x() == cell.y()
             if cell.x() == cell.y() {
-                if let TicTacToeStatus::Player(player) = self
-                    .check_status_for_one_line(self.map.iter_diagonal_top_left().map(|(_, v)| v))
+                if let TicTacToeStatus::Player(player) =
+                    self.check_status_for_one_line(self.iter_diagonal_top_left())
                 {
                     self.status = TicTacToeStatus::Player(player);
                     return self.status;
@@ -136,8 +136,8 @@ impl TicTacToeGameData {
             }
             // check pos diag, if cell.x() + cell.y() == 2
             if cell.x() + cell.y() == 2 {
-                if let TicTacToeStatus::Player(player) = self
-                    .check_status_for_one_line(self.map.iter_diagonal_top_right().map(|(_, v)| v))
+                if let TicTacToeStatus::Player(player) =
+                    self.check_status_for_one_line(self.iter_diagonal_top_right())
                 {
                     self.status = TicTacToeStatus::Player(player);
                     return self.status;
@@ -149,6 +149,16 @@ impl TicTacToeGameData {
             self.status = TicTacToeStatus::Tie;
         }
         self.status
+    }
+    fn iter_diagonal_top_left(&self) -> impl Iterator<Item = &'_ TicTacToeStatus> {
+        [(0_usize, 0_usize), (1, 1), (2, 2)]
+            .into_iter()
+            .map(|p| self.map.get(p.into()))
+    }
+    fn iter_diagonal_top_right(&self) -> impl Iterator<Item = &'_ TicTacToeStatus> {
+        [(2_usize, 0_usize), (1, 1), (0, 2)]
+            .into_iter()
+            .map(|p| self.map.get(p.into()))
     }
     fn calc_line_heuristic<'a>(&self, line: impl Iterator<Item = &'a TicTacToeStatus>) -> f32 {
         let mut count: u8 = 0;
@@ -191,8 +201,8 @@ impl TicTacToeGameData {
             heuristic += self.calc_line_heuristic(self.map.iter_row(rc).map(|(_, v)| v));
             heuristic += self.calc_line_heuristic(self.map.iter_column(rc).map(|(_, v)| v));
         }
-        heuristic += self.calc_line_heuristic(self.map.iter_diagonal_top_left().map(|(_, v)| v));
-        heuristic += self.calc_line_heuristic(self.map.iter_diagonal_top_right().map(|(_, v)| v));
+        heuristic += self.calc_line_heuristic(self.iter_diagonal_top_left());
+        heuristic += self.calc_line_heuristic(self.iter_diagonal_top_right());
         heuristic
     }
     pub fn set_opp(&mut self, cell: MapPoint<X, Y>) -> TicTacToeStatus {

@@ -61,8 +61,6 @@ impl<const X: usize, const Y: usize> TryFrom<Point> for MapPoint<X, Y> {
     }
 }
 
-
-
 impl<const X: usize, const Y: usize> MapPoint<X, Y> {
     pub const NW: MapPoint<X, Y> = MapPoint { x: 0, y: 0 };
     pub const NE: MapPoint<X, Y> = MapPoint { x: X - 1, y: 0 };

@@ -102,7 +102,7 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         self.items[coordinates.y()][coordinates.x()] = value;
         old_value
     }
-    pub fn swap_cell_values(&mut self, cell_1: MapPoint<X, Y>, cell_2: MapPoint<X, Y>)  {
+    pub fn swap_cell_values(&mut self, cell_1: MapPoint<X, Y>, cell_2: MapPoint<X, Y>) {
         if cell_1 == cell_2 {
             return;
         }
