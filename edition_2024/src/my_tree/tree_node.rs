@@ -9,8 +9,8 @@ use std::rc::Rc;
 use std::rc::Weak;
 
 use super::{
-    unique_id::generate_unique_id, BackTrack, IterChildren, IterParents, IterSelf,
-    LevelOrderTraversal, PostOrderTraversal, PreOrderTraversal,
+    BackTrack, IterChildren, IterParents, IterSelf, LevelOrderTraversal, PostOrderTraversal,
+    PreOrderTraversal, unique_id::generate_unique_id,
 };
 
 pub struct TreeNode<N> {
@@ -307,7 +307,9 @@ impl<N: PartialEq> TreeNode<N> {
         PostOrderTraversal::new(self.get_self().unwrap())
     }
     // second return value is level of node relative to start node, from which iter_level_order_traversal() was called
-    pub fn iter_level_order_traversal(&self) -> impl Iterator<Item = (Rc<TreeNode<N>>, usize)> + use<N> {
+    pub fn iter_level_order_traversal(
+        &self,
+    ) -> impl Iterator<Item = (Rc<TreeNode<N>>, usize)> + use<N> {
         LevelOrderTraversal::new(self.get_self().unwrap(), 0, None)
     }
     pub fn iter_level_order_traversal_with_borders(

@@ -123,7 +123,10 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
                 None => {
                     // create new tree_root, since no node with game_data has been found
                     if self.debug {
-                        eprintln!("Current game state not found in tree. Reinitialize tree after {} played turns", self.played_turns);
+                        eprintln!(
+                            "Current game state not found in tree. Reinitialize tree after {} played turns",
+                            self.played_turns
+                        );
                     }
                     self.tree_root = TreeNode::seed_root(MonteCarloNode::<G, A, U>::new(), 0);
                     self.tree_root.get_mut_value().game_data = *game_data;

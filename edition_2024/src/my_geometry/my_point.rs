@@ -161,11 +161,7 @@ impl From<Point> for Cylindrical {
             0.0
         } else {
             let alpha = ((value.x as f32) / r).acos().to_degrees();
-            if value.y < 0 {
-                360.0 - alpha
-            } else {
-                alpha
-            }
+            if value.y < 0 { 360.0 - alpha } else { alpha }
         };
         Self { r, angle }
     }
