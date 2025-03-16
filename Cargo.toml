@@ -1,5 +1,5 @@
 [workspace]
-members = ["edition_2024"]
+members = ["edition_2021", "edition_2024"]
 exclude = [""]
 resolver = "2"
 
