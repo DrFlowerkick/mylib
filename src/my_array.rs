@@ -42,7 +42,7 @@ impl<T: Copy + Clone + Default, const N: usize> MyArray<T, N> {
     }
 
     /// Pushes an item to the end of the array.
-    /// 
+    ///
     /// # Panics
     /// Panics if the array is full.
     ///
@@ -83,7 +83,7 @@ impl<T: Copy + Clone + Default, const N: usize> MyArray<T, N> {
     }
 
     /// Inserts an item at a specified index.
-    /// 
+    ///
     /// # Panics
     /// Panics if the index is out of bounds or the array is full.
     ///
@@ -218,7 +218,7 @@ impl<T: Copy + Clone + Default, const N: usize> MyArray<T, N> {
     }
 
     /// Gets a slice of the array starting at a specified index with a specified length.
-    /// 
+    ///
     /// # Panics
     /// Panics if the length is zero or the slice is out of bounds.
     ///
@@ -271,7 +271,7 @@ impl<T: Copy + Clone + Default, const N: usize> MyArray<T, N> {
     }
 
     /// Appends a slice of items to the end of the array.
-    /// 
+    ///
     /// # Panics
     /// Panics if the array does not have enough capacity.
     ///

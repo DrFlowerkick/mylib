@@ -153,12 +153,12 @@ impl TicTacToeGameData {
     fn iter_diagonal_top_left(&self) -> impl Iterator<Item = &'_ TicTacToeStatus> {
         [(0_usize, 0_usize), (1, 1), (2, 2)]
             .iter()
-            .map(|p| self.map.get((*p).into()))
+            .map(move |p| self.map.get((*p).into()))
     }
     fn iter_diagonal_top_right(&self) -> impl Iterator<Item = &'_ TicTacToeStatus> {
         [(2_usize, 0_usize), (1, 1), (0, 2)]
             .iter()
-            .map(|p| self.map.get((*p).into()))
+            .map(move |p| self.map.get((*p).into()))
     }
     fn calc_line_heuristic<'a>(&self, line: impl Iterator<Item = &'a TicTacToeStatus>) -> f32 {
         let mut count: u8 = 0;

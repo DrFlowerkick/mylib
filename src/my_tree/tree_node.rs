@@ -36,7 +36,7 @@ impl<N: PartialEq> TreeNode<N> {
                 (
                     new_level,
                     p.max_level.clone(),
-                    RefCell::new(vec![parent.clone()]),
+                    RefCell::new(vec![parent]),
                 )
             }
             None => (
