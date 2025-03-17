@@ -2,11 +2,17 @@
     "rust-analyzer.showUnlinkedFileNotification": false,
     "cSpell.words": [
         "cdir",
+        "codingame",
         "fract",
         "Hasher",
         "imec",
         "mcts",
+        "mylib",
         "ndir",
         "nesw"
+    ],
+    "rust-analyzer.server.path": "C:\\Users\\User\\.cargo\\bin\\rust-analyzer.exe",
+    "rust-analyzer.rustc.overrideCommand": [
+        "rustup", "run", "1.70.0", "rustc"
     ]
 }

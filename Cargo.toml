@@ -1,9 +1,11 @@
-[workspace]
-members = ["edition_2021", "edition_2024"]
-exclude = [""]
-resolver = "2"
+[package]
+name = "my_lib"
+version = "0.2.1"
+authors = ["DrFlowerkick <flowerkick14@gmail.com>"]
+edition = "2021"
+rust-version = "1.70"
 
-[workspace.metadata]
-description = "A collection o tools I developed over time."
-repository = "https://github.com/DrFlowerkick/mylib"
-license = "GNU GENERAL PUBLIC LICENSE"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = "0.8.5"
