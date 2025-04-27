@@ -1,4 +1,4 @@
-use super::{MCTSAlgo, MCTSNode, MCTSTurnBasedGame};
+use super::{MCTSAlgo, MCTSNode, MCTSTurnBasedGame, MonteCarloPlayer};
 use rand::prelude::IteratorRandom;
 
 pub struct TurnBasedNode<G: MCTSTurnBasedGame> {
@@ -60,10 +60,13 @@ impl<G: MCTSTurnBasedGame> TurnBasedNode<G> {
             return f32::INFINITY;
         }
         let raw_exploitation = self.accumulated_value / self.visits as f32;
-        let exploitation = if G::current_player(&self.state) == 0 {
-            raw_exploitation
-        } else {
-            1.0 - raw_exploitation
+        // current_player is the now active player.
+        // The exploitation score of a node is calculated from the perspective of the player
+        // who acted last. With a two player game, the I'm the last player, if the current player
+        // is the opponent.
+        let exploitation = match G::current_player(&self.state) {
+            MonteCarloPlayer::Me => 1.0 - raw_exploitation, // last player was opponent
+            MonteCarloPlayer::Opp => raw_exploitation,      // last player was me
         };
         let exploration = c * ((parent_visits as f32).ln() / self.visits as f32).sqrt();
         exploitation + exploration

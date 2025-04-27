@@ -1,7 +1,8 @@
 // miscellaneous mcts type definitions
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub enum MonteCarloPlayer {
+    #[default]
     Me,
     Opp,
 }

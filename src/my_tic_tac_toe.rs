@@ -4,9 +4,7 @@ pub mod mcts_tic_tac_toe;
 
 use crate::my_map_point::*;
 use crate::my_map_two_dim::*;
-use crate::my_monte_carlo_tree_search::{
-    MonteCarloGameData, MonteCarloGameDataUpdate, MonteCarloPlayer, MonteCarloPlayerAction,
-};
+use crate::my_monte_carlo_tree_search::MonteCarloPlayer;
 pub const X: usize = 3;
 pub const Y: usize = X;
 
@@ -50,6 +48,8 @@ pub struct TicTacToeGameData {
     num_opp_cells: u8,
     // required for Ultimate TicTacToe
     num_tie_cells: u8,
+    // required for new MCTS
+    current_player: MonteCarloPlayer,
 }
 
 impl std::fmt::Display for TicTacToeGameData {
@@ -90,7 +90,14 @@ impl TicTacToeGameData {
             num_me_cells: 0,
             num_opp_cells: 0,
             num_tie_cells: 0,
+            current_player: MonteCarloPlayer::Me,
         }
+    }
+    pub fn set_current_player(&mut self, player: MonteCarloPlayer) {
+        self.current_player = player;
+    }
+    pub fn next_player(&mut self) {
+        self.current_player = self.current_player.next_player();
     }
     fn check_status_for_one_line<'a>(
         &self,

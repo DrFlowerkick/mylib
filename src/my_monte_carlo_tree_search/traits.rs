@@ -86,7 +86,7 @@ pub trait MCTSGame {
 }
 
 pub trait MCTSTurnBasedGame: MCTSGame {
-    fn current_player(state: &Self::State) -> usize;
+    fn current_player(state: &Self::State) -> MonteCarloPlayer;
 }
 
 // ToDo: reminder for later usage
