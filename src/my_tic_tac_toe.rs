@@ -109,7 +109,14 @@ impl TicTacToeGameData {
         }
         winner
     }
-    fn check_status(&mut self, cell: MapPoint<X, Y>, check_lines: bool) -> TicTacToeStatus {
+    fn check_status(&mut self, cell: MapPoint<X, Y>) -> TicTacToeStatus {
+        // is checking for lines required?
+        let check_lines = match self.map.get(cell) {
+            TicTacToeStatus::Vacant => false,
+            TicTacToeStatus::Player(MonteCarloPlayer::Me) => self.num_me_cells > 2,
+            TicTacToeStatus::Player(MonteCarloPlayer::Opp) => self.num_opp_cells > 2,
+            TicTacToeStatus::Tie => false,
+        };
         if check_lines {
             // check row with cell.y()
             if let TicTacToeStatus::Player(player) =
@@ -216,24 +223,23 @@ impl TicTacToeGameData {
         cell: MapPoint<X, Y>,
         player: MonteCarloPlayer,
     ) -> TicTacToeStatus {
-        let check_lines = match player {
+        match player {
             MonteCarloPlayer::Me => {
                 self.num_me_cells += 1;
-                self.num_me_cells > 2
             }
             MonteCarloPlayer::Opp => {
                 self.num_opp_cells += 1;
-                self.num_opp_cells > 2
             }
-        };
+        }
         if self
             .map
             .swap_value(cell, TicTacToeStatus::Player(player))
             .is_not_vacant()
         {
+            dbg!(self.map.get(cell));
             panic!("Set player on not vacant cell.");
         }
-        self.check_status(cell, check_lines)
+        self.check_status(cell)
     }
     // required for Ultimate TicTacToe
     pub fn set_tie(&mut self, cell: MapPoint<X, Y>) -> TicTacToeStatus {
@@ -245,12 +251,10 @@ impl TicTacToeGameData {
         {
             panic!("Set tie on not vacant cell.");
         }
-        self.check_status(cell, false)
+        self.check_status(cell)
     }
     pub fn set_all_to_status(&mut self) -> TicTacToeStatus {
-        for (_, cell) in self.map.iter_mut() {
-            *cell = self.status;
-        }
+        self.map = MyMap2D::init(self.status);
         self.status
     }
     pub fn get_cell_value(&self, cell: MapPoint<X, Y>) -> TicTacToeStatus {

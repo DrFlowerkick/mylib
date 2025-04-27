@@ -72,3 +72,39 @@ pub trait MonteCarloGameData: Copy + Clone + PartialEq + Eq + Hash + Default + '
         apply_player_actions_to_game_data: bool,
     ) -> bool;
 }
+
+// new traits for MCTS. Will replace old traits in the future
+
+pub trait MCTSGame {
+    type State: Clone + PartialEq;
+    type Move;
+
+    fn available_moves<'a>(state: &'a Self::State) -> Box<dyn Iterator<Item = Self::Move> + 'a>;
+    fn apply_move(state: &Self::State, mv: &Self::Move) -> Self::State;
+    fn is_terminal(state: &Self::State) -> bool;
+    fn evaluate(state: &Self::State) -> f32;
+}
+
+pub trait MCTSTurnBasedGame: MCTSGame {
+    fn current_player(state: &Self::State) -> usize;
+}
+
+// ToDo: reminder for later usage
+//pub trait SimultaneousGame: MCTSGame {}
+
+pub trait MCTSNode<G: MCTSGame> {
+    fn get_state(&self) -> &G::State;
+    fn get_move(&self) -> Option<&G::Move> {
+        None
+    }
+    fn get_visits(&self) -> usize;
+    fn get_accumulated_value(&self) -> f32;
+    fn add_simulation_result(&mut self, result: f32);
+    fn increment_visits(&mut self);
+}
+
+pub trait MCTSAlgo<G: MCTSGame> {
+    fn iterate(&mut self);
+    fn set_root(&mut self, state: &G::State) -> bool;
+    fn select_move(&self) -> &G::Move;
+}
