@@ -1,5 +1,7 @@
 // miscellaneous mcts type definitions
 
+use super::MCTSPlayer;
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub enum MonteCarloPlayer {
     #[default]
@@ -9,6 +11,15 @@ pub enum MonteCarloPlayer {
 
 impl MonteCarloPlayer {
     pub fn next_player(&self) -> Self {
+        match self {
+            MonteCarloPlayer::Me => MonteCarloPlayer::Opp,
+            MonteCarloPlayer::Opp => MonteCarloPlayer::Me,
+        }
+    }
+}
+
+impl MCTSPlayer for MonteCarloPlayer {
+    fn next(&self) -> Self {
         match self {
             MonteCarloPlayer::Me => MonteCarloPlayer::Opp,
             MonteCarloPlayer::Opp => MonteCarloPlayer::Me,

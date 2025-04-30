@@ -2,7 +2,7 @@
 
 use super::{
     MonteCarloGameData, MonteCarloGameDataUpdate, MonteCarloGameMode, MonteCarloNodeType,
-    MonteCarloPlayer, MonteCarloPlayerAction,
+    MonteCarloPlayer, MonteCarloPlayerAction
 };
 
 #[derive(PartialEq, Clone, Copy)]

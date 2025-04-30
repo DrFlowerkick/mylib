@@ -1,15 +1,20 @@
-use super::{MCTSAlgo, MCTSNode, MCTSGame, MonteCarloPlayer};
+use super::{MCTSAlgo, MCTSNode, MCTSGame, UCTPolicy};
 use rand::prelude::IteratorRandom;
 
-pub struct TurnBasedNode<G: MCTSGame> {
+pub struct StaticC{}
+
+impl<G: MCTSGame> UCTPolicy<G> for StaticC{}
+
+pub struct TurnBasedNode<G: MCTSGame, P: UCTPolicy<G>> {
     pub state: G::State,
     pub visits: usize,
     pub accumulated_value: f32,
     pub mv: Option<G::Move>,
     pub children: Vec<usize>,
+    phantom: std::marker::PhantomData<P>,
 }
 
-impl<G: MCTSGame> MCTSNode<G> for TurnBasedNode<G> {
+impl<G: MCTSGame, P: UCTPolicy<G>> MCTSNode<G> for TurnBasedNode<G, P> {
     fn get_state(&self) -> &G::State {
         &self.state
     }
@@ -30,7 +35,7 @@ impl<G: MCTSGame> MCTSNode<G> for TurnBasedNode<G> {
     }
 }
 
-impl<G: MCTSGame> TurnBasedNode<G> {
+impl<G: MCTSGame, P: UCTPolicy<G>> TurnBasedNode<G, P> {
     pub fn root_node(state: G::State) -> Self {
         TurnBasedNode {
             state,
@@ -38,6 +43,7 @@ impl<G: MCTSGame> TurnBasedNode<G> {
             accumulated_value: 0.0,
             mv: None,
             children: vec![],
+            phantom: std::marker::PhantomData,
         }
     }
     pub fn new(state: G::State, mv: G::Move) -> Self {
@@ -47,6 +53,7 @@ impl<G: MCTSGame> TurnBasedNode<G> {
             accumulated_value: 0.0,
             mv: Some(mv),
             children: vec![],
+            phantom: std::marker::PhantomData,
         }
     }
     pub fn add_child(&mut self, child_index: usize) {
@@ -55,31 +62,23 @@ impl<G: MCTSGame> TurnBasedNode<G> {
     pub fn get_children(&self) -> &Vec<usize> {
         &self.children
     }
-    pub fn calc_utc(&self, parent_visits: usize, c: f32) -> f32 {
+    pub fn calc_utc(&self, parent_visits: usize, c: f32, perspective_player: G::Player) -> f32 {
         if self.visits == 0 {
             return f32::INFINITY;
         }
-        let raw_exploitation = self.accumulated_value / self.visits as f32;
-        // current_player is the now active player.
-        // The exploitation score of a node is calculated from the perspective of the player
-        // who acted last. With a two player game, the I'm the last player, if the current player
-        // is the opponent.
-        let exploitation = match G::current_player(&self.state) {
-            MonteCarloPlayer::Me => 1.0 - raw_exploitation, // last player was opponent
-            MonteCarloPlayer::Opp => raw_exploitation,      // last player was me
-        };
-        let exploration = c * ((parent_visits as f32).ln() / self.visits as f32).sqrt();
+        let exploitation = P::exploitation_score(self.accumulated_value, self.visits, G::current_player(&self.state), perspective_player);
+        let exploration = P::exploration_score(self.visits, parent_visits, c);
         exploitation + exploration
     }
 }
 
-pub struct TurnBasedMCTS<G: MCTSGame> {
-    pub nodes: Vec<TurnBasedNode<G>>,
+pub struct TurnBasedMCTS<G: MCTSGame, P: UCTPolicy<G>> {
+    pub nodes: Vec<TurnBasedNode<G, P>>,
     pub root_index: usize,
     pub exploration_constant: f32,
 }
 
-impl<G: MCTSGame> TurnBasedMCTS<G> {
+impl<G: MCTSGame, P: UCTPolicy<G>> TurnBasedMCTS<G, P> {
     pub fn new(exploration_constant: f32) -> Self {
         Self {
             nodes: vec![],
@@ -89,7 +88,7 @@ impl<G: MCTSGame> TurnBasedMCTS<G> {
     }
 }
 
-impl<G: MCTSGame> MCTSAlgo<G> for TurnBasedMCTS<G> {
+impl<G: MCTSGame, P: UCTPolicy<G>> MCTSAlgo<G> for TurnBasedMCTS<G, P> {
     fn iterate(&mut self) {
         let mut path = vec![self.root_index];
         let mut current_index = self.root_index;
@@ -102,7 +101,7 @@ impl<G: MCTSGame> MCTSAlgo<G> for TurnBasedMCTS<G> {
 
             for &child_index in self.nodes[current_index].get_children() {
                 let utc =
-                    self.nodes[child_index].calc_utc(parent_visits, self.exploration_constant);
+                    self.nodes[child_index].calc_utc(parent_visits, self.exploration_constant, G::perspective_player());
                 if utc > best_utc {
                     best_utc = utc;
                     best_child_index = child_index;

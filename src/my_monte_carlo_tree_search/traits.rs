@@ -75,15 +75,21 @@ pub trait MonteCarloGameData: Copy + Clone + PartialEq + Eq + Hash + Default + '
 
 // new traits for MCTS. Will replace old traits in the future
 
+pub trait MCTSPlayer: PartialEq {
+    fn next(&self) -> Self;
+}
+
 pub trait MCTSGame {
     type State: Clone + PartialEq;
     type Move;
+    type Player: MCTSPlayer;
 
     fn available_moves<'a>(state: &'a Self::State) -> Box<dyn Iterator<Item = Self::Move> + 'a>;
     fn apply_move(state: &Self::State, mv: &Self::Move) -> Self::State;
     fn is_terminal(state: &Self::State) -> bool;
     fn evaluate(state: &Self::State) -> f32;
-    fn current_player(state: &Self::State) -> MonteCarloPlayer;
+    fn current_player(state: &Self::State) -> Self::Player;
+    fn perspective_player() -> Self::Player;
 }
 
 pub trait MCTSNode<G: MCTSGame> {
@@ -101,4 +107,31 @@ pub trait MCTSAlgo<G: MCTSGame> {
     fn iterate(&mut self);
     fn set_root(&mut self, state: &G::State) -> bool;
     fn select_move(&self) -> &G::Move;
+}
+
+pub trait UCTPolicy<G: MCTSGame> {
+    /// calculates the exploitation score from the view of the perspective player
+    fn exploitation_score(
+        accumulated_value: f32,
+        visits: usize,
+        current_player: G::Player,
+        perspective_player: G::Player,
+    ) -> f32 {
+        let raw = accumulated_value / visits as f32;
+        // this works only for 2 player games
+        if current_player == perspective_player {
+            1.0 - raw
+        } else {
+            raw
+        }
+    }
+
+    /// calculates the exploration score with default of constant base_c
+    fn exploration_score(
+        visits: usize,
+        parent_visits: usize,
+        base_c: f32,
+    ) -> f32 {
+        base_c * ((parent_visits as f32).ln() / visits as f32).sqrt()
+    }
 }

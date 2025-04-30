@@ -191,6 +191,7 @@ pub struct TicTacToeMCTSGame {}
 impl MCTSGame for TicTacToeMCTSGame {
     type State = TicTacToeGameData;
     type Move = TicTacToePlayerAction;
+    type Player = MonteCarloPlayer;
 
     fn available_moves<'a>(state: &'a Self::State) -> Box<dyn Iterator<Item = Self::Move> + 'a> {
         Box::new(IterTicTacToePlayerAction::new(state))
@@ -217,8 +218,11 @@ impl MCTSGame for TicTacToeMCTSGame {
     fn is_terminal(state: &Self::State) -> bool {
         state.status.is_not_vacant()
     }
-    fn current_player(state: &Self::State) -> MonteCarloPlayer {
+    fn current_player(state: &Self::State) -> Self::Player {
         state.current_player
+    }
+    fn perspective_player() -> Self::Player {
+        MonteCarloPlayer::Me
     }
 }
 
@@ -466,12 +470,12 @@ mod tests {
 
     #[test]
     fn test_new_mcts_traits_with_tic_tac_toe_starting_player_me() {
-        use crate::my_monte_carlo_tree_search::{MCTSAlgo, TurnBasedMCTS};
+        use crate::my_monte_carlo_tree_search::{MCTSAlgo, TurnBasedMCTS, StaticC};
 
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame> =
+            let mut mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, StaticC> =
                 TurnBasedMCTS::new(WEIGHTING_FACTOR);
             let mut ttt_game_data = TicTacToeGameData::new();
             ttt_game_data.set_current_player(MonteCarloPlayer::Me);
@@ -523,12 +527,12 @@ mod tests {
 
     #[test]
     fn test_new_mcts_traits_with_tic_tac_toe_starting_player_opp() {
-        use crate::my_monte_carlo_tree_search::{MCTSAlgo, TurnBasedMCTS};
+        use crate::my_monte_carlo_tree_search::{MCTSAlgo, TurnBasedMCTS, StaticC};
 
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame> =
+            let mut mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, StaticC> =
                 TurnBasedMCTS::new(WEIGHTING_FACTOR);
             let mut ttt_game_data = TicTacToeGameData::new();
             ttt_game_data.set_current_player(MonteCarloPlayer::Opp);
@@ -580,17 +584,17 @@ mod tests {
 
     #[test]
     fn test_new_mcts_traits_with_tic_tac_toe_versus_mcts() {
-        use crate::my_monte_carlo_tree_search::{MCTSAlgo, TurnBasedMCTS};
+        use crate::my_monte_carlo_tree_search::{MCTSAlgo, TurnBasedMCTS, StaticC};
 
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut first_mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame> =
+            let mut first_mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, StaticC> =
                 TurnBasedMCTS::new(WEIGHTING_FACTOR);
             let mut first_ttt_game_data = TicTacToeGameData::new();
             first_ttt_game_data.set_current_player(MonteCarloPlayer::Me);
             let mut first_time_out = TIME_OUT_FIRST_TURN;
-            let mut second_mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame> =
+            let mut second_mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, StaticC> =
                 TurnBasedMCTS::new(WEIGHTING_FACTOR);
             let mut second_ttt_game_data = TicTacToeGameData::new();
             second_ttt_game_data.set_current_player(MonteCarloPlayer::Opp);

@@ -4,7 +4,7 @@ pub mod mcts_tic_tac_toe;
 
 use crate::my_map_point::*;
 use crate::my_map_two_dim::*;
-use crate::my_monte_carlo_tree_search::MonteCarloPlayer;
+use crate::my_monte_carlo_tree_search::{MonteCarloPlayer, MCTSPlayer};
 pub const X: usize = 3;
 pub const Y: usize = X;
 
@@ -97,7 +97,7 @@ impl TicTacToeGameData {
         self.current_player = player;
     }
     pub fn next_player(&mut self) {
-        self.current_player = self.current_player.next_player();
+        self.current_player = self.current_player.next();
     }
     fn check_status_for_one_line<'a>(
         &self,
