@@ -470,12 +470,12 @@ mod tests {
 
     #[test]
     fn test_new_mcts_traits_with_tic_tac_toe_starting_player_me() {
-        use crate::my_monte_carlo_tree_search::{MCTSAlgo, TurnBasedMCTS, StaticC};
+        use crate::my_monte_carlo_tree_search::{MCTSAlgo, StaticC, TurnBasedMCTS, NoCache};
 
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, StaticC> =
+            let mut mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, StaticC, NoCache> =
                 TurnBasedMCTS::new(WEIGHTING_FACTOR);
             let mut ttt_game_data = TicTacToeGameData::new();
             ttt_game_data.set_current_player(MonteCarloPlayer::Me);
@@ -517,7 +517,7 @@ mod tests {
                 TicTacToeStatus::Vacant => {
                     eprintln!("vacant: Game ended without winner!?");
                     assert!(false, "vacant: Game ended without winner!?");
-                },
+                }
             }
             wins += TicTacToeMCTSGame::evaluate(&ttt_game_data);
         }
@@ -527,12 +527,12 @@ mod tests {
 
     #[test]
     fn test_new_mcts_traits_with_tic_tac_toe_starting_player_opp() {
-        use crate::my_monte_carlo_tree_search::{MCTSAlgo, TurnBasedMCTS, StaticC};
+        use crate::my_monte_carlo_tree_search::{MCTSAlgo, StaticC, TurnBasedMCTS, NoCache};
 
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, StaticC> =
+            let mut mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, StaticC, NoCache> =
                 TurnBasedMCTS::new(WEIGHTING_FACTOR);
             let mut ttt_game_data = TicTacToeGameData::new();
             ttt_game_data.set_current_player(MonteCarloPlayer::Opp);
@@ -574,7 +574,7 @@ mod tests {
                 TicTacToeStatus::Vacant => {
                     eprintln!("vacant: Game ended without winner!?");
                     assert!(false, "vacant: Game ended without winner!?");
-                },
+                }
             }
             wins += TicTacToeMCTSGame::evaluate(&ttt_game_data);
         }
@@ -584,17 +584,17 @@ mod tests {
 
     #[test]
     fn test_new_mcts_traits_with_tic_tac_toe_versus_mcts() {
-        use crate::my_monte_carlo_tree_search::{MCTSAlgo, TurnBasedMCTS, StaticC};
+        use crate::my_monte_carlo_tree_search::{DynamicC, MCTSAlgo, StaticC, TurnBasedMCTS, NoCache, WithCache};
 
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut first_mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, StaticC> =
+            let mut first_mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, StaticC, NoCache> =
                 TurnBasedMCTS::new(WEIGHTING_FACTOR);
             let mut first_ttt_game_data = TicTacToeGameData::new();
             first_ttt_game_data.set_current_player(MonteCarloPlayer::Me);
             let mut first_time_out = TIME_OUT_FIRST_TURN;
-            let mut second_mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, StaticC> =
+            let mut second_mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, DynamicC, WithCache> =
                 TurnBasedMCTS::new(WEIGHTING_FACTOR);
             let mut second_ttt_game_data = TicTacToeGameData::new();
             second_ttt_game_data.set_current_player(MonteCarloPlayer::Opp);
@@ -639,7 +639,7 @@ mod tests {
                 TicTacToeStatus::Player(MonteCarloPlayer::Me) => {
                     eprintln!("first winner");
                     assert!(false, "first should not win");
-                },
+                }
                 TicTacToeStatus::Player(MonteCarloPlayer::Opp) => {
                     eprintln!("second winner");
                     assert!(false, "second should not win");
@@ -648,7 +648,7 @@ mod tests {
                 TicTacToeStatus::Vacant => {
                     eprintln!("vacant: Game ended without winner!?");
                     assert!(false, "vacant: Game ended without winner!?");
-                },
+                }
             }
             wins += TicTacToeMCTSGame::evaluate(&first_ttt_game_data);
         }

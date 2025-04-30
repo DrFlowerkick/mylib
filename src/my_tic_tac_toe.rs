@@ -4,7 +4,7 @@ pub mod mcts_tic_tac_toe;
 
 use crate::my_map_point::*;
 use crate::my_map_two_dim::*;
-use crate::my_monte_carlo_tree_search::{MonteCarloPlayer, MCTSPlayer};
+use crate::my_monte_carlo_tree_search::{MCTSPlayer, MonteCarloPlayer};
 pub const X: usize = 3;
 pub const Y: usize = X;
 

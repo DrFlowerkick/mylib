@@ -127,11 +127,31 @@ pub trait UCTPolicy<G: MCTSGame> {
     }
 
     /// calculates the exploration score with default of constant base_c
-    fn exploration_score(
-        visits: usize,
-        parent_visits: usize,
-        base_c: f32,
-    ) -> f32 {
+    fn exploration_score(visits: usize, parent_visits: usize, base_c: f32) -> f32 {
         base_c * ((parent_visits as f32).ln() / visits as f32).sqrt()
     }
+}
+
+pub trait MCTSCache<G: MCTSGame, P: UCTPolicy<G>> {
+    fn new() -> Self;
+
+    fn update_exploitation(
+        &mut self,
+        visits: usize,
+        acc_value: f32,
+        current_player: G::Player,
+        perspective_player: G::Player,
+    );
+
+    fn get_exploitation(
+        &self,
+        visits: usize,
+        acc_value: f32,
+        current_player: G::Player,
+        perspective_player: G::Player,
+    ) -> f32;
+
+    fn update_exploration(&mut self, visits: usize, parent_visits: usize, base_c: f32);
+
+    fn get_exploration(&self, visits: usize, parent_visits: usize, base_c: f32) -> f32;
 }
