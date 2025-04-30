@@ -1,7 +1,7 @@
-use super::{MCTSAlgo, MCTSNode, MCTSTurnBasedGame, MonteCarloPlayer};
+use super::{MCTSAlgo, MCTSNode, MCTSGame, MonteCarloPlayer};
 use rand::prelude::IteratorRandom;
 
-pub struct TurnBasedNode<G: MCTSTurnBasedGame> {
+pub struct TurnBasedNode<G: MCTSGame> {
     pub state: G::State,
     pub visits: usize,
     pub accumulated_value: f32,
@@ -9,7 +9,7 @@ pub struct TurnBasedNode<G: MCTSTurnBasedGame> {
     pub children: Vec<usize>,
 }
 
-impl<G: MCTSTurnBasedGame> MCTSNode<G> for TurnBasedNode<G> {
+impl<G: MCTSGame> MCTSNode<G> for TurnBasedNode<G> {
     fn get_state(&self) -> &G::State {
         &self.state
     }
@@ -30,7 +30,7 @@ impl<G: MCTSTurnBasedGame> MCTSNode<G> for TurnBasedNode<G> {
     }
 }
 
-impl<G: MCTSTurnBasedGame> TurnBasedNode<G> {
+impl<G: MCTSGame> TurnBasedNode<G> {
     pub fn root_node(state: G::State) -> Self {
         TurnBasedNode {
             state,
@@ -73,13 +73,13 @@ impl<G: MCTSTurnBasedGame> TurnBasedNode<G> {
     }
 }
 
-pub struct TurnBasedMCTS<G: MCTSTurnBasedGame> {
+pub struct TurnBasedMCTS<G: MCTSGame> {
     pub nodes: Vec<TurnBasedNode<G>>,
     pub root_index: usize,
     pub exploration_constant: f32,
 }
 
-impl<G: MCTSTurnBasedGame> TurnBasedMCTS<G> {
+impl<G: MCTSGame> TurnBasedMCTS<G> {
     pub fn new(exploration_constant: f32) -> Self {
         Self {
             nodes: vec![],
@@ -89,7 +89,7 @@ impl<G: MCTSTurnBasedGame> TurnBasedMCTS<G> {
     }
 }
 
-impl<G: MCTSTurnBasedGame> MCTSAlgo<G> for TurnBasedMCTS<G> {
+impl<G: MCTSGame> MCTSAlgo<G> for TurnBasedMCTS<G> {
     fn iterate(&mut self) {
         let mut path = vec![self.root_index];
         let mut current_index = self.root_index;

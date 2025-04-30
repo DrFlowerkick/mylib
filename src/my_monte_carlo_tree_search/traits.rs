@@ -83,14 +83,8 @@ pub trait MCTSGame {
     fn apply_move(state: &Self::State, mv: &Self::Move) -> Self::State;
     fn is_terminal(state: &Self::State) -> bool;
     fn evaluate(state: &Self::State) -> f32;
-}
-
-pub trait MCTSTurnBasedGame: MCTSGame {
     fn current_player(state: &Self::State) -> MonteCarloPlayer;
 }
-
-// ToDo: reminder for later usage
-//pub trait SimultaneousGame: MCTSGame {}
 
 pub trait MCTSNode<G: MCTSGame> {
     fn get_state(&self) -> &G::State;

@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::my_monte_carlo_tree_search::{
-    MCTSGame, MCTSTurnBasedGame, MonteCarloGameData, MonteCarloGameDataUpdate, MonteCarloPlayer,
+    MCTSGame, MonteCarloGameData, MonteCarloGameDataUpdate, MonteCarloPlayer,
     MonteCarloPlayerAction,
 };
 use rand::prelude::*;
@@ -188,12 +188,6 @@ impl MonteCarloGameData for TicTacToeGameData {
 // solving TicTacToe with new MCTS traits
 pub struct TicTacToeMCTSGame {}
 
-impl MCTSTurnBasedGame for TicTacToeMCTSGame {
-    fn current_player(state: &Self::State) -> MonteCarloPlayer {
-        state.current_player
-    }
-}
-
 impl MCTSGame for TicTacToeMCTSGame {
     type State = TicTacToeGameData;
     type Move = TicTacToePlayerAction;
@@ -222,6 +216,9 @@ impl MCTSGame for TicTacToeMCTSGame {
 
     fn is_terminal(state: &Self::State) -> bool {
         state.status.is_not_vacant()
+    }
+    fn current_player(state: &Self::State) -> MonteCarloPlayer {
+        state.current_player
     }
 }
 
