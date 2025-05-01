@@ -155,3 +155,10 @@ pub trait MCTSCache<G: MCTSGame, P: UCTPolicy<G>> {
 
     fn get_exploration(&self, visits: usize, parent_visits: usize, base_c: f32) -> f32;
 }
+
+pub trait ExpansionPolicy<G: MCTSGame> {
+    fn new(state: &G::State) -> Self;
+    fn should_expand(&self, visits: usize, num_parent_children: usize) -> bool;
+    fn pop_expandable_move(&mut self, visits: usize, num_parent_children: usize)
+        -> Option<G::Move>;
+}

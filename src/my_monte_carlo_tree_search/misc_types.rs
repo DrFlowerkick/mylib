@@ -1,6 +1,7 @@
 // miscellaneous mcts type definitions
 
-use super::{MCTSCache, MCTSGame, MCTSPlayer, UCTPolicy};
+use super::{ExpansionPolicy, MCTSCache, MCTSGame, MCTSPlayer, UCTPolicy};
+use rand::prelude::SliceRandom;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub enum MonteCarloPlayer {
@@ -126,5 +127,79 @@ impl<G: MCTSGame, P: UCTPolicy<G>> MCTSCache<G, P> for WithCache {
 
     fn get_exploration(&self, _v: usize, _p: usize, _b: f32) -> f32 {
         self.exploration
+    }
+}
+
+pub struct ExpandAll<G: MCTSGame> {
+    moves: Vec<G::Move>,
+}
+
+impl<G: MCTSGame> ExpansionPolicy<G> for ExpandAll<G> {
+    fn new(state: &<G as MCTSGame>::State) -> Self {
+        let moves = if G::is_terminal(state) {
+            vec![]
+        } else {
+            G::available_moves(state).collect::<Vec<_>>()
+        };
+        ExpandAll { moves }
+    }
+    fn should_expand(&self, _v: usize, _n: usize) -> bool {
+        !self.moves.is_empty()
+    }
+    fn pop_expandable_move(&mut self, _v: usize, _n: usize) -> Option<<G as MCTSGame>::Move> {
+        self.moves.pop()
+    }
+}
+
+pub struct ProgressiveWidening<const C: usize, const AN: usize, const AD: usize, G: MCTSGame> {
+    unexpanded_moves: Vec<G::Move>,
+}
+
+// default progressive widening with C = 2, alpha = 1/2
+pub type PWDefault<G> = ProgressiveWidening<2, 1, 2, G>;
+
+// fast progressive widening with C = 4, alpha = 1/3
+pub type PWFast<G> = ProgressiveWidening<4, 1, 3, G>;
+
+// slow progressive widening with C = 1, alpha = 2/3
+pub type PWSlow<G> = ProgressiveWidening<1, 2, 3, G>;
+
+impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame>
+    ProgressiveWidening<C, AN, AD, G>
+{
+    fn allowed_children(visits: usize) -> usize {
+        if visits == 0 {
+            1
+        } else {
+            (C as f32 * (visits as f32).powf(AN as f32 / AD as f32)).floor() as usize
+        }
+    }
+}
+
+impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame> ExpansionPolicy<G>
+    for ProgressiveWidening<C, AN, AD, G>
+{
+    fn new(state: &<G as MCTSGame>::State) -> Self {
+        let unexpanded_moves = if G::is_terminal(state) {
+            vec![]
+        } else {
+            let mut unexpanded_moves = G::available_moves(state).collect::<Vec<_>>();
+            unexpanded_moves.shuffle(&mut rand::thread_rng());
+            unexpanded_moves
+        };
+        ProgressiveWidening { unexpanded_moves }
+    }
+    fn should_expand(&self, visits: usize, num_parent_children: usize) -> bool {
+        num_parent_children < Self::allowed_children(visits) && !self.unexpanded_moves.is_empty()
+    }
+    fn pop_expandable_move(
+        &mut self,
+        visits: usize,
+        num_parent_children: usize,
+    ) -> Option<<G as MCTSGame>::Move> {
+        if !self.should_expand(visits, num_parent_children) {
+            return None;
+        }
+        self.unexpanded_moves.pop()
     }
 }

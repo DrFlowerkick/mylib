@@ -198,7 +198,7 @@ impl MCTSGame for TicTacToeMCTSGame {
     }
 
     fn apply_move(state: &Self::State, mv: &Self::Move) -> Self::State {
-        let mut new_state = state.clone();
+        let mut new_state = *state;
         // apply the move for current player
         new_state.set_player(mv.cell, state.current_player);
         // set the next player
@@ -229,7 +229,12 @@ impl MCTSGame for TicTacToeMCTSGame {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::my_monte_carlo_tree_search::{
+        DynamicC, ExpandAll, MCTSAlgo, NoCache, PWDefault, StaticC, TurnBasedMCTS, WithCache,
+    };
     use crate::my_monte_carlo_tree_search::{MonteCarloGameMode, MonteCarloTreeSearch};
+    type PWDefaultTTT = PWDefault<TicTacToeMCTSGame>;
+    type ExpandAllTTT = ExpandAll<TicTacToeMCTSGame>;
 
     use std::time::{Duration, Instant};
     const MAX_NUMBER_OF_TURNS: usize = 9;
@@ -470,13 +475,15 @@ mod tests {
 
     #[test]
     fn test_new_mcts_traits_with_tic_tac_toe_starting_player_me() {
-        use crate::my_monte_carlo_tree_search::{MCTSAlgo, StaticC, TurnBasedMCTS, NoCache};
-
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, StaticC, NoCache> =
-                TurnBasedMCTS::new(WEIGHTING_FACTOR);
+            let mut mcts_tic_tac_toe: TurnBasedMCTS<
+                TicTacToeMCTSGame,
+                StaticC,
+                NoCache,
+                ExpandAllTTT,
+            > = TurnBasedMCTS::new(WEIGHTING_FACTOR);
             let mut ttt_game_data = TicTacToeGameData::new();
             ttt_game_data.set_current_player(MonteCarloPlayer::Me);
             let mut time_out = TIME_OUT_FIRST_TURN;
@@ -527,13 +534,15 @@ mod tests {
 
     #[test]
     fn test_new_mcts_traits_with_tic_tac_toe_starting_player_opp() {
-        use crate::my_monte_carlo_tree_search::{MCTSAlgo, StaticC, TurnBasedMCTS, NoCache};
-
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, StaticC, NoCache> =
-                TurnBasedMCTS::new(WEIGHTING_FACTOR);
+            let mut mcts_tic_tac_toe: TurnBasedMCTS<
+                TicTacToeMCTSGame,
+                StaticC,
+                NoCache,
+                ExpandAllTTT,
+            > = TurnBasedMCTS::new(WEIGHTING_FACTOR);
             let mut ttt_game_data = TicTacToeGameData::new();
             ttt_game_data.set_current_player(MonteCarloPlayer::Opp);
             let mut time_out = TIME_OUT_FIRST_TURN;
@@ -584,18 +593,24 @@ mod tests {
 
     #[test]
     fn test_new_mcts_traits_with_tic_tac_toe_versus_mcts() {
-        use crate::my_monte_carlo_tree_search::{DynamicC, MCTSAlgo, StaticC, TurnBasedMCTS, NoCache, WithCache};
-
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut first_mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, StaticC, NoCache> =
-                TurnBasedMCTS::new(WEIGHTING_FACTOR);
+            let mut first_mcts_tic_tac_toe: TurnBasedMCTS<
+                TicTacToeMCTSGame,
+                StaticC,
+                NoCache,
+                ExpandAllTTT,
+            > = TurnBasedMCTS::new(WEIGHTING_FACTOR);
             let mut first_ttt_game_data = TicTacToeGameData::new();
             first_ttt_game_data.set_current_player(MonteCarloPlayer::Me);
             let mut first_time_out = TIME_OUT_FIRST_TURN;
-            let mut second_mcts_tic_tac_toe: TurnBasedMCTS<TicTacToeMCTSGame, DynamicC, WithCache> =
-                TurnBasedMCTS::new(WEIGHTING_FACTOR);
+            let mut second_mcts_tic_tac_toe: TurnBasedMCTS<
+                TicTacToeMCTSGame,
+                DynamicC,
+                WithCache,
+                PWDefaultTTT,
+            > = TurnBasedMCTS::new(WEIGHTING_FACTOR);
             let mut second_ttt_game_data = TicTacToeGameData::new();
             second_ttt_game_data.set_current_player(MonteCarloPlayer::Opp);
             let mut second_time_out = TIME_OUT_FIRST_TURN;
