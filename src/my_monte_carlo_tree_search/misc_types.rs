@@ -1,6 +1,8 @@
 // miscellaneous mcts type definitions
 
-use super::{ExpansionPolicy, Heuristic, MCTSCache, MCTSGame, MCTSPlayer, UCTPolicy};
+use super::{
+    ExpansionPolicy, Heuristic, MCTSCache, MCTSGame, MCTSPlayer, SimulationPolicy, UCTPolicy,
+};
 use rand::prelude::SliceRandom;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
@@ -202,6 +204,18 @@ impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame> ExpansionPol
             return None;
         }
         self.unexpanded_moves.pop()
+    }
+}
+
+pub struct DefaultSimulationPolicy {}
+
+impl SimulationPolicy for DefaultSimulationPolicy {}
+
+pub struct HeuristicCutoff<const MXD: usize, const MNM: usize> {}
+
+impl<const MXD: usize, const MNM: usize> SimulationPolicy for HeuristicCutoff<MXD, MNM> {
+    fn should_cutoff(depth: usize, heuristic: f32, available_moves: usize) -> bool {
+        depth >= MXD || available_moves <= MNM || heuristic <= 0.05 || heuristic >= 0.95
     }
 }
 

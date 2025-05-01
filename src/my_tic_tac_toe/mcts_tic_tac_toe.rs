@@ -230,8 +230,8 @@ impl MCTSGame for TicTacToeMCTSGame {
 mod tests {
     use super::*;
     use crate::my_monte_carlo_tree_search::{
-        DefaultHeuristic, DynamicC, ExpandAll, MCTSAlgo, NoCache, PWDefault, PlainMCTS, StaticC,
-        WithCache,
+        DefaultHeuristic, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo, NoCache,
+        PWDefault, PlainMCTS, StaticC, WithCache,
     };
     use crate::my_monte_carlo_tree_search::{MonteCarloGameMode, MonteCarloTreeSearch};
     type PWDefaultTTT = PWDefault<TicTacToeMCTSGame>;
@@ -485,6 +485,7 @@ mod tests {
                 NoCache,
                 ExpandAllTTT,
                 DefaultHeuristic,
+                DefaultSimulationPolicy,
             > = PlainMCTS::new(WEIGHTING_FACTOR);
             let mut ttt_game_data = TicTacToeGameData::new();
             ttt_game_data.set_current_player(MonteCarloPlayer::Me);
@@ -545,6 +546,7 @@ mod tests {
                 NoCache,
                 ExpandAllTTT,
                 DefaultHeuristic,
+                DefaultSimulationPolicy,
             > = PlainMCTS::new(WEIGHTING_FACTOR);
             let mut ttt_game_data = TicTacToeGameData::new();
             ttt_game_data.set_current_player(MonteCarloPlayer::Opp);
@@ -605,6 +607,7 @@ mod tests {
                 NoCache,
                 ExpandAllTTT,
                 DefaultHeuristic,
+                DefaultSimulationPolicy,
             > = PlainMCTS::new(WEIGHTING_FACTOR);
             let mut first_ttt_game_data = TicTacToeGameData::new();
             first_ttt_game_data.set_current_player(MonteCarloPlayer::Me);
@@ -615,6 +618,7 @@ mod tests {
                 WithCache,
                 PWDefaultTTT,
                 DefaultHeuristic,
+                DefaultSimulationPolicy,
             > = PlainMCTS::new(WEIGHTING_FACTOR);
             let mut second_ttt_game_data = TicTacToeGameData::new();
             second_ttt_game_data.set_current_player(MonteCarloPlayer::Opp);

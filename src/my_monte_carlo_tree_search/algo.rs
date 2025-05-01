@@ -1,45 +1,51 @@
 use super::{
-    ExpansionPolicy, Heuristic, MCTSAlgo, MCTSCache, MCTSGame, MCTSNode, PlainNode, UCTPolicy,
+    ExpansionPolicy, Heuristic, MCTSAlgo, MCTSCache, MCTSGame, MCTSNode, PlainNode,
+    SimulationPolicy, UCTPolicy,
 };
-use rand::prelude::IteratorRandom;
+use rand::seq::SliceRandom;
 
-pub struct PlainMCTS<G, P, C, E, H>
+pub struct PlainMCTS<G, P, C, E, H, S>
 where
     G: MCTSGame,
     P: UCTPolicy<G>,
     C: MCTSCache<G, P>,
     E: ExpansionPolicy<G>,
     H: Heuristic<G>,
+    S: SimulationPolicy,
 {
     pub nodes: Vec<PlainNode<G, P, C, E, H>>,
     pub root_index: usize,
     pub exploration_constant: f32,
+    phantom: std::marker::PhantomData<S>,
 }
 
-impl<G, P, C, E, H> PlainMCTS<G, P, C, E, H>
+impl<G, P, C, E, H, S> PlainMCTS<G, P, C, E, H, S>
 where
     G: MCTSGame,
     P: UCTPolicy<G>,
     C: MCTSCache<G, P>,
     E: ExpansionPolicy<G>,
     H: Heuristic<G>,
+    S: SimulationPolicy,
 {
     pub fn new(exploration_constant: f32) -> Self {
         Self {
             nodes: vec![],
             root_index: 0,
             exploration_constant,
+            phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<G, P, C, E, H> MCTSAlgo<G> for PlainMCTS<G, P, C, E, H>
+impl<G, P, C, E, H, S> MCTSAlgo<G> for PlainMCTS<G, P, C, E, H, S>
 where
     G: MCTSGame,
     P: UCTPolicy<G>,
     C: MCTSCache<G, P>,
     E: ExpansionPolicy<G>,
     H: Heuristic<G>,
+    S: SimulationPolicy,
 {
     fn iterate(&mut self) {
         let mut path = vec![self.root_index];
@@ -105,18 +111,30 @@ where
         };
 
         // Simulation
-        let mut current_state = self.nodes[current_index].get_state().clone();
-        while !G::is_terminal(&current_state) {
-            let random_move = G::available_moves(&current_state)
-                .choose(&mut rand::thread_rng())
-                .expect("No available moves");
-            current_state = G::apply_move(&current_state, &random_move);
-        }
         // simulation result is expected as follows:
         // 1.0: win for me
         // 0.5: tie
         // 0.0: win for opponent
-        let simulation_result = G::evaluate(&current_state);
+        // or some heuristic value between 0.0 and 1.0
+        let mut current_state = self.nodes[current_index].get_state().clone();
+        let mut depth = 0;
+        let simulation_result = loop {
+            if G::is_terminal(&current_state) {
+                break G::evaluate(&current_state);
+            }
+            let available_moves = G::available_moves(&current_state).collect::<Vec<_>>();
+            let heuristic = H::evaluate_state(&current_state);
+            if S::should_cutoff(depth, heuristic, available_moves.len()) {
+                break heuristic;
+            }
+            current_state = G::apply_move(
+                &current_state,
+                available_moves
+                    .choose(&mut rand::thread_rng())
+                    .expect("No available moves"),
+            );
+            depth += 1;
+        };
 
         // back propagation
         for &node_index in path.iter().rev() {
