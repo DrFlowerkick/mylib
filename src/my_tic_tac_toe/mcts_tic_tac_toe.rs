@@ -230,7 +230,7 @@ impl MCTSGame for TicTacToeMCTSGame {
 mod tests {
     use super::*;
     use crate::my_monte_carlo_tree_search::{
-        DynamicC, ExpandAll, MCTSAlgo, NoCache, PWDefault, StaticC, TurnBasedMCTS, WithCache,
+        DynamicC, ExpandAll, MCTSAlgo, NoCache, PWDefault, PlainMCTS, StaticC, WithCache,
     };
     use crate::my_monte_carlo_tree_search::{MonteCarloGameMode, MonteCarloTreeSearch};
     type PWDefaultTTT = PWDefault<TicTacToeMCTSGame>;
@@ -478,12 +478,8 @@ mod tests {
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: TurnBasedMCTS<
-                TicTacToeMCTSGame,
-                StaticC,
-                NoCache,
-                ExpandAllTTT,
-            > = TurnBasedMCTS::new(WEIGHTING_FACTOR);
+            let mut mcts_tic_tac_toe: PlainMCTS<TicTacToeMCTSGame, StaticC, NoCache, ExpandAllTTT> =
+                PlainMCTS::new(WEIGHTING_FACTOR);
             let mut ttt_game_data = TicTacToeGameData::new();
             ttt_game_data.set_current_player(MonteCarloPlayer::Me);
             let mut time_out = TIME_OUT_FIRST_TURN;
@@ -537,12 +533,8 @@ mod tests {
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: TurnBasedMCTS<
-                TicTacToeMCTSGame,
-                StaticC,
-                NoCache,
-                ExpandAllTTT,
-            > = TurnBasedMCTS::new(WEIGHTING_FACTOR);
+            let mut mcts_tic_tac_toe: PlainMCTS<TicTacToeMCTSGame, StaticC, NoCache, ExpandAllTTT> =
+                PlainMCTS::new(WEIGHTING_FACTOR);
             let mut ttt_game_data = TicTacToeGameData::new();
             ttt_game_data.set_current_player(MonteCarloPlayer::Opp);
             let mut time_out = TIME_OUT_FIRST_TURN;
@@ -596,21 +588,21 @@ mod tests {
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut first_mcts_tic_tac_toe: TurnBasedMCTS<
+            let mut first_mcts_tic_tac_toe: PlainMCTS<
                 TicTacToeMCTSGame,
                 StaticC,
                 NoCache,
                 ExpandAllTTT,
-            > = TurnBasedMCTS::new(WEIGHTING_FACTOR);
+            > = PlainMCTS::new(WEIGHTING_FACTOR);
             let mut first_ttt_game_data = TicTacToeGameData::new();
             first_ttt_game_data.set_current_player(MonteCarloPlayer::Me);
             let mut first_time_out = TIME_OUT_FIRST_TURN;
-            let mut second_mcts_tic_tac_toe: TurnBasedMCTS<
+            let mut second_mcts_tic_tac_toe: PlainMCTS<
                 TicTacToeMCTSGame,
                 DynamicC,
                 WithCache,
                 PWDefaultTTT,
-            > = TurnBasedMCTS::new(WEIGHTING_FACTOR);
+            > = PlainMCTS::new(WEIGHTING_FACTOR);
             let mut second_ttt_game_data = TicTacToeGameData::new();
             second_ttt_game_data.set_current_player(MonteCarloPlayer::Opp);
             let mut second_time_out = TIME_OUT_FIRST_TURN;

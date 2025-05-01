@@ -51,6 +51,7 @@ pub enum MonteCarloNodeConsistency {
     PossibleFutureGameState,
 }
 
+// new MCTS types
 pub struct StaticC {}
 
 impl<G: MCTSGame> UCTPolicy<G> for StaticC {}

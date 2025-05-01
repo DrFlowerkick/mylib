@@ -1,8 +1,8 @@
 // type definition and functions of mcts node
 
 use super::{
-    MonteCarloGameData, MonteCarloGameDataUpdate, MonteCarloGameMode, MonteCarloNodeType,
-    MonteCarloPlayer, MonteCarloPlayerAction,
+    ExpansionPolicy, MCTSCache, MCTSGame, MCTSNode, MonteCarloGameData, MonteCarloGameDataUpdate,
+    MonteCarloGameMode, MonteCarloNodeType, MonteCarloPlayer, MonteCarloPlayerAction, UCTPolicy,
 };
 
 #[derive(PartialEq, Clone, Copy)]
@@ -232,5 +232,110 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
         }
 
         self.game_data == *current_game_state
+    }
+}
+
+// new mcts node
+pub struct PlainNode<G, P, C, E>
+where
+    G: MCTSGame,
+    P: UCTPolicy<G>,
+    C: MCTSCache<G, P>,
+    E: ExpansionPolicy<G>,
+{
+    pub state: G::State,
+    pub visits: usize,
+    pub accumulated_value: f32,
+    pub mv: Option<G::Move>,
+    pub children: Vec<usize>,
+    pub cache: C,
+    pub expansion_policy: E,
+
+    phantom: std::marker::PhantomData<P>,
+}
+
+impl<G, P, C, E> PlainNode<G, P, C, E>
+where
+    G: MCTSGame,
+    P: UCTPolicy<G>,
+    C: MCTSCache<G, P>,
+    E: ExpansionPolicy<G>,
+{
+    pub fn root_node(state: G::State) -> Self {
+        PlainNode {
+            expansion_policy: E::new(&state),
+            state,
+            visits: 0,
+            accumulated_value: 0.0,
+            mv: None,
+            children: vec![],
+            cache: C::new(),
+            phantom: std::marker::PhantomData,
+        }
+    }
+    pub fn new(state: G::State, mv: G::Move) -> Self {
+        PlainNode {
+            expansion_policy: E::new(&state),
+            state,
+            visits: 0,
+            accumulated_value: 0.0,
+            mv: Some(mv),
+            children: vec![],
+            cache: C::new(),
+            phantom: std::marker::PhantomData,
+        }
+    }
+    pub fn add_child(&mut self, child_index: usize) {
+        self.children.push(child_index);
+    }
+    pub fn get_children(&self) -> &Vec<usize> {
+        &self.children
+    }
+}
+
+impl<G, P, C, E> MCTSNode<G> for PlainNode<G, P, C, E>
+where
+    G: MCTSGame,
+    P: UCTPolicy<G>,
+    C: MCTSCache<G, P>,
+    E: ExpansionPolicy<G>,
+{
+    fn get_state(&self) -> &G::State {
+        &self.state
+    }
+    fn get_move(&self) -> Option<&G::Move> {
+        self.mv.as_ref()
+    }
+    fn get_visits(&self) -> usize {
+        self.visits
+    }
+    fn get_accumulated_value(&self) -> f32 {
+        self.accumulated_value
+    }
+    fn add_simulation_result(&mut self, result: f32) {
+        self.accumulated_value += result;
+        self.cache.update_exploitation(
+            self.visits,
+            self.accumulated_value,
+            G::current_player(&self.state),
+            G::perspective_player(),
+        );
+    }
+    fn increment_visits(&mut self) {
+        self.visits += 1;
+    }
+    fn calc_utc(&mut self, parent_visits: usize, c: f32, perspective_player: G::Player) -> f32 {
+        if self.visits == 0 {
+            return f32::INFINITY;
+        }
+        let exploitation = self.cache.get_exploitation(
+            self.visits,
+            self.accumulated_value,
+            G::current_player(&self.state),
+            perspective_player,
+        );
+        self.cache.update_exploration(self.visits, parent_visits, c);
+        let exploration = self.cache.get_exploration(self.visits, parent_visits, c);
+        exploitation + exploration
     }
 }

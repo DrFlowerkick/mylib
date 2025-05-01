@@ -101,6 +101,8 @@ pub trait MCTSNode<G: MCTSGame> {
     fn get_accumulated_value(&self) -> f32;
     fn add_simulation_result(&mut self, result: f32);
     fn increment_visits(&mut self);
+    fn calc_utc(&mut self, parent_visits: usize, base_c: f32, perspective_player: G::Player)
+        -> f32;
 }
 
 pub trait MCTSAlgo<G: MCTSGame> {
