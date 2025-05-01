@@ -1,6 +1,6 @@
 // miscellaneous mcts type definitions
 
-use super::{ExpansionPolicy, MCTSCache, MCTSGame, MCTSPlayer, UCTPolicy};
+use super::{ExpansionPolicy, Heuristic, MCTSCache, MCTSGame, MCTSPlayer, UCTPolicy};
 use rand::prelude::SliceRandom;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
@@ -204,3 +204,7 @@ impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame> ExpansionPol
         self.unexpanded_moves.pop()
     }
 }
+
+pub struct DefaultHeuristic {}
+
+impl<G: MCTSGame> Heuristic<G> for DefaultHeuristic {}

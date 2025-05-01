@@ -164,3 +164,13 @@ pub trait ExpansionPolicy<G: MCTSGame> {
     fn pop_expandable_move(&mut self, visits: usize, num_parent_children: usize)
         -> Option<G::Move>;
 }
+
+pub trait Heuristic<G: MCTSGame> {
+    // evaluates although non terminal states
+    fn evaluate_state(state: &G::State) -> f32 {
+        G::evaluate(state)
+    }
+    fn evaluate_move(_state: &G::State, _mv: &G::Move) -> f32 {
+        0.0
+    }
+}

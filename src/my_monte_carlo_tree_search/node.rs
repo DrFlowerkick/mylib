@@ -1,8 +1,9 @@
 // type definition and functions of mcts node
 
 use super::{
-    ExpansionPolicy, MCTSCache, MCTSGame, MCTSNode, MonteCarloGameData, MonteCarloGameDataUpdate,
-    MonteCarloGameMode, MonteCarloNodeType, MonteCarloPlayer, MonteCarloPlayerAction, UCTPolicy,
+    ExpansionPolicy, Heuristic, MCTSCache, MCTSGame, MCTSNode, MonteCarloGameData,
+    MonteCarloGameDataUpdate, MonteCarloGameMode, MonteCarloNodeType, MonteCarloPlayer,
+    MonteCarloPlayerAction, UCTPolicy,
 };
 
 #[derive(PartialEq, Clone, Copy)]
@@ -236,12 +237,13 @@ impl<G: MonteCarloGameData, A: MonteCarloPlayerAction, U: MonteCarloGameDataUpda
 }
 
 // new mcts node
-pub struct PlainNode<G, P, C, E>
+pub struct PlainNode<G, P, C, E, H>
 where
     G: MCTSGame,
     P: UCTPolicy<G>,
     C: MCTSCache<G, P>,
     E: ExpansionPolicy<G>,
+    H: Heuristic<G>,
 {
     pub state: G::State,
     pub visits: usize,
@@ -251,15 +253,16 @@ where
     pub cache: C,
     pub expansion_policy: E,
 
-    phantom: std::marker::PhantomData<P>,
+    phantom: std::marker::PhantomData<(P, H)>,
 }
 
-impl<G, P, C, E> PlainNode<G, P, C, E>
+impl<G, P, C, E, H> PlainNode<G, P, C, E, H>
 where
     G: MCTSGame,
     P: UCTPolicy<G>,
     C: MCTSCache<G, P>,
     E: ExpansionPolicy<G>,
+    H: Heuristic<G>,
 {
     pub fn root_node(state: G::State) -> Self {
         PlainNode {
@@ -293,12 +296,13 @@ where
     }
 }
 
-impl<G, P, C, E> MCTSNode<G> for PlainNode<G, P, C, E>
+impl<G, P, C, E, H> MCTSNode<G> for PlainNode<G, P, C, E, H>
 where
     G: MCTSGame,
     P: UCTPolicy<G>,
     C: MCTSCache<G, P>,
     E: ExpansionPolicy<G>,
+    H: Heuristic<G>,
 {
     fn get_state(&self) -> &G::State {
         &self.state

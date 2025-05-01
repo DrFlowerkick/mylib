@@ -230,7 +230,8 @@ impl MCTSGame for TicTacToeMCTSGame {
 mod tests {
     use super::*;
     use crate::my_monte_carlo_tree_search::{
-        DynamicC, ExpandAll, MCTSAlgo, NoCache, PWDefault, PlainMCTS, StaticC, WithCache,
+        DefaultHeuristic, DynamicC, ExpandAll, MCTSAlgo, NoCache, PWDefault, PlainMCTS, StaticC,
+        WithCache,
     };
     use crate::my_monte_carlo_tree_search::{MonteCarloGameMode, MonteCarloTreeSearch};
     type PWDefaultTTT = PWDefault<TicTacToeMCTSGame>;
@@ -478,8 +479,13 @@ mod tests {
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: PlainMCTS<TicTacToeMCTSGame, StaticC, NoCache, ExpandAllTTT> =
-                PlainMCTS::new(WEIGHTING_FACTOR);
+            let mut mcts_tic_tac_toe: PlainMCTS<
+                TicTacToeMCTSGame,
+                StaticC,
+                NoCache,
+                ExpandAllTTT,
+                DefaultHeuristic,
+            > = PlainMCTS::new(WEIGHTING_FACTOR);
             let mut ttt_game_data = TicTacToeGameData::new();
             ttt_game_data.set_current_player(MonteCarloPlayer::Me);
             let mut time_out = TIME_OUT_FIRST_TURN;
@@ -533,8 +539,13 @@ mod tests {
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: PlainMCTS<TicTacToeMCTSGame, StaticC, NoCache, ExpandAllTTT> =
-                PlainMCTS::new(WEIGHTING_FACTOR);
+            let mut mcts_tic_tac_toe: PlainMCTS<
+                TicTacToeMCTSGame,
+                StaticC,
+                NoCache,
+                ExpandAllTTT,
+                DefaultHeuristic,
+            > = PlainMCTS::new(WEIGHTING_FACTOR);
             let mut ttt_game_data = TicTacToeGameData::new();
             ttt_game_data.set_current_player(MonteCarloPlayer::Opp);
             let mut time_out = TIME_OUT_FIRST_TURN;
@@ -593,6 +604,7 @@ mod tests {
                 StaticC,
                 NoCache,
                 ExpandAllTTT,
+                DefaultHeuristic,
             > = PlainMCTS::new(WEIGHTING_FACTOR);
             let mut first_ttt_game_data = TicTacToeGameData::new();
             first_ttt_game_data.set_current_player(MonteCarloPlayer::Me);
@@ -602,6 +614,7 @@ mod tests {
                 DynamicC,
                 WithCache,
                 PWDefaultTTT,
+                DefaultHeuristic,
             > = PlainMCTS::new(WEIGHTING_FACTOR);
             let mut second_ttt_game_data = TicTacToeGameData::new();
             second_ttt_game_data.set_current_player(MonteCarloPlayer::Opp);

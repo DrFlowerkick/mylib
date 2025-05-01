@@ -1,24 +1,28 @@
-use super::{ExpansionPolicy, MCTSAlgo, MCTSCache, MCTSGame, MCTSNode, PlainNode, UCTPolicy};
+use super::{
+    ExpansionPolicy, Heuristic, MCTSAlgo, MCTSCache, MCTSGame, MCTSNode, PlainNode, UCTPolicy,
+};
 use rand::prelude::IteratorRandom;
 
-pub struct PlainMCTS<G, P, C, E>
+pub struct PlainMCTS<G, P, C, E, H>
 where
     G: MCTSGame,
     P: UCTPolicy<G>,
     C: MCTSCache<G, P>,
     E: ExpansionPolicy<G>,
+    H: Heuristic<G>,
 {
-    pub nodes: Vec<PlainNode<G, P, C, E>>,
+    pub nodes: Vec<PlainNode<G, P, C, E, H>>,
     pub root_index: usize,
     pub exploration_constant: f32,
 }
 
-impl<G, P, C, E> PlainMCTS<G, P, C, E>
+impl<G, P, C, E, H> PlainMCTS<G, P, C, E, H>
 where
     G: MCTSGame,
     P: UCTPolicy<G>,
     C: MCTSCache<G, P>,
     E: ExpansionPolicy<G>,
+    H: Heuristic<G>,
 {
     pub fn new(exploration_constant: f32) -> Self {
         Self {
@@ -29,12 +33,13 @@ where
     }
 }
 
-impl<G, P, C, E> MCTSAlgo<G> for PlainMCTS<G, P, C, E>
+impl<G, P, C, E, H> MCTSAlgo<G> for PlainMCTS<G, P, C, E, H>
 where
     G: MCTSGame,
     P: UCTPolicy<G>,
     C: MCTSCache<G, P>,
     E: ExpansionPolicy<G>,
+    H: Heuristic<G>,
 {
     fn iterate(&mut self) {
         let mut path = vec![self.root_index];
