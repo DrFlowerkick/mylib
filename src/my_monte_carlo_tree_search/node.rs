@@ -1,9 +1,6 @@
 // type definition and functions of mcts node
 
-use super::{
-    ExpansionPolicy, Heuristic, MCTSGame, MCTSNode, UCTPolicy,
-    UTCCache,
-};
+use super::{ExpansionPolicy, Heuristic, MCTSGame, MCTSNode, UCTPolicy, UTCCache};
 
 pub struct PlainNode<G, UP, UC, EP, H>
 where

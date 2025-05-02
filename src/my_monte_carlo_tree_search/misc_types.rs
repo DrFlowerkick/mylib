@@ -1,8 +1,8 @@
 // miscellaneous mcts type definitions
 
 use super::{
-    ExpansionPolicy, Heuristic, HeuristicCache, MCTSGame, MCTSPlayer, SimulationPolicy, UCTPolicy, GameCache,
-    UTCCache,
+    ExpansionPolicy, GameCache, Heuristic, HeuristicCache, MCTSGame, MCTSPlayer, SimulationPolicy,
+    UCTPolicy, UTCCache,
 };
 use rand::prelude::SliceRandom;
 
