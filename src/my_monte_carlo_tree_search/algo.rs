@@ -1,32 +1,32 @@
 use super::{
-    ExpansionPolicy, Heuristic, MCTSAlgo, MCTSCache, MCTSGame, MCTSNode, PlainNode,
+    ExpansionPolicy, Heuristic, MCTSAlgo, UTCCache, MCTSGame, MCTSNode, PlainNode,
     SimulationPolicy, UCTPolicy,
 };
 use rand::prelude::IteratorRandom;
 
-pub struct PlainMCTS<G, P, C, E, H, S>
+pub struct PlainMCTS<G, UP, UC, EP, H, SP>
 where
     G: MCTSGame,
-    P: UCTPolicy<G>,
-    C: MCTSCache<G, P>,
-    E: ExpansionPolicy<G>,
+    UP: UCTPolicy<G>,
+    UC: UTCCache<G, UP>,
+    EP: ExpansionPolicy<G>,
     H: Heuristic<G>,
-    S: SimulationPolicy<G, H>,
+    SP: SimulationPolicy<G, H>,
 {
-    pub nodes: Vec<PlainNode<G, P, C, E, H>>,
+    pub nodes: Vec<PlainNode<G, UP, UC, EP, H>>,
     pub root_index: usize,
     pub exploration_constant: f32,
-    phantom: std::marker::PhantomData<S>,
+    phantom: std::marker::PhantomData<SP>,
 }
 
-impl<G, P, C, E, H, S> PlainMCTS<G, P, C, E, H, S>
+impl<G, UP, UC, EP, H, SP> PlainMCTS<G, UP, UC, EP, H, SP>
 where
     G: MCTSGame,
-    P: UCTPolicy<G>,
-    C: MCTSCache<G, P>,
-    E: ExpansionPolicy<G>,
+    UP: UCTPolicy<G>,
+    UC: UTCCache<G, UP>,
+    EP: ExpansionPolicy<G>,
     H: Heuristic<G>,
-    S: SimulationPolicy<G, H>,
+    SP: SimulationPolicy<G, H>,
 {
     pub fn new(exploration_constant: f32) -> Self {
         Self {
@@ -38,14 +38,14 @@ where
     }
 }
 
-impl<G, P, C, E, H, S> MCTSAlgo<G> for PlainMCTS<G, P, C, E, H, S>
+impl<G, UP, UC, EP, H, SP> MCTSAlgo<G> for PlainMCTS<G, UP, UC, EP, H, SP>
 where
     G: MCTSGame,
-    P: UCTPolicy<G>,
-    C: MCTSCache<G, P>,
-    E: ExpansionPolicy<G>,
+    UP: UCTPolicy<G>,
+    UC: UTCCache<G, UP>,
+    EP: ExpansionPolicy<G>,
     H: Heuristic<G>,
-    S: SimulationPolicy<G, H>,
+    SP: SimulationPolicy<G, H>,
 {
     fn iterate(&mut self) {
         let mut path = vec![self.root_index];
@@ -123,7 +123,7 @@ where
                 break G::evaluate(&current_state);
             }
             
-            if let Some(heuristic) = S::should_cutoff(&current_state, depth) {
+            if let Some(heuristic) = SP::should_cutoff(&current_state, depth) {
                 break heuristic;
             }
 

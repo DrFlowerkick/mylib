@@ -134,7 +134,7 @@ pub trait UCTPolicy<G: MCTSGame> {
     }
 }
 
-pub trait MCTSCache<G: MCTSGame, P: UCTPolicy<G>> {
+pub trait UTCCache<G: MCTSGame, UP: UCTPolicy<G>> {
     fn new() -> Self;
 
     fn update_exploitation(

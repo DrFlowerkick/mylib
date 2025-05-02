@@ -1,7 +1,7 @@
 // miscellaneous mcts type definitions
 
 use super::{
-    ExpansionPolicy, Heuristic, MCTSCache, MCTSGame, MCTSPlayer, SimulationPolicy, UCTPolicy,
+    ExpansionPolicy, Heuristic, UTCCache, MCTSGame, MCTSPlayer, SimulationPolicy, UCTPolicy,
 };
 use rand::prelude::SliceRandom;
 
@@ -67,11 +67,11 @@ impl<G: MCTSGame> UCTPolicy<G> for DynamicC {
     }
 }
 
-pub struct NoCache;
+pub struct NoUTCCache;
 
-impl<G: MCTSGame, P: UCTPolicy<G>> MCTSCache<G, P> for NoCache {
+impl<G: MCTSGame, UP: UCTPolicy<G>> UTCCache<G, UP> for NoUTCCache {
     fn new() -> Self {
-        NoCache
+        NoUTCCache
     }
 
     fn update_exploitation(&mut self, _v: usize, _a: f32, _c: G::Player, _p: G::Player) {}
@@ -82,24 +82,24 @@ impl<G: MCTSGame, P: UCTPolicy<G>> MCTSCache<G, P> for NoCache {
         current_player: G::Player,
         perspective_player: G::Player,
     ) -> f32 {
-        P::exploitation_score(acc_value, visits, current_player, perspective_player)
+        UP::exploitation_score(acc_value, visits, current_player, perspective_player)
     }
 
     fn update_exploration(&mut self, _v: usize, _p: usize, _b: f32) {}
     fn get_exploration(&self, visits: usize, parent_visits: usize, base_c: f32) -> f32 {
-        P::exploration_score(visits, parent_visits, base_c)
+        UP::exploration_score(visits, parent_visits, base_c)
     }
 }
 
-pub struct WithCache {
+pub struct CachedUTC {
     exploitation: f32,
     exploration: f32,
     last_parent_visits: usize,
 }
 
-impl<G: MCTSGame, P: UCTPolicy<G>> MCTSCache<G, P> for WithCache {
+impl<G: MCTSGame, UP: UCTPolicy<G>> UTCCache<G, UP> for CachedUTC {
     fn new() -> Self {
-        WithCache {
+        CachedUTC {
             exploitation: 0.0,
             exploration: 0.0,
             last_parent_visits: 0,
@@ -114,7 +114,7 @@ impl<G: MCTSGame, P: UCTPolicy<G>> MCTSCache<G, P> for WithCache {
         perspective_player: G::Player,
     ) {
         self.exploitation =
-            P::exploitation_score(acc_value, visits, current_player, perspective_player);
+            UP::exploitation_score(acc_value, visits, current_player, perspective_player);
     }
 
     fn get_exploitation(&self, _v: usize, _a: f32, _c: G::Player, _p: G::Player) -> f32 {
@@ -123,7 +123,7 @@ impl<G: MCTSGame, P: UCTPolicy<G>> MCTSCache<G, P> for WithCache {
 
     fn update_exploration(&mut self, visits: usize, parent_visits: usize, base_c: f32) {
         if self.last_parent_visits != parent_visits {
-            self.exploration = P::exploration_score(visits, parent_visits, base_c);
+            self.exploration = UP::exploration_score(visits, parent_visits, base_c);
             self.last_parent_visits = parent_visits;
         }
     }

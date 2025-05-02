@@ -230,8 +230,8 @@ impl MCTSGame for TicTacToeMCTSGame {
 mod tests {
     use super::*;
     use crate::my_monte_carlo_tree_search::{
-        DefaultHeuristic, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo, NoCache,
-        PWDefault, PlainMCTS, StaticC, WithCache,
+        DefaultHeuristic, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo, NoUTCCache,
+        PWDefault, PlainMCTS, StaticC, CachedUTC,
     };
     use crate::my_monte_carlo_tree_search::{MonteCarloGameMode, MonteCarloTreeSearch};
     type PWDefaultTTT = PWDefault<TicTacToeMCTSGame>;
@@ -482,7 +482,7 @@ mod tests {
             let mut mcts_tic_tac_toe: PlainMCTS<
                 TicTacToeMCTSGame,
                 StaticC,
-                NoCache,
+                NoUTCCache,
                 ExpandAllTTT,
                 DefaultHeuristic,
                 DefaultSimulationPolicy,
@@ -543,7 +543,7 @@ mod tests {
             let mut mcts_tic_tac_toe: PlainMCTS<
                 TicTacToeMCTSGame,
                 StaticC,
-                NoCache,
+                NoUTCCache,
                 ExpandAllTTT,
                 DefaultHeuristic,
                 DefaultSimulationPolicy,
@@ -604,7 +604,7 @@ mod tests {
             let mut first_mcts_tic_tac_toe: PlainMCTS<
                 TicTacToeMCTSGame,
                 StaticC,
-                NoCache,
+                NoUTCCache,
                 ExpandAllTTT,
                 DefaultHeuristic,
                 DefaultSimulationPolicy,
@@ -615,7 +615,7 @@ mod tests {
             let mut second_mcts_tic_tac_toe: PlainMCTS<
                 TicTacToeMCTSGame,
                 DynamicC,
-                WithCache,
+                CachedUTC,
                 PWDefaultTTT,
                 DefaultHeuristic,
                 DefaultSimulationPolicy,
