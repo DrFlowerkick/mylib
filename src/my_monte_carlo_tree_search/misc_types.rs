@@ -209,13 +209,18 @@ impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame> ExpansionPol
 
 pub struct DefaultSimulationPolicy {}
 
-impl SimulationPolicy for DefaultSimulationPolicy {}
+impl<G: MCTSGame, H: Heuristic<G>> SimulationPolicy<G, H> for DefaultSimulationPolicy {}
 
-pub struct HeuristicCutoff<const MXD: usize, const MNM: usize> {}
+pub struct HeuristicCutoff<const MXD: usize> {}
 
-impl<const MXD: usize, const MNM: usize> SimulationPolicy for HeuristicCutoff<MXD, MNM> {
-    fn should_cutoff(depth: usize, heuristic: f32, available_moves: usize) -> bool {
-        depth >= MXD || available_moves <= MNM || heuristic <= 0.05 || heuristic >= 0.95
+impl<const MXD: usize, G: MCTSGame, H: Heuristic<G>> SimulationPolicy<G, H> for HeuristicCutoff<MXD> {
+    fn should_cutoff(state: &G::State, depth: usize) -> Option<f32> {
+        let heuristic = H::evaluate_state(state);
+        if depth >= MXD || heuristic <= 0.05 || heuristic >= 0.95 {
+            Some(heuristic)
+        } else {
+            None
+        }
     }
 }
 

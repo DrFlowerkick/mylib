@@ -164,6 +164,62 @@ impl TicTacToeGameData {
         }
         self.status
     }
+    fn check_threat_for_one_line<'a>(
+        &self,
+        my_threats: &mut u8,
+        opp_threats: &mut u8,
+        line: impl Iterator<Item = &'a TicTacToeStatus>,
+    ) {
+        let mut me: u8 = 0;
+        let mut opp: u8 = 0_u8;
+        let mut vacant: u8 = 0;
+        for element in line {
+            match element {
+                TicTacToeStatus::Vacant => vacant += 1,
+                TicTacToeStatus::Player(MonteCarloPlayer::Me) => me += 1,
+                TicTacToeStatus::Player(MonteCarloPlayer::Opp) => opp += 1,
+                TicTacToeStatus::Tie => return,
+            }
+            if (me > 0 && opp > 0) || vacant > 1 {
+                return;
+            }
+        }
+        match (me, opp, vacant) {
+            (2, 0, 1) => *my_threats += 1,
+            (0, 2, 1) => *opp_threats += 1,
+            _ => (),
+        }
+    }
+    pub fn get_threats(&self) -> (u8, u8) {
+        if self.status.is_not_vacant() || (self.num_me_cells < 2 && self.num_opp_cells < 2) {
+            return (0, 0);
+        }
+        let mut me_threat = 0;
+        let mut opp_threat = 0;
+        for rc in 0..3 {
+            self.check_threat_for_one_line(
+                &mut me_threat,
+                &mut opp_threat,
+                self.map.iter_row(rc).map(|(_, v)| v),
+            );
+            self.check_threat_for_one_line(
+                &mut me_threat,
+                &mut opp_threat,
+                self.map.iter_column(rc).map(|(_, v)| v),
+            );
+        }
+        self.check_threat_for_one_line(
+            &mut me_threat,
+            &mut opp_threat,
+            self.iter_diagonal_top_left(),
+        );
+        self.check_threat_for_one_line(
+            &mut me_threat,
+            &mut opp_threat,
+            self.iter_diagonal_top_right(),
+        );
+        (me_threat, opp_threat)
+    }
     fn iter_diagonal_top_left(&self) -> impl Iterator<Item = &'_ TicTacToeStatus> {
         [(0_usize, 0_usize), (1, 1), (2, 2)]
             .iter()
@@ -277,6 +333,12 @@ impl TicTacToeGameData {
                 TicTacToeStatus::Player(player) => *player == count_player,
                 _ => false,
             })
+            .count()
+    }
+    pub fn count_non_vacant_cells(&self) -> usize {
+        self.map
+            .iter()
+            .filter(|(_, v)| v.is_not_vacant())
             .count()
     }
     pub fn iter_map(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &TicTacToeStatus)> {

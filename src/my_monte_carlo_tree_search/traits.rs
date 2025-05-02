@@ -165,9 +165,9 @@ pub trait ExpansionPolicy<G: MCTSGame> {
         -> Option<G::Move>;
 }
 
-pub trait SimulationPolicy {
-    fn should_cutoff(_depth: usize, _heuristic: f32, _available_moves: usize) -> bool {
-        false
+pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>> {
+    fn should_cutoff(_state: &G::State, _depth: usize) -> Option<f32> {
+        None
     }
 }
 

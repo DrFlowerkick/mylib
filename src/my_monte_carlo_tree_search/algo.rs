@@ -2,7 +2,7 @@ use super::{
     ExpansionPolicy, Heuristic, MCTSAlgo, MCTSCache, MCTSGame, MCTSNode, PlainNode,
     SimulationPolicy, UCTPolicy,
 };
-use rand::seq::SliceRandom;
+use rand::prelude::IteratorRandom;
 
 pub struct PlainMCTS<G, P, C, E, H, S>
 where
@@ -11,7 +11,7 @@ where
     C: MCTSCache<G, P>,
     E: ExpansionPolicy<G>,
     H: Heuristic<G>,
-    S: SimulationPolicy,
+    S: SimulationPolicy<G, H>,
 {
     pub nodes: Vec<PlainNode<G, P, C, E, H>>,
     pub root_index: usize,
@@ -26,7 +26,7 @@ where
     C: MCTSCache<G, P>,
     E: ExpansionPolicy<G>,
     H: Heuristic<G>,
-    S: SimulationPolicy,
+    S: SimulationPolicy<G, H>,
 {
     pub fn new(exploration_constant: f32) -> Self {
         Self {
@@ -45,7 +45,7 @@ where
     C: MCTSCache<G, P>,
     E: ExpansionPolicy<G>,
     H: Heuristic<G>,
-    S: SimulationPolicy,
+    S: SimulationPolicy<G, H>,
 {
     fn iterate(&mut self) {
         let mut path = vec![self.root_index];
@@ -122,14 +122,14 @@ where
             if G::is_terminal(&current_state) {
                 break G::evaluate(&current_state);
             }
-            let available_moves = G::available_moves(&current_state).collect::<Vec<_>>();
-            let heuristic = H::evaluate_state(&current_state);
-            if S::should_cutoff(depth, heuristic, available_moves.len()) {
+            
+            if let Some(heuristic) = S::should_cutoff(&current_state, depth) {
                 break heuristic;
             }
+
             current_state = G::apply_move(
                 &current_state,
-                available_moves
+                &G::available_moves(&current_state)
                     .choose(&mut rand::thread_rng())
                     .expect("No available moves"),
             );
