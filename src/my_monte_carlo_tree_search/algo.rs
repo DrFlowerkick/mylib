@@ -1,6 +1,6 @@
 use super::{
-    ExpansionPolicy, Heuristic, MCTSAlgo, UTCCache, MCTSGame, MCTSNode, PlainNode,
-    SimulationPolicy, UCTPolicy,
+    ExpansionPolicy, GameCache, Heuristic, HeuristicCache, MCTSAlgo, MCTSGame, MCTSNode, PlainNode,
+    SimulationPolicy, UCTPolicy, UTCCache,
 };
 use rand::prelude::IteratorRandom;
 
@@ -16,6 +16,8 @@ where
     pub nodes: Vec<PlainNode<G, UP, UC, EP, H>>,
     pub root_index: usize,
     pub exploration_constant: f32,
+    pub game_cache: G::Cache,
+    pub heuristic_cache: H::Cache,
     phantom: std::marker::PhantomData<SP>,
 }
 
@@ -33,6 +35,8 @@ where
             nodes: vec![],
             root_index: 0,
             exploration_constant,
+            game_cache: G::Cache::new(),
+            heuristic_cache: H::Cache::new(),
             phantom: std::marker::PhantomData,
         }
     }
@@ -83,32 +87,38 @@ where
         }
 
         // Expansion
-        let current_index = if G::is_terminal(self.nodes[current_index].get_state())
-            || self.nodes[current_index].get_visits() == 0
-        {
-            // If the node is terminal or has not been visited yet, we need to simulate it.
-            current_index
-        } else {
-            // If the node has been visited, we need to expand it by generating its children.
-            let visits = self.nodes[current_index].get_visits();
-            let num_parent_children = self.nodes[current_index].get_children().len();
-            while let Some(mv) = self.nodes[current_index]
-                .expansion_policy
-                .pop_expandable_move(visits, num_parent_children)
+        let current_index =
+            if G::evaluate(self.nodes[current_index].get_state(), &mut self.game_cache).is_some()
+                || self.nodes[current_index].get_visits() == 0
             {
-                let new_state = G::apply_move(self.nodes[current_index].get_state(), &mv);
-                let new_node = PlainNode::new(new_state, mv);
-                self.nodes.push(new_node);
-                let child_index = self.nodes.len() - 1;
-                self.nodes[current_index].add_child(child_index);
-            }
-            let child_index = *self.nodes[current_index]
-                .get_children()
-                .first()
-                .expect("No children found");
-            path.push(child_index);
-            child_index
-        };
+                // If the node is terminal or has not been visited yet, we need to simulate it.
+                current_index
+            } else {
+                // If the node has been visited, we need to expand it by generating its children.
+                let visits = self.nodes[current_index].get_visits();
+                let num_parent_children = self.nodes[current_index].get_children().len();
+                while let Some(mv) = self.nodes[current_index]
+                    .expansion_policy
+                    .pop_expandable_move(visits, num_parent_children)
+                {
+                    let new_state = G::apply_move(
+                        self.nodes[current_index].get_state(),
+                        &mv,
+                        &mut self.game_cache,
+                    );
+                    let is_terminal = G::evaluate(&new_state, &mut self.game_cache).is_some();
+                    let new_node = PlainNode::new(new_state, mv, is_terminal);
+                    self.nodes.push(new_node);
+                    let child_index = self.nodes.len() - 1;
+                    self.nodes[current_index].add_child(child_index);
+                }
+                let child_index = *self.nodes[current_index]
+                    .get_children()
+                    .first()
+                    .expect("No children found");
+                path.push(child_index);
+                child_index
+            };
 
         // Simulation
         // simulation result is expected as follows:
@@ -119,11 +129,16 @@ where
         let mut current_state = self.nodes[current_index].get_state().clone();
         let mut depth = 0;
         let simulation_result = loop {
-            if G::is_terminal(&current_state) {
-                break G::evaluate(&current_state);
+            if let Some(final_score) = G::evaluate(&current_state, &mut self.game_cache) {
+                break final_score;
             }
-            
-            if let Some(heuristic) = SP::should_cutoff(&current_state, depth) {
+
+            if let Some(heuristic) = SP::should_cutoff(
+                &current_state,
+                depth,
+                &mut self.game_cache,
+                &mut self.heuristic_cache,
+            ) {
                 break heuristic;
             }
 
@@ -132,15 +147,14 @@ where
                 &G::available_moves(&current_state)
                     .choose(&mut rand::thread_rng())
                     .expect("No available moves"),
+                &mut self.game_cache,
             );
             depth += 1;
         };
 
         // back propagation
         for &node_index in path.iter().rev() {
-            self.nodes[node_index].increment_visits();
-            // if cache is used, add simulation result must be run before incrementing visits, because it updates the cache
-            self.nodes[node_index].add_simulation_result(simulation_result);
+            self.nodes[node_index].update_stats(simulation_result);
         }
     }
 

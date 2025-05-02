@@ -336,10 +336,7 @@ impl TicTacToeGameData {
             .count()
     }
     pub fn count_non_vacant_cells(&self) -> usize {
-        self.map
-            .iter()
-            .filter(|(_, v)| v.is_not_vacant())
-            .count()
+        self.map.iter().filter(|(_, v)| v.is_not_vacant()).count()
     }
     pub fn iter_map(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &TicTacToeStatus)> {
         self.map.iter()

@@ -79,15 +79,31 @@ pub trait MCTSPlayer: PartialEq {
     fn next(&self) -> Self;
 }
 
-pub trait MCTSGame {
+pub trait GameCache<G: MCTSGame> {
+    fn new() -> Self;
+    fn get_applied_state(&self, _state: &G::State, _mv: &G::Move) -> Option<G::State> {
+        None
+    }
+    fn insert_applied_state(&mut self, _state: &G::State, _mv: &G::Move, _result: G::State) {}
+    fn get_terminal_value(&self, _state: &G::State) -> Option<f32> {
+        None
+    }
+    fn insert_terminal_value(&mut self, _tate: &G::State, _value: f32) {}
+}
+
+pub trait MCTSGame: Sized {
     type State: Clone + PartialEq;
     type Move;
     type Player: MCTSPlayer;
+    type Cache: GameCache<Self>;
 
     fn available_moves<'a>(state: &'a Self::State) -> Box<dyn Iterator<Item = Self::Move> + 'a>;
-    fn apply_move(state: &Self::State, mv: &Self::Move) -> Self::State;
-    fn is_terminal(state: &Self::State) -> bool;
-    fn evaluate(state: &Self::State) -> f32;
+    fn apply_move(
+        state: &Self::State,
+        mv: &Self::Move,
+        game_cache: &mut Self::Cache,
+    ) -> Self::State;
+    fn evaluate(state: &Self::State, game_cache: &mut Self::Cache) -> Option<f32>;
     fn current_player(state: &Self::State) -> Self::Player;
     fn perspective_player() -> Self::Player;
 }
@@ -99,8 +115,7 @@ pub trait MCTSNode<G: MCTSGame> {
     }
     fn get_visits(&self) -> usize;
     fn get_accumulated_value(&self) -> f32;
-    fn add_simulation_result(&mut self, result: f32);
-    fn increment_visits(&mut self);
+    fn update_stats(&mut self, result: f32);
     fn calc_utc(&mut self, parent_visits: usize, base_c: f32, perspective_player: G::Player)
         -> f32;
 }
@@ -159,24 +174,47 @@ pub trait UTCCache<G: MCTSGame, UP: UCTPolicy<G>> {
 }
 
 pub trait ExpansionPolicy<G: MCTSGame> {
-    fn new(state: &G::State) -> Self;
+    fn new(state: &G::State, is_terminal: bool) -> Self;
     fn should_expand(&self, visits: usize, num_parent_children: usize) -> bool;
     fn pop_expandable_move(&mut self, visits: usize, num_parent_children: usize)
         -> Option<G::Move>;
 }
 
-pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>> {
-    fn should_cutoff(_state: &G::State, _depth: usize) -> Option<f32> {
+pub trait HeuristicCache<G: MCTSGame> {
+    fn new() -> Self;
+    fn get_intermediate_score(&self, _state: &G::State) -> Option<f32> {
         None
     }
+    fn insert_intermediate_score(&mut self, _state: &G::State, _value: f32) {}
+    fn get_move_score(&self, _state: &G::State, _mv: &G::Move) -> Option<f32> {
+        None
+    }
+    fn insert_move_score(&mut self, _state: &G::State, _mv: &G::Move, _value: f32) {}
 }
 
 pub trait Heuristic<G: MCTSGame> {
-    // evaluates although non terminal states
-    fn evaluate_state(state: &G::State) -> f32 {
-        G::evaluate(state)
-    }
-    fn evaluate_move(_state: &G::State, _mv: &G::Move) -> f32 {
-        0.0
+    type Cache: HeuristicCache<G>;
+
+    fn evaluate_state(
+        state: &G::State,
+        game_cache: &mut G::Cache,
+        heuristic_cache: &mut Self::Cache,
+    ) -> f32;
+    fn evaluate_move(
+        state: &G::State,
+        mv: &G::Move,
+        game_cache: &mut G::Cache,
+        heuristic_cache: &mut Self::Cache,
+    ) -> f32;
+}
+
+pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>> {
+    fn should_cutoff(
+        _state: &G::State,
+        _depth: usize,
+        _game_cache: &mut G::Cache,
+        _heuristic_cache: &mut H::Cache,
+    ) -> Option<f32> {
+        None
     }
 }

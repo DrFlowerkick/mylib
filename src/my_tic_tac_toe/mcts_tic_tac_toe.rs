@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::my_monte_carlo_tree_search::{
-    MCTSGame, MonteCarloGameData, MonteCarloGameDataUpdate, MonteCarloPlayer,
+    GameCache, MCTSGame, MonteCarloGameData, MonteCarloGameDataUpdate, MonteCarloPlayer,
     MonteCarloPlayerAction,
 };
 use rand::prelude::*;
@@ -186,18 +186,30 @@ impl MonteCarloGameData for TicTacToeGameData {
 }
 
 // solving TicTacToe with new MCTS traits
+pub struct NoGameCache;
+impl<G: MCTSGame> GameCache<G> for NoGameCache {
+    fn new() -> Self {
+        NoGameCache
+    }
+}
+
 pub struct TicTacToeMCTSGame {}
 
 impl MCTSGame for TicTacToeMCTSGame {
     type State = TicTacToeGameData;
     type Move = TicTacToePlayerAction;
     type Player = MonteCarloPlayer;
+    type Cache = NoGameCache;
 
     fn available_moves<'a>(state: &'a Self::State) -> Box<dyn Iterator<Item = Self::Move> + 'a> {
         Box::new(IterTicTacToePlayerAction::new(state))
     }
 
-    fn apply_move(state: &Self::State, mv: &Self::Move) -> Self::State {
+    fn apply_move(
+        state: &Self::State,
+        mv: &Self::Move,
+        _game_cache: &mut Self::Cache,
+    ) -> Self::State {
         let mut new_state = *state;
         // apply the move for current player
         new_state.set_player(mv.cell, state.current_player);
@@ -206,18 +218,15 @@ impl MCTSGame for TicTacToeMCTSGame {
         new_state
     }
 
-    fn evaluate(state: &Self::State) -> f32 {
+    fn evaluate(state: &Self::State, _game_cache: &mut Self::Cache) -> Option<f32> {
         match state.status {
-            TicTacToeStatus::Player(MonteCarloPlayer::Me) => 1.0,
-            TicTacToeStatus::Player(MonteCarloPlayer::Opp) => 0.0,
-            TicTacToeStatus::Tie => 0.5,
-            TicTacToeStatus::Vacant => f32::NAN,
+            TicTacToeStatus::Player(MonteCarloPlayer::Me) => Some(1.0),
+            TicTacToeStatus::Player(MonteCarloPlayer::Opp) => Some(0.0),
+            TicTacToeStatus::Tie => Some(0.5),
+            TicTacToeStatus::Vacant => None,
         }
     }
 
-    fn is_terminal(state: &Self::State) -> bool {
-        state.status.is_not_vacant()
-    }
     fn current_player(state: &Self::State) -> Self::Player {
         state.current_player
     }
@@ -230,8 +239,8 @@ impl MCTSGame for TicTacToeMCTSGame {
 mod tests {
     use super::*;
     use crate::my_monte_carlo_tree_search::{
-        DefaultHeuristic, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo, NoUTCCache,
-        PWDefault, PlainMCTS, StaticC, CachedUTC,
+        CachedUTC, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo, NoHeuristic, NoUTCCache,
+        PWDefault, PlainMCTS, StaticC,
     };
     use crate::my_monte_carlo_tree_search::{MonteCarloGameMode, MonteCarloTreeSearch};
     type PWDefaultTTT = PWDefault<TicTacToeMCTSGame>;
@@ -484,14 +493,16 @@ mod tests {
                 StaticC,
                 NoUTCCache,
                 ExpandAllTTT,
-                DefaultHeuristic,
+                NoHeuristic,
                 DefaultSimulationPolicy,
             > = PlainMCTS::new(WEIGHTING_FACTOR);
             let mut ttt_game_data = TicTacToeGameData::new();
             ttt_game_data.set_current_player(MonteCarloPlayer::Me);
             let mut time_out = TIME_OUT_FIRST_TURN;
 
-            while !TicTacToeMCTSGame::is_terminal(&ttt_game_data) {
+            while TicTacToeMCTSGame::evaluate(&ttt_game_data, &mut mcts_tic_tac_toe.game_cache)
+                .is_none()
+            {
                 match ttt_game_data.current_player {
                     MonteCarloPlayer::Me => {
                         let start = Instant::now();
@@ -500,10 +511,13 @@ mod tests {
                             mcts_tic_tac_toe.iterate();
                         }
                         time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                        let selected_move = mcts_tic_tac_toe.select_move();
+                        let selected_move = *mcts_tic_tac_toe.select_move();
                         eprintln!("me : {}", selected_move.cell);
-                        ttt_game_data =
-                            TicTacToeMCTSGame::apply_move(&ttt_game_data, selected_move);
+                        ttt_game_data = TicTacToeMCTSGame::apply_move(
+                            &ttt_game_data,
+                            &selected_move,
+                            &mut mcts_tic_tac_toe.game_cache,
+                        );
                     }
                     MonteCarloPlayer::Opp => {
                         // let opp act by choosing a random action
@@ -511,7 +525,11 @@ mod tests {
                             .choose(&mut thread_rng())
                             .expect("No available moves");
                         eprintln!("opp: {}", opp_move.cell);
-                        ttt_game_data = TicTacToeMCTSGame::apply_move(&ttt_game_data, &opp_move);
+                        ttt_game_data = TicTacToeMCTSGame::apply_move(
+                            &ttt_game_data,
+                            &opp_move,
+                            &mut mcts_tic_tac_toe.game_cache,
+                        );
                     }
                 }
             }
@@ -529,7 +547,8 @@ mod tests {
                     assert!(false, "vacant: Game ended without winner!?");
                 }
             }
-            wins += TicTacToeMCTSGame::evaluate(&ttt_game_data);
+            wins += TicTacToeMCTSGame::evaluate(&ttt_game_data, &mut mcts_tic_tac_toe.game_cache)
+                .unwrap();
         }
         println!("{} wins out of 50 matches.", wins);
         assert!(wins > 45.0);
@@ -545,14 +564,16 @@ mod tests {
                 StaticC,
                 NoUTCCache,
                 ExpandAllTTT,
-                DefaultHeuristic,
+                NoHeuristic,
                 DefaultSimulationPolicy,
             > = PlainMCTS::new(WEIGHTING_FACTOR);
             let mut ttt_game_data = TicTacToeGameData::new();
             ttt_game_data.set_current_player(MonteCarloPlayer::Opp);
             let mut time_out = TIME_OUT_FIRST_TURN;
 
-            while !TicTacToeMCTSGame::is_terminal(&ttt_game_data) {
+            while TicTacToeMCTSGame::evaluate(&ttt_game_data, &mut mcts_tic_tac_toe.game_cache)
+                .is_none()
+            {
                 match ttt_game_data.current_player {
                     MonteCarloPlayer::Me => {
                         let start = Instant::now();
@@ -561,10 +582,13 @@ mod tests {
                             mcts_tic_tac_toe.iterate();
                         }
                         time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                        let selected_move = mcts_tic_tac_toe.select_move();
+                        let selected_move = *mcts_tic_tac_toe.select_move();
                         eprintln!("me : {}", selected_move.cell);
-                        ttt_game_data =
-                            TicTacToeMCTSGame::apply_move(&ttt_game_data, selected_move);
+                        ttt_game_data = TicTacToeMCTSGame::apply_move(
+                            &ttt_game_data,
+                            &selected_move,
+                            &mut mcts_tic_tac_toe.game_cache,
+                        );
                     }
                     MonteCarloPlayer::Opp => {
                         // let opp act by choosing a random action
@@ -572,7 +596,11 @@ mod tests {
                             .choose(&mut thread_rng())
                             .expect("No available moves");
                         eprintln!("opp: {}", opp_move.cell);
-                        ttt_game_data = TicTacToeMCTSGame::apply_move(&ttt_game_data, &opp_move);
+                        ttt_game_data = TicTacToeMCTSGame::apply_move(
+                            &ttt_game_data,
+                            &opp_move,
+                            &mut mcts_tic_tac_toe.game_cache,
+                        );
                     }
                 }
             }
@@ -590,7 +618,8 @@ mod tests {
                     assert!(false, "vacant: Game ended without winner!?");
                 }
             }
-            wins += TicTacToeMCTSGame::evaluate(&ttt_game_data);
+            wins += TicTacToeMCTSGame::evaluate(&ttt_game_data, &mut mcts_tic_tac_toe.game_cache)
+                .unwrap();
         }
         println!("{} wins out of 50 matches.", wins);
         assert!(wins > 45.0);
@@ -606,7 +635,7 @@ mod tests {
                 StaticC,
                 NoUTCCache,
                 ExpandAllTTT,
-                DefaultHeuristic,
+                NoHeuristic,
                 DefaultSimulationPolicy,
             > = PlainMCTS::new(WEIGHTING_FACTOR);
             let mut first_ttt_game_data = TicTacToeGameData::new();
@@ -617,7 +646,7 @@ mod tests {
                 DynamicC,
                 CachedUTC,
                 PWDefaultTTT,
-                DefaultHeuristic,
+                NoHeuristic,
                 DefaultSimulationPolicy,
             > = PlainMCTS::new(WEIGHTING_FACTOR);
             let mut second_ttt_game_data = TicTacToeGameData::new();
@@ -626,7 +655,12 @@ mod tests {
 
             let mut first = true;
 
-            while !TicTacToeMCTSGame::is_terminal(&first_ttt_game_data) {
+            while TicTacToeMCTSGame::evaluate(
+                &first_ttt_game_data,
+                &mut first_mcts_tic_tac_toe.game_cache,
+            )
+            .is_none()
+            {
                 if first {
                     let start = Instant::now();
                     first_mcts_tic_tac_toe.set_root(&first_ttt_game_data);
@@ -634,12 +668,18 @@ mod tests {
                         first_mcts_tic_tac_toe.iterate();
                     }
                     first_time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                    let selected_move = first_mcts_tic_tac_toe.select_move();
+                    let selected_move = *first_mcts_tic_tac_toe.select_move();
                     eprintln!("first : {}", selected_move.cell);
-                    first_ttt_game_data =
-                        TicTacToeMCTSGame::apply_move(&first_ttt_game_data, selected_move);
-                    second_ttt_game_data =
-                        TicTacToeMCTSGame::apply_move(&second_ttt_game_data, selected_move);
+                    first_ttt_game_data = TicTacToeMCTSGame::apply_move(
+                        &first_ttt_game_data,
+                        &selected_move,
+                        &mut first_mcts_tic_tac_toe.game_cache,
+                    );
+                    second_ttt_game_data = TicTacToeMCTSGame::apply_move(
+                        &second_ttt_game_data,
+                        &selected_move,
+                        &mut second_mcts_tic_tac_toe.game_cache,
+                    );
                     first = false;
                 } else {
                     let start = Instant::now();
@@ -648,12 +688,18 @@ mod tests {
                         second_mcts_tic_tac_toe.iterate();
                     }
                     second_time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                    let selected_move = second_mcts_tic_tac_toe.select_move();
+                    let selected_move = *second_mcts_tic_tac_toe.select_move();
                     eprintln!("second: {}", selected_move.cell);
-                    second_ttt_game_data =
-                        TicTacToeMCTSGame::apply_move(&second_ttt_game_data, selected_move);
-                    first_ttt_game_data =
-                        TicTacToeMCTSGame::apply_move(&first_ttt_game_data, selected_move);
+                    second_ttt_game_data = TicTacToeMCTSGame::apply_move(
+                        &second_ttt_game_data,
+                        &selected_move,
+                        &mut second_mcts_tic_tac_toe.game_cache,
+                    );
+                    first_ttt_game_data = TicTacToeMCTSGame::apply_move(
+                        &first_ttt_game_data,
+                        &selected_move,
+                        &mut first_mcts_tic_tac_toe.game_cache,
+                    );
                     first = true;
                 }
             }
@@ -674,7 +720,11 @@ mod tests {
                     assert!(false, "vacant: Game ended without winner!?");
                 }
             }
-            wins += TicTacToeMCTSGame::evaluate(&first_ttt_game_data);
+            wins += TicTacToeMCTSGame::evaluate(
+                &first_ttt_game_data,
+                &mut first_mcts_tic_tac_toe.game_cache,
+            )
+            .unwrap();
         }
         println!("{} wins out of 50 matches.", wins);
         assert_eq!(wins, 25.0);

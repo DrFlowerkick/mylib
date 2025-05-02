@@ -1,9 +1,9 @@
 // type definition and functions of mcts node
 
 use super::{
-    ExpansionPolicy, Heuristic, UTCCache, MCTSGame, MCTSNode, MonteCarloGameData,
-    MonteCarloGameDataUpdate, MonteCarloGameMode, MonteCarloNodeType, MonteCarloPlayer,
-    MonteCarloPlayerAction, UCTPolicy,
+    ExpansionPolicy, Heuristic, MCTSGame, MCTSNode, MonteCarloGameData, MonteCarloGameDataUpdate,
+    MonteCarloGameMode, MonteCarloNodeType, MonteCarloPlayer, MonteCarloPlayerAction, UCTPolicy,
+    UTCCache,
 };
 
 #[derive(PartialEq, Clone, Copy)]
@@ -266,7 +266,7 @@ where
 {
     pub fn root_node(state: G::State) -> Self {
         PlainNode {
-            expansion_policy: EP::new(&state),
+            expansion_policy: EP::new(&state, false),
             state,
             visits: 0,
             accumulated_value: 0.0,
@@ -276,9 +276,9 @@ where
             phantom: std::marker::PhantomData,
         }
     }
-    pub fn new(state: G::State, mv: G::Move) -> Self {
+    pub fn new(state: G::State, mv: G::Move, is_terminal: bool) -> Self {
         PlainNode {
-            expansion_policy: EP::new(&state),
+            expansion_policy: EP::new(&state, is_terminal),
             state,
             visits: 0,
             accumulated_value: 0.0,
@@ -316,7 +316,8 @@ where
     fn get_accumulated_value(&self) -> f32 {
         self.accumulated_value
     }
-    fn add_simulation_result(&mut self, result: f32) {
+    fn update_stats(&mut self, result: f32) {
+        self.visits += 1;
         self.accumulated_value += result;
         self.utc_cache.update_exploitation(
             self.visits,
@@ -324,9 +325,6 @@ where
             G::current_player(&self.state),
             G::perspective_player(),
         );
-    }
-    fn increment_visits(&mut self) {
-        self.visits += 1;
     }
     fn calc_utc(&mut self, parent_visits: usize, c: f32, perspective_player: G::Player) -> f32 {
         if self.visits == 0 {
@@ -338,8 +336,11 @@ where
             G::current_player(&self.state),
             perspective_player,
         );
-        self.utc_cache.update_exploration(self.visits, parent_visits, c);
-        let exploration = self.utc_cache.get_exploration(self.visits, parent_visits, c);
+        self.utc_cache
+            .update_exploration(self.visits, parent_visits, c);
+        let exploration = self
+            .utc_cache
+            .get_exploration(self.visits, parent_visits, c);
         exploitation + exploration
     }
 }

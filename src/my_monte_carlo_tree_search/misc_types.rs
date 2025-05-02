@@ -1,7 +1,8 @@
 // miscellaneous mcts type definitions
 
 use super::{
-    ExpansionPolicy, Heuristic, UTCCache, MCTSGame, MCTSPlayer, SimulationPolicy, UCTPolicy,
+    ExpansionPolicy, Heuristic, HeuristicCache, MCTSGame, MCTSPlayer, SimulationPolicy, UCTPolicy,
+    UTCCache,
 };
 use rand::prelude::SliceRandom;
 
@@ -138,8 +139,8 @@ pub struct ExpandAll<G: MCTSGame> {
 }
 
 impl<G: MCTSGame> ExpansionPolicy<G> for ExpandAll<G> {
-    fn new(state: &<G as MCTSGame>::State) -> Self {
-        let moves = if G::is_terminal(state) {
+    fn new(state: &<G as MCTSGame>::State, is_terminal: bool) -> Self {
+        let moves = if is_terminal {
             vec![]
         } else {
             G::available_moves(state).collect::<Vec<_>>()
@@ -182,8 +183,8 @@ impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame>
 impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame> ExpansionPolicy<G>
     for ProgressiveWidening<C, AN, AD, G>
 {
-    fn new(state: &<G as MCTSGame>::State) -> Self {
-        let unexpanded_moves = if G::is_terminal(state) {
+    fn new(state: &<G as MCTSGame>::State, is_terminal: bool) -> Self {
+        let unexpanded_moves = if is_terminal {
             vec![]
         } else {
             let mut unexpanded_moves = G::available_moves(state).collect::<Vec<_>>();
@@ -213,9 +214,16 @@ impl<G: MCTSGame, H: Heuristic<G>> SimulationPolicy<G, H> for DefaultSimulationP
 
 pub struct HeuristicCutoff<const MXD: usize> {}
 
-impl<const MXD: usize, G: MCTSGame, H: Heuristic<G>> SimulationPolicy<G, H> for HeuristicCutoff<MXD> {
-    fn should_cutoff(state: &G::State, depth: usize) -> Option<f32> {
-        let heuristic = H::evaluate_state(state);
+impl<const MXD: usize, G: MCTSGame, H: Heuristic<G>> SimulationPolicy<G, H>
+    for HeuristicCutoff<MXD>
+{
+    fn should_cutoff(
+        state: &G::State,
+        depth: usize,
+        game_cache: &mut G::Cache,
+        heuristic_cache: &mut H::Cache,
+    ) -> Option<f32> {
+        let heuristic = H::evaluate_state(state, game_cache, heuristic_cache);
         if depth >= MXD || heuristic <= 0.05 || heuristic >= 0.95 {
             Some(heuristic)
         } else {
@@ -224,6 +232,32 @@ impl<const MXD: usize, G: MCTSGame, H: Heuristic<G>> SimulationPolicy<G, H> for 
     }
 }
 
-pub struct DefaultHeuristic {}
+pub struct NoHeuristicCache {}
 
-impl<G: MCTSGame> Heuristic<G> for DefaultHeuristic {}
+impl<G: MCTSGame> HeuristicCache<G> for NoHeuristicCache {
+    fn new() -> Self {
+        NoHeuristicCache {}
+    }
+}
+
+pub struct NoHeuristic {}
+
+impl<G: MCTSGame> Heuristic<G> for NoHeuristic {
+    type Cache = NoHeuristicCache;
+
+    fn evaluate_state(
+        state: &<G as MCTSGame>::State,
+        game_cache: &mut <G as MCTSGame>::Cache,
+        _heuristic_cache: &mut Self::Cache,
+    ) -> f32 {
+        G::evaluate(state, game_cache).unwrap_or(0.5)
+    }
+    fn evaluate_move(
+        _state: &<G as MCTSGame>::State,
+        _mv: &<G as MCTSGame>::Move,
+        _game_cache: &mut <G as MCTSGame>::Cache,
+        _heuristic_cache: &mut Self::Cache,
+    ) -> f32 {
+        0.0
+    }
+}
