@@ -5,23 +5,23 @@ pub trait MCTSPlayer: PartialEq {
     fn next(&self) -> Self;
 }
 
-pub trait GameCache<G: MCTSGame> {
+pub trait GameCache<State, Move> {
     fn new() -> Self;
-    fn get_applied_state(&self, _state: &G::State, _mv: &G::Move) -> Option<G::State> {
+    fn get_applied_state(&self, _state: &State, _mv: &Move) -> Option<&State> {
         None
     }
-    fn insert_applied_state(&mut self, _state: &G::State, _mv: &G::Move, _result: G::State) {}
-    fn get_terminal_value(&self, _state: &G::State) -> Option<f32> {
+    fn insert_applied_state(&mut self, _state: &State, _mv: &Move, _result: State) {}
+    fn get_terminal_value(&self, _state: &State) -> Option<&Option<f32>> {
         None
     }
-    fn insert_terminal_value(&mut self, _tate: &G::State, _value: f32) {}
+    fn insert_terminal_value(&mut self, _state: &State, _value: Option<f32>) {}
 }
 
 pub trait MCTSGame: Sized {
     type State: Clone + PartialEq;
     type Move;
     type Player: MCTSPlayer;
-    type Cache: GameCache<Self>;
+    type Cache: GameCache<Self::State, Self::Move>;
 
     fn available_moves<'a>(state: &'a Self::State) -> Box<dyn Iterator<Item = Self::Move> + 'a>;
     fn apply_move(

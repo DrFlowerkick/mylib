@@ -31,11 +31,15 @@ impl MCTSPlayer for TwoPlayer {
     }
 }
 
-pub struct NoGameCache;
+pub struct NoGameCache<State, Move> {
+    phantom: std::marker::PhantomData<(State, Move)>,
+}
 
-impl<G: MCTSGame> GameCache<G> for NoGameCache {
+impl<State, Move> GameCache<State, Move> for NoGameCache<State, Move> {
     fn new() -> Self {
-        NoGameCache
+        NoGameCache {
+            phantom: std::marker::PhantomData,
+        }
     }
 }
 

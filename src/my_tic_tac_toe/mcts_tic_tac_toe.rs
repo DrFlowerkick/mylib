@@ -1,7 +1,8 @@
 use super::*;
-use crate::my_monte_carlo_tree_search::{MCTSGame, NoGameCache, TwoPlayer};
+use crate::my_monte_carlo_tree_search::{GameCache, MCTSGame, TwoPlayer};
+use std::collections::HashMap;
 
-#[derive(Copy, Clone, PartialEq, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
 pub struct TicTacToePlayerAction {
     pub cell: MapPoint<X, Y>,
 }
@@ -55,7 +56,7 @@ impl Iterator for IterTicTacToePlayerAction<'_> {
 
 // TicTacToeGameData is used by UltTTT. Since I want to make memory usage as small as possible,
 // I separate current_player from TicTacToeGameData.
-#[derive(Clone, Copy, PartialEq, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub struct TicTacToeGame {
     pub ttt: TicTacToeGameData,
     pub current_player: TwoPlayer,
@@ -82,7 +83,7 @@ impl MCTSGame for TicTacToeMCTSGame {
     type State = TicTacToeGame;
     type Move = TicTacToePlayerAction;
     type Player = TwoPlayer;
-    type Cache = NoGameCache;
+    type Cache = TicTacToeGameCache;
 
     fn available_moves<'a>(state: &'a Self::State) -> Box<dyn Iterator<Item = Self::Move> + 'a> {
         Box::new(IterTicTacToePlayerAction::new(state))
@@ -91,8 +92,11 @@ impl MCTSGame for TicTacToeMCTSGame {
     fn apply_move(
         state: &Self::State,
         mv: &Self::Move,
-        _game_cache: &mut Self::Cache,
+        game_cache: &mut Self::Cache,
     ) -> Self::State {
+        if let Some(cached_state) = game_cache.get_applied_state(state, mv) {
+            return *cached_state;
+        }
         let mut new_state = *state;
         // apply the move for current player
         new_state
@@ -100,16 +104,23 @@ impl MCTSGame for TicTacToeMCTSGame {
             .apply_player_move(mv.cell, state.current_player);
         // set the next player
         new_state.next_player();
+        // insert the new state into the cache
+        game_cache.insert_applied_state(state, mv, new_state);
         new_state
     }
 
-    fn evaluate(state: &Self::State, _game_cache: &mut Self::Cache) -> Option<f32> {
-        match state.ttt.get_status() {
+    fn evaluate(state: &Self::State, game_cache: &mut Self::Cache) -> Option<f32> {
+        if let Some(cached_value) = game_cache.get_terminal_value(state) {
+            return *cached_value;
+        }
+        let evaluation = match state.ttt.get_status() {
             TicTacToeStatus::Player(TwoPlayer::Me) => Some(1.0),
             TicTacToeStatus::Player(TwoPlayer::Opp) => Some(0.0),
             TicTacToeStatus::Tie => Some(0.5),
             TicTacToeStatus::Vacant => None,
-        }
+        };
+        game_cache.insert_terminal_value(state, evaluation);
+        evaluation
     }
 
     fn current_player(state: &Self::State) -> Self::Player {
@@ -117,6 +128,26 @@ impl MCTSGame for TicTacToeMCTSGame {
     }
     fn perspective_player() -> Self::Player {
         TwoPlayer::Me
+    }
+}
+
+pub struct TicTacToeGameCache {
+    // No move cache, because calc of move is cheaper than caching
+    pub state_cache: HashMap<TicTacToeGameData, Option<f32>>,
+}
+
+impl GameCache<TicTacToeGame, TicTacToePlayerAction> for TicTacToeGameCache {
+    fn new() -> Self {
+        TicTacToeGameCache {
+            //move_cache: HashMap::new(),
+            state_cache: HashMap::new(),
+        }
+    }
+    fn get_terminal_value(&self, state: &TicTacToeGame) -> Option<&Option<f32>> {
+        self.state_cache.get(&state.ttt)
+    }
+    fn insert_terminal_value(&mut self, state: &TicTacToeGame, value: Option<f32>) {
+        self.state_cache.insert(state.ttt, value);
     }
 }
 
@@ -292,7 +323,6 @@ mod tests {
     #[test]
     fn test_new_mcts_traits_with_tic_tac_toe_versus_mcts() {
         let mut wins = 0.0;
-        let mut iteration_counter: usize = 0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
             let mut first_mcts_tic_tac_toe: PlainMCTS<
@@ -325,17 +355,20 @@ mod tests {
             )
             .is_none()
             {
+                let mut iteration_counter: usize = 0;
                 if first {
                     let start = Instant::now();
                     first_mcts_tic_tac_toe.set_root(&first_ttt_game_data);
-                    iteration_counter = 0;
                     while start.elapsed() < first_time_out {
                         first_mcts_tic_tac_toe.iterate();
                         iteration_counter += 1;
                     }
                     first_time_out = TIME_OUT_SUCCESSIVE_TURNS;
                     let selected_move = *first_mcts_tic_tac_toe.select_move();
-                    eprintln!("first : {} (Iterations: {})", selected_move.cell, iteration_counter);
+                    eprintln!(
+                        "first : {} (Iterations: {})",
+                        selected_move.cell, iteration_counter
+                    );
                     first_ttt_game_data = TicTacToeMCTSGame::apply_move(
                         &first_ttt_game_data,
                         &selected_move,
@@ -350,14 +383,16 @@ mod tests {
                 } else {
                     let start = Instant::now();
                     second_mcts_tic_tac_toe.set_root(&second_ttt_game_data);
-                    iteration_counter = 0;
                     while start.elapsed() < second_time_out {
                         second_mcts_tic_tac_toe.iterate();
                         iteration_counter += 1;
                     }
                     second_time_out = TIME_OUT_SUCCESSIVE_TURNS;
                     let selected_move = *second_mcts_tic_tac_toe.select_move();
-                    eprintln!("second: {} (Iterations: {}", selected_move.cell, iteration_counter);
+                    eprintln!(
+                        "second: {} (Iterations: {}",
+                        selected_move.cell, iteration_counter
+                    );
                     second_ttt_game_data = TicTacToeMCTSGame::apply_move(
                         &second_ttt_game_data,
                         &selected_move,

@@ -145,11 +145,7 @@ impl TicTacToeGameData {
             .iter()
             .map(move |p| self.map.get((*p).into()))
     }
-    pub fn apply_player_move(
-        &mut self,
-        cell: MapPoint<X, Y>,
-        player: TwoPlayer,
-    ) {
+    pub fn apply_player_move(&mut self, cell: MapPoint<X, Y>, player: TwoPlayer) {
         if self
             .map
             .swap_value(cell, TicTacToeStatus::Player(player))
