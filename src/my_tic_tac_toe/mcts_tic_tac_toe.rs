@@ -1,6 +1,6 @@
 use super::*;
 use crate::my_monte_carlo_tree_search::{
-    GameCache, MCTSGame, TwoPlayer,
+    NoGameCache, MCTSGame, TwoPlayer,
 };
 
 #[derive(Copy, Clone, PartialEq, Default)]
@@ -52,13 +52,6 @@ impl Iterator for IterTicTacToePlayerAction<'_> {
             }
         }
         Some(result)
-    }
-}
-
-pub struct NoGameCache;
-impl<G: MCTSGame> GameCache<G> for NoGameCache {
-    fn new() -> Self {
-        NoGameCache
     }
 }
 

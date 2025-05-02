@@ -1,7 +1,7 @@
 // miscellaneous mcts type definitions
 
 use super::{
-    ExpansionPolicy, Heuristic, HeuristicCache, MCTSGame, MCTSPlayer, SimulationPolicy, UCTPolicy,
+    ExpansionPolicy, Heuristic, HeuristicCache, MCTSGame, MCTSPlayer, SimulationPolicy, UCTPolicy, GameCache,
     UTCCache,
 };
 use rand::prelude::SliceRandom;
@@ -28,6 +28,14 @@ impl MCTSPlayer for TwoPlayer {
             TwoPlayer::Me => TwoPlayer::Opp,
             TwoPlayer::Opp => TwoPlayer::Me,
         }
+    }
+}
+
+pub struct NoGameCache;
+
+impl<G: MCTSGame> GameCache<G> for NoGameCache {
+    fn new() -> Self {
+        NoGameCache
     }
 }
 
