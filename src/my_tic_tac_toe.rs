@@ -4,7 +4,7 @@ pub mod mcts_tic_tac_toe;
 
 use crate::my_map_point::*;
 use crate::my_map_two_dim::*;
-use crate::my_monte_carlo_tree_search::{MCTSPlayer, MonteCarloPlayer};
+use crate::my_monte_carlo_tree_search::{MCTSPlayer, TwoPlayer};
 pub const X: usize = 3;
 pub const Y: usize = X;
 
@@ -12,7 +12,7 @@ pub const Y: usize = X;
 pub enum TicTacToeStatus {
     #[default]
     Vacant,
-    Player(MonteCarloPlayer),
+    Player(TwoPlayer),
     Tie,
 }
 impl std::fmt::Display for TicTacToeStatus {
@@ -21,8 +21,8 @@ impl std::fmt::Display for TicTacToeStatus {
             TicTacToeStatus::Vacant => write!(f, " "),
             TicTacToeStatus::Tie => write!(f, "T"),
             TicTacToeStatus::Player(p) => match p {
-                MonteCarloPlayer::Me => write!(f, "X"),
-                MonteCarloPlayer::Opp => write!(f, "O"),
+                TwoPlayer::Me => write!(f, "X"),
+                TwoPlayer::Opp => write!(f, "O"),
             },
         }
     }
@@ -48,8 +48,7 @@ pub struct TicTacToeGameData {
     num_opp_cells: u8,
     // required for Ultimate TicTacToe
     num_tie_cells: u8,
-    // required for new MCTS
-    current_player: MonteCarloPlayer,
+    current_player: TwoPlayer,
 }
 
 impl std::fmt::Display for TicTacToeGameData {
@@ -90,10 +89,10 @@ impl TicTacToeGameData {
             num_me_cells: 0,
             num_opp_cells: 0,
             num_tie_cells: 0,
-            current_player: MonteCarloPlayer::Me,
+            current_player: TwoPlayer::Me,
         }
     }
-    pub fn set_current_player(&mut self, player: MonteCarloPlayer) {
+    pub fn set_current_player(&mut self, player: TwoPlayer) {
         self.current_player = player;
     }
     pub fn next_player(&mut self) {
@@ -120,8 +119,8 @@ impl TicTacToeGameData {
         // is checking for lines required?
         let check_lines = match self.map.get(cell) {
             TicTacToeStatus::Vacant => false,
-            TicTacToeStatus::Player(MonteCarloPlayer::Me) => self.num_me_cells > 2,
-            TicTacToeStatus::Player(MonteCarloPlayer::Opp) => self.num_opp_cells > 2,
+            TicTacToeStatus::Player(TwoPlayer::Me) => self.num_me_cells > 2,
+            TicTacToeStatus::Player(TwoPlayer::Opp) => self.num_opp_cells > 2,
             TicTacToeStatus::Tie => false,
         };
         if check_lines {
@@ -176,8 +175,8 @@ impl TicTacToeGameData {
         for element in line {
             match element {
                 TicTacToeStatus::Vacant => vacant += 1,
-                TicTacToeStatus::Player(MonteCarloPlayer::Me) => me += 1,
-                TicTacToeStatus::Player(MonteCarloPlayer::Opp) => opp += 1,
+                TicTacToeStatus::Player(TwoPlayer::Me) => me += 1,
+                TicTacToeStatus::Player(TwoPlayer::Opp) => opp += 1,
                 TicTacToeStatus::Tie => return,
             }
             if (me > 0 && opp > 0) || vacant > 1 {
@@ -232,7 +231,7 @@ impl TicTacToeGameData {
     }
     fn calc_line_heuristic<'a>(&self, line: impl Iterator<Item = &'a TicTacToeStatus>) -> f32 {
         let mut count: u8 = 0;
-        let mut line_owner: Option<MonteCarloPlayer> = None;
+        let mut line_owner: Option<TwoPlayer> = None;
         for cell in line {
             match cell {
                 TicTacToeStatus::Vacant => (),
@@ -259,8 +258,8 @@ impl TicTacToeGameData {
         };
         match line_owner {
             Some(player) => match player {
-                MonteCarloPlayer::Me => line_heuristic,
-                MonteCarloPlayer::Opp => -line_heuristic,
+                TwoPlayer::Me => line_heuristic,
+                TwoPlayer::Opp => -line_heuristic,
             },
             None => 0.0,
         }
@@ -276,21 +275,21 @@ impl TicTacToeGameData {
         heuristic
     }
     pub fn set_opp(&mut self, cell: MapPoint<X, Y>) -> TicTacToeStatus {
-        self.set_player(cell, MonteCarloPlayer::Opp)
+        self.set_player(cell, TwoPlayer::Opp)
     }
     pub fn set_me(&mut self, cell: MapPoint<X, Y>) -> TicTacToeStatus {
-        self.set_player(cell, MonteCarloPlayer::Me)
+        self.set_player(cell, TwoPlayer::Me)
     }
     pub fn set_player(
         &mut self,
         cell: MapPoint<X, Y>,
-        player: MonteCarloPlayer,
+        player: TwoPlayer,
     ) -> TicTacToeStatus {
         match player {
-            MonteCarloPlayer::Me => {
+            TwoPlayer::Me => {
                 self.num_me_cells += 1;
             }
-            MonteCarloPlayer::Opp => {
+            TwoPlayer::Opp => {
                 self.num_opp_cells += 1;
             }
         }
@@ -326,7 +325,7 @@ impl TicTacToeGameData {
     pub fn get_first_vacant_cell(&self) -> Option<(MapPoint<X, Y>, &TicTacToeStatus)> {
         self.map.iter().find(|(_, v)| v.is_vacant())
     }
-    pub fn count_player_cells(&self, count_player: MonteCarloPlayer) -> usize {
+    pub fn count_player_cells(&self, count_player: TwoPlayer) -> usize {
         self.map
             .iter()
             .filter(|(_, v)| match v {

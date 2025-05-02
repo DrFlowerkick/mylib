@@ -7,54 +7,30 @@ use super::{
 use rand::prelude::SliceRandom;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
-pub enum MonteCarloPlayer {
+pub enum TwoPlayer {
     #[default]
     Me,
     Opp,
 }
 
-impl MonteCarloPlayer {
+impl TwoPlayer {
     pub fn next_player(&self) -> Self {
         match self {
-            MonteCarloPlayer::Me => MonteCarloPlayer::Opp,
-            MonteCarloPlayer::Opp => MonteCarloPlayer::Me,
+            TwoPlayer::Me => TwoPlayer::Opp,
+            TwoPlayer::Opp => TwoPlayer::Me,
         }
     }
 }
 
-impl MCTSPlayer for MonteCarloPlayer {
+impl MCTSPlayer for TwoPlayer {
     fn next(&self) -> Self {
         match self {
-            MonteCarloPlayer::Me => MonteCarloPlayer::Opp,
-            MonteCarloPlayer::Opp => MonteCarloPlayer::Me,
+            TwoPlayer::Me => TwoPlayer::Opp,
+            TwoPlayer::Opp => TwoPlayer::Me,
         }
     }
 }
 
-#[derive(Copy, Clone, PartialEq)]
-pub enum MonteCarloNodeType {
-    GameDataUpdate,
-    ActionResult,
-}
-
-#[derive(Copy, Clone, PartialEq)]
-// each game mode describes a different handling of player actions, see below
-// normally each player has one action
-// if multiple actions per player are possible, than starting_player does his actions, afterward the other player. this is true for every mode
-pub enum MonteCarloGameMode {
-    SameTurnParallel, // both players act parallel on same turn. Actions change game data at the same time
-    ByTurns,          // each turn only one player acts, players switch at turn end
-}
-
-#[derive(Copy, Clone, PartialEq)]
-pub enum MonteCarloNodeConsistency {
-    Inconsistent,
-    Consistent,
-    ConsistentNeedsUpdate,
-    PossibleFutureGameState,
-}
-
-// new MCTS types
 pub struct StaticC {}
 
 impl<G: MCTSGame> UCTPolicy<G> for StaticC {}
