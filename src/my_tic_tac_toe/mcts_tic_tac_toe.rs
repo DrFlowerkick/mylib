@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 #[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
 pub struct TicTacToePlayerAction {
-    pub cell: MapPoint<X, Y>,
+    pub cell: CellIndex3x3,
 }
 
 impl MCTSPlayer for TicTacToeStatus {
@@ -14,53 +14,6 @@ impl MCTSPlayer for TicTacToeStatus {
             TicTacToeStatus::Opp => TicTacToeStatus::Me,
             _ => panic!("Invalid player"),
         }
-    }
-}
-
-struct IterTicTacToePlayerAction<'a> {
-    ttt_data: &'a TicTacToeGame,
-    iter_action: TicTacToePlayerAction,
-    iter_finished: bool,
-}
-
-impl<'a> IterTicTacToePlayerAction<'a> {
-    fn new(ttt_data: &'a TicTacToeGame) -> Self {
-        let mut result = IterTicTacToePlayerAction {
-            ttt_data,
-            iter_action: TicTacToePlayerAction::default(),
-            iter_finished: false,
-        };
-        match result.ttt_data.ttt.map.iter().find(|(_, v)| v.is_vacant()) {
-            Some((start_point, _)) => result.iter_action.cell = start_point,
-            None => result.iter_finished = true,
-        };
-        result
-    }
-}
-
-impl Iterator for IterTicTacToePlayerAction<'_> {
-    type Item = TicTacToePlayerAction;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        // use iterator data
-        if self.iter_finished {
-            return None;
-        }
-        let result = self.iter_action;
-        let mut searching_new_action = true;
-        while searching_new_action {
-            match self.iter_action.cell.forward_x() {
-                Some(new_cell) => {
-                    self.iter_action.cell = new_cell;
-                    searching_new_action = self.ttt_data.ttt.map.get(new_cell).is_not_vacant();
-                }
-                None => {
-                    self.iter_finished = true;
-                    searching_new_action = false;
-                }
-            }
-        }
-        Some(result)
     }
 }
 
@@ -81,8 +34,7 @@ impl TicTacToeGame {
     }
     pub fn set_current_player(&mut self, player: TicTacToeStatus) {
         match player {
-            TicTacToeStatus::Me |
-            TicTacToeStatus::Opp => self.current_player = player,
+            TicTacToeStatus::Me | TicTacToeStatus::Opp => self.current_player = player,
             _ => panic!("Invalid player"),
         }
     }
@@ -100,7 +52,13 @@ impl MCTSGame for TicTacToeMCTSGame {
     type Cache = TicTacToeGameCache;
 
     fn available_moves<'a>(state: &'a Self::State) -> Box<dyn Iterator<Item = Self::Move> + 'a> {
-        Box::new(IterTicTacToePlayerAction::new(state))
+        Box::new(state.ttt.map.iterate().filter_map(|(cell, v)| {
+            if v.is_vacant() {
+                Some(TicTacToePlayerAction { cell })
+            } else {
+                None
+            }
+        }))
     }
 
     fn apply_move(

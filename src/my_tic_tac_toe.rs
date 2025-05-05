@@ -1,9 +1,9 @@
 // This is an example for usage of monte carlo tree search lib
 
 pub mod mcts_tic_tac_toe;
+use std::collections::HashSet;
 
-use crate::my_map_point::*;
-use crate::my_map_two_dim::*;
+use crate::my_map_3x3::{CellIndex3x3, MyMap3x3};
 pub const X: usize = 3;
 pub const Y: usize = X;
 
@@ -42,7 +42,7 @@ impl TicTacToeStatus {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Default)]
 pub struct TicTacToeGameData {
-    map: MyMap2D<TicTacToeStatus, X, Y>,
+    map: MyMap3x3<TicTacToeStatus>,
 }
 
 impl std::fmt::Display for TicTacToeGameData {
@@ -51,182 +51,150 @@ impl std::fmt::Display for TicTacToeGameData {
         writeln!(
             f,
             "│{}│{}│{}│",
-            self.map.get_row(0)[0],
-            self.map.get_row(0)[1],
-            self.map.get_row(0)[2]
+            self.map.get_cell(CellIndex3x3::TL),
+            self.map.get_cell(CellIndex3x3::TM),
+            self.map.get_cell(CellIndex3x3::TR)
         )?;
         writeln!(f, "├─┼─┼─┤")?;
         writeln!(
             f,
             "│{}│{}│{}│",
-            self.map.get_row(1)[0],
-            self.map.get_row(1)[1],
-            self.map.get_row(1)[2]
+            self.map.get_cell(CellIndex3x3::ML),
+            self.map.get_cell(CellIndex3x3::MM),
+            self.map.get_cell(CellIndex3x3::MR)
         )?;
         writeln!(f, "├─┼─┼─┤")?;
         writeln!(
             f,
             "│{}│{}│{}│",
-            self.map.get_row(2)[0],
-            self.map.get_row(2)[1],
-            self.map.get_row(2)[2]
+            self.map.get_cell(CellIndex3x3::BL),
+            self.map.get_cell(CellIndex3x3::BM),
+            self.map.get_cell(CellIndex3x3::BR)
         )?;
         write!(f, "└─┴─┴─┘")
     }
 }
 
 impl TicTacToeGameData {
+    pub const SCORE_LINES: [[CellIndex3x3; 3]; 8] = [
+        [CellIndex3x3::TL, CellIndex3x3::MM, CellIndex3x3::BR],
+        [CellIndex3x3::TR, CellIndex3x3::MM, CellIndex3x3::BL],
+        [CellIndex3x3::ML, CellIndex3x3::MM, CellIndex3x3::MR],
+        [CellIndex3x3::TM, CellIndex3x3::MM, CellIndex3x3::BM],
+        [CellIndex3x3::TL, CellIndex3x3::TM, CellIndex3x3::TR],
+        [CellIndex3x3::BL, CellIndex3x3::BM, CellIndex3x3::BR],
+        [CellIndex3x3::TL, CellIndex3x3::ML, CellIndex3x3::BL],
+        [CellIndex3x3::TR, CellIndex3x3::MR, CellIndex3x3::BR],
+    ];
     pub fn new() -> Self {
         TicTacToeGameData {
-            map: MyMap2D::init(TicTacToeStatus::Vacant),
+            map: MyMap3x3::init(TicTacToeStatus::Vacant),
         }
     }
-
     pub fn get_status(&self) -> TicTacToeStatus {
+        // check score lines
+        for score_line in Self::SCORE_LINES.iter() {
+            match score_line
+                .iter()
+                .map(|cell| *self.map.get_cell(*cell) as i8)
+                .sum()
+            {
+                3 => return TicTacToeStatus::Me,
+                -3 => return TicTacToeStatus::Opp,
+                _ => (),
+            }
+        }
+
         // check if tie
-        if self.map.iter().all(|(_, v)| v.is_not_vacant()) {
+        if self.map.iterate().all(|(_, v)| v.is_not_vacant()) {
             return TicTacToeStatus::Tie;
-        }
-
-        // check diagonals
-        match self.get_status_for_one_line(self.iter_diagonal_top_left()) {
-            TicTacToeStatus::Me => return TicTacToeStatus::Me,
-            TicTacToeStatus::Opp => return TicTacToeStatus::Opp,
-            _ => (),
-        }
-        match self.get_status_for_one_line(self.iter_diagonal_top_right()) {
-            TicTacToeStatus::Me => return TicTacToeStatus::Me,
-            TicTacToeStatus::Opp => return TicTacToeStatus::Opp,
-            _ => (),
-        }
-
-        // check row and columns
-        for rc in 0..3 {
-            // check row with cell.y()
-            match self.get_status_for_one_line(self.map.iter_row(rc).map(|(_, v)| v)) {
-                TicTacToeStatus::Me => return TicTacToeStatus::Me,
-                TicTacToeStatus::Opp => return TicTacToeStatus::Opp,
-                _ => (),
-            }
-            // check col with cell.x()
-            match self.get_status_for_one_line(self.map.iter_column(rc).map(|(_, v)| v)) {
-                TicTacToeStatus::Me => return TicTacToeStatus::Me,
-                TicTacToeStatus::Opp => return TicTacToeStatus::Opp,
-                _ => (),
-            }
         }
 
         // game is still running
         TicTacToeStatus::Vacant
     }
-    fn get_status_for_one_line<'a>(
-        &self,
-        line: impl Iterator<Item = &'a TicTacToeStatus>,
-    ) -> TicTacToeStatus {
-        let mut winner = TicTacToeStatus::Vacant;
-        for (index, element) in line.enumerate() {
-            if index == 0 {
-                match element {
-                    TicTacToeStatus::Me => winner = TicTacToeStatus::Me,
-                    TicTacToeStatus::Opp => winner = TicTacToeStatus::Opp,
-                    _ => return TicTacToeStatus::Vacant,
-                }
-            } else if winner != *element {
-                return TicTacToeStatus::Vacant;
+
+    pub fn get_status_increment(&self, cell: &CellIndex3x3) -> TicTacToeStatus {
+        // check score lines, which contain cell
+        for score_line in Self::SCORE_LINES.iter() {
+            if !score_line.contains(cell) {
+                continue;
+            }
+            match score_line
+                .iter()
+                .map(|cell| *self.map.get_cell(*cell) as i8)
+                .sum()
+            {
+                3 => return TicTacToeStatus::Me,
+                -3 => return TicTacToeStatus::Opp,
+                _ => (),
             }
         }
-        winner
+
+        // check if tie
+        if self.map.iterate().all(|(_, v)| v.is_not_vacant()) {
+            return TicTacToeStatus::Tie;
+        }
+
+        // game is still running
+        TicTacToeStatus::Vacant
     }
-    fn iter_diagonal_top_left(&self) -> impl Iterator<Item = &'_ TicTacToeStatus> {
-        [(0_usize, 0_usize), (1, 1), (2, 2)]
-            .iter()
-            .map(move |p| self.map.get((*p).into()))
+    pub fn set_cell_value(&mut self, cell: CellIndex3x3, value: TicTacToeStatus) {
+        self.map.set_cell(cell, value);
     }
-    fn iter_diagonal_top_right(&self) -> impl Iterator<Item = &'_ TicTacToeStatus> {
-        [(2_usize, 0_usize), (1, 1), (0, 2)]
-            .iter()
-            .map(move |p| self.map.get((*p).into()))
+    pub fn get_cell_value(&self, cell: CellIndex3x3) -> TicTacToeStatus {
+        *self.map.get_cell(cell)
     }
-    pub fn set_cell_value(&mut self, cell: MapPoint<X, Y>, value: TicTacToeStatus) {
-        self
-            .map
-            .set(cell, value);
-    }
-    pub fn get_cell_value(&self, cell: MapPoint<X, Y>) -> TicTacToeStatus {
-        *self.map.get(cell)
-    }
-    pub fn get_first_vacant_cell(&self) -> Option<(MapPoint<X, Y>, &TicTacToeStatus)> {
-        self.map.iter().find(|(_, v)| v.is_vacant())
+    pub fn get_first_vacant_cell(&self) -> Option<(CellIndex3x3, &TicTacToeStatus)> {
+        self.map.iterate().find(|(_, v)| v.is_vacant())
     }
     pub fn count_me_cells(&self) -> usize {
         self.map
-            .iter()
+            .iterate()
             .filter(|(_, v)| matches!(**v, TicTacToeStatus::Me))
             .count()
     }
     pub fn count_opp_cells(&self) -> usize {
         self.map
-            .iter()
+            .iterate()
             .filter(|(_, v)| matches!(**v, TicTacToeStatus::Opp))
             .count()
     }
-    pub fn iter_map(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &TicTacToeStatus)> {
-        self.map.iter()
+    pub fn iter_map(&self) -> impl Iterator<Item = (CellIndex3x3, &TicTacToeStatus)> {
+        self.map.iterate()
     }
     pub fn count_non_vacant_cells(&self) -> usize {
-        self.map.iter().filter(|(_, v)| v.is_not_vacant()).count()
-    }
-    fn check_threat_for_one_line<'a>(
-        &self,
-        my_threats: &mut u8,
-        opp_threats: &mut u8,
-        line: impl Iterator<Item = &'a TicTacToeStatus>,
-    ) {
-        let mut me: u8 = 0;
-        let mut opp: u8 = 0_u8;
-        let mut vacant: u8 = 0;
-        for element in line {
-            match element {
-                TicTacToeStatus::Vacant => vacant += 1,
-                TicTacToeStatus::Me => me += 1,
-                TicTacToeStatus::Opp => opp += 1,
-                TicTacToeStatus::Tie => return,
-            }
-            if (me > 0 && opp > 0) || vacant > 1 {
-                return;
-            }
-        }
-        match (me, opp, vacant) {
-            (2, 0, 1) => *my_threats += 1,
-            (0, 2, 1) => *opp_threats += 1,
-            _ => (),
-        }
+        self.map
+            .iterate()
+            .filter(|(_, v)| v.is_not_vacant())
+            .count()
     }
     pub fn get_threats(&self) -> (u8, u8) {
-        let mut me_threat = 0;
-        let mut opp_threat = 0;
-        for rc in 0..3 {
-            self.check_threat_for_one_line(
-                &mut me_threat,
-                &mut opp_threat,
-                self.map.iter_row(rc).map(|(_, v)| v),
+        let mut me_threats: HashSet<CellIndex3x3> = HashSet::new();
+        let mut opp_threats: HashSet<CellIndex3x3> = HashSet::new();
+
+        for score_line in Self::SCORE_LINES.iter() {
+            let (threat, vacant) = score_line.iter().fold(
+                (0, CellIndex3x3::default()),
+                |(mut threat, mut vacant), element| {
+                    let cell_value = self.map.get_cell(*element);
+                    if cell_value.is_vacant() {
+                        vacant = *element;
+                    }
+                    threat += *cell_value as i8;
+                    (threat, vacant)
+                },
             );
-            self.check_threat_for_one_line(
-                &mut me_threat,
-                &mut opp_threat,
-                self.map.iter_column(rc).map(|(_, v)| v),
-            );
+            match threat {
+                2 => {
+                    me_threats.insert(vacant);
+                }
+                -2 => {
+                    opp_threats.insert(vacant);
+                }
+                _ => (),
+            }
         }
-        self.check_threat_for_one_line(
-            &mut me_threat,
-            &mut opp_threat,
-            self.iter_diagonal_top_left(),
-        );
-        self.check_threat_for_one_line(
-            &mut me_threat,
-            &mut opp_threat,
-            self.iter_diagonal_top_right(),
-        );
-        (me_threat, opp_threat)
+        (me_threats.len() as u8, opp_threats.len() as u8)
     }
 }
