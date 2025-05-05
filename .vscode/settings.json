@@ -9,7 +9,8 @@
         "mcts",
         "mylib",
         "ndir",
-        "nesw"
+        "nesw",
+        "repr"
     ],
     // windows
     "[windows]": {

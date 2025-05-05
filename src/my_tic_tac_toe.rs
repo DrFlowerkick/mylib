@@ -4,26 +4,26 @@ pub mod mcts_tic_tac_toe;
 
 use crate::my_map_point::*;
 use crate::my_map_two_dim::*;
-use crate::my_monte_carlo_tree_search::{MCTSPlayer, TwoPlayer};
 pub const X: usize = 3;
 pub const Y: usize = X;
 
+// TicTacToeStatus is used for cell and game status of TicTacToe
+#[repr(i8)]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub enum TicTacToeStatus {
     #[default]
-    Vacant,
-    Player(TwoPlayer),
-    Tie,
+    Vacant = 0,
+    Me = 1,
+    Opp = -1,
+    Tie = 20,
 }
 impl std::fmt::Display for TicTacToeStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             TicTacToeStatus::Vacant => write!(f, " "),
             TicTacToeStatus::Tie => write!(f, "T"),
-            TicTacToeStatus::Player(p) => match p {
-                TwoPlayer::Me => write!(f, "X"),
-                TwoPlayer::Opp => write!(f, "O"),
-            },
+            TicTacToeStatus::Me => write!(f, "X"),
+            TicTacToeStatus::Opp => write!(f, "O"),
         }
     }
 }
@@ -36,7 +36,7 @@ impl TicTacToeStatus {
         *self != Self::Vacant
     }
     pub fn is_player(&self) -> bool {
-        matches!(self, Self::Player(_))
+        matches!(self, Self::Me | Self::Opp)
     }
 }
 
@@ -87,32 +87,33 @@ impl TicTacToeGameData {
         if self.map.iter().all(|(_, v)| v.is_not_vacant()) {
             return TicTacToeStatus::Tie;
         }
+
+        // check diagonals
+        match self.get_status_for_one_line(self.iter_diagonal_top_left()) {
+            TicTacToeStatus::Me => return TicTacToeStatus::Me,
+            TicTacToeStatus::Opp => return TicTacToeStatus::Opp,
+            _ => (),
+        }
+        match self.get_status_for_one_line(self.iter_diagonal_top_right()) {
+            TicTacToeStatus::Me => return TicTacToeStatus::Me,
+            TicTacToeStatus::Opp => return TicTacToeStatus::Opp,
+            _ => (),
+        }
+
         // check row and columns
         for rc in 0..3 {
             // check row with cell.y()
-            if let TicTacToeStatus::Player(player) =
-                self.get_status_for_one_line(self.map.iter_row(rc).map(|(_, v)| v))
-            {
-                return TicTacToeStatus::Player(player);
+            match self.get_status_for_one_line(self.map.iter_row(rc).map(|(_, v)| v)) {
+                TicTacToeStatus::Me => return TicTacToeStatus::Me,
+                TicTacToeStatus::Opp => return TicTacToeStatus::Opp,
+                _ => (),
             }
             // check col with cell.x()
-            if let TicTacToeStatus::Player(player) =
-                self.get_status_for_one_line(self.map.iter_column(rc).map(|(_, v)| v))
-            {
-                return TicTacToeStatus::Player(player);
+            match self.get_status_for_one_line(self.map.iter_column(rc).map(|(_, v)| v)) {
+                TicTacToeStatus::Me => return TicTacToeStatus::Me,
+                TicTacToeStatus::Opp => return TicTacToeStatus::Opp,
+                _ => (),
             }
-        }
-
-        // check diagonals
-        if let TicTacToeStatus::Player(player) =
-            self.get_status_for_one_line(self.iter_diagonal_top_left())
-        {
-            return TicTacToeStatus::Player(player);
-        }
-        if let TicTacToeStatus::Player(player) =
-            self.get_status_for_one_line(self.iter_diagonal_top_right())
-        {
-            return TicTacToeStatus::Player(player);
         }
 
         // game is still running
@@ -126,7 +127,8 @@ impl TicTacToeGameData {
         for (index, element) in line.enumerate() {
             if index == 0 {
                 match element {
-                    TicTacToeStatus::Player(player) => winner = TicTacToeStatus::Player(*player),
+                    TicTacToeStatus::Me => winner = TicTacToeStatus::Me,
+                    TicTacToeStatus::Opp => winner = TicTacToeStatus::Opp,
                     _ => return TicTacToeStatus::Vacant,
                 }
             } else if winner != *element {
@@ -145,24 +147,10 @@ impl TicTacToeGameData {
             .iter()
             .map(move |p| self.map.get((*p).into()))
     }
-    pub fn apply_player_move(&mut self, cell: MapPoint<X, Y>, player: TwoPlayer) {
-        if self
+    pub fn set_cell_value(&mut self, cell: MapPoint<X, Y>, value: TicTacToeStatus) {
+        self
             .map
-            .swap_value(cell, TicTacToeStatus::Player(player))
-            .is_not_vacant()
-        {
-            panic!("Set player on not vacant cell.");
-        }
-    }
-    // required for Ultimate TicTacToe
-    pub fn set_tie(&mut self, cell: MapPoint<X, Y>) {
-        if self
-            .map
-            .swap_value(cell, TicTacToeStatus::Tie)
-            .is_not_vacant()
-        {
-            panic!("Set tie on not vacant cell.");
-        }
+            .set(cell, value);
     }
     pub fn get_cell_value(&self, cell: MapPoint<X, Y>) -> TicTacToeStatus {
         *self.map.get(cell)
@@ -170,13 +158,16 @@ impl TicTacToeGameData {
     pub fn get_first_vacant_cell(&self) -> Option<(MapPoint<X, Y>, &TicTacToeStatus)> {
         self.map.iter().find(|(_, v)| v.is_vacant())
     }
-    pub fn count_player_cells(&self, count_player: TwoPlayer) -> usize {
+    pub fn count_me_cells(&self) -> usize {
         self.map
             .iter()
-            .filter(|(_, v)| match v {
-                TicTacToeStatus::Player(player) => *player == count_player,
-                _ => false,
-            })
+            .filter(|(_, v)| matches!(**v, TicTacToeStatus::Me))
+            .count()
+    }
+    pub fn count_opp_cells(&self) -> usize {
+        self.map
+            .iter()
+            .filter(|(_, v)| matches!(**v, TicTacToeStatus::Opp))
             .count()
     }
     pub fn iter_map(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &TicTacToeStatus)> {
@@ -197,8 +188,8 @@ impl TicTacToeGameData {
         for element in line {
             match element {
                 TicTacToeStatus::Vacant => vacant += 1,
-                TicTacToeStatus::Player(TwoPlayer::Me) => me += 1,
-                TicTacToeStatus::Player(TwoPlayer::Opp) => opp += 1,
+                TicTacToeStatus::Me => me += 1,
+                TicTacToeStatus::Opp => opp += 1,
                 TicTacToeStatus::Tie => return,
             }
             if (me > 0 && opp > 0) || vacant > 1 {
