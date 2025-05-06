@@ -4,8 +4,6 @@ pub mod mcts_tic_tac_toe;
 use std::collections::HashSet;
 
 use crate::my_map_3x3::{CellIndex3x3, MyMap3x3};
-pub const X: usize = 3;
-pub const Y: usize = X;
 
 // TicTacToeStatus is used for cell and game status of TicTacToe
 #[repr(i8)]
@@ -37,6 +35,14 @@ impl TicTacToeStatus {
     }
     pub fn is_player(&self) -> bool {
         matches!(self, Self::Me | Self::Opp)
+    }
+    pub fn evaluate(&self) -> Option<f32> {
+        match self {
+            TicTacToeStatus::Me => Some(1.0),
+            TicTacToeStatus::Opp => Some(0.0),
+            TicTacToeStatus::Tie => Some(0.5),
+            TicTacToeStatus::Vacant => None,
+        }
     }
 }
 
@@ -141,6 +147,9 @@ impl TicTacToeGameData {
     }
     pub fn set_cell_value(&mut self, cell: CellIndex3x3, value: TicTacToeStatus) {
         self.map.set_cell(cell, value);
+    }
+    pub fn set_all_cells(&mut self, value: TicTacToeStatus) {
+        self.map.set_all_cells(value);
     }
     pub fn get_cell_value(&self, cell: CellIndex3x3) -> TicTacToeStatus {
         *self.map.get_cell(cell)

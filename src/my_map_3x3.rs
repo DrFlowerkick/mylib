@@ -41,6 +41,40 @@ impl TryFrom<usize> for CellIndex3x3 {
     }
 }
 
+impl TryFrom<(u8, u8)> for CellIndex3x3 {
+    type Error = ();
+    fn try_from(value: (u8, u8)) -> Result<Self, Self::Error> {
+        match value {
+            (0, 0) => Ok(CellIndex3x3::TL),
+            (0, 1) => Ok(CellIndex3x3::TM),
+            (0, 2) => Ok(CellIndex3x3::TR),
+            (1, 0) => Ok(CellIndex3x3::ML),
+            (1, 1) => Ok(CellIndex3x3::MM),
+            (1, 2) => Ok(CellIndex3x3::MR),
+            (2, 0) => Ok(CellIndex3x3::BL),
+            (2, 1) => Ok(CellIndex3x3::BM),
+            (2, 2) => Ok(CellIndex3x3::BR),
+            _ => Err(()),
+        }
+    }
+}
+
+impl From<CellIndex3x3> for (u8, u8) {
+    fn from(cell: CellIndex3x3) -> Self {
+        match cell {
+            CellIndex3x3::TL => (0, 0),
+            CellIndex3x3::TM => (0, 1),
+            CellIndex3x3::TR => (0, 2),
+            CellIndex3x3::ML => (1, 0),
+            CellIndex3x3::MM => (1, 1),
+            CellIndex3x3::MR => (1, 2),
+            CellIndex3x3::BL => (2, 0),
+            CellIndex3x3::BM => (2, 1),
+            CellIndex3x3::BR => (2, 2),
+        }
+    }
+}
+
 impl Display for CellIndex3x3 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -79,6 +113,9 @@ impl<T: Default + Clone + Copy> MyMap3x3<T> {
     }
     pub fn set_cell(&mut self, index: CellIndex3x3, value: T) {
         self.cells[usize::from(index)] = value;
+    }
+    pub fn set_all_cells(&mut self, value: T) {
+        self.cells = [value; 9];
     }
     pub fn iterate(&self) -> impl Iterator<Item = (CellIndex3x3, &T)> {
         self.cells

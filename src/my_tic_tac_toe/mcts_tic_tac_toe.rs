@@ -83,12 +83,7 @@ impl MCTSGame for TicTacToeMCTSGame {
         if let Some(cached_value) = game_cache.get_terminal_value(state) {
             return *cached_value;
         }
-        let evaluation = match state.ttt.get_status() {
-            TicTacToeStatus::Me => Some(1.0),
-            TicTacToeStatus::Tie => Some(0.5),
-            TicTacToeStatus::Opp => Some(0.0),
-            TicTacToeStatus::Vacant => None,
-        };
+        let evaluation = state.ttt.get_status().evaluate();
         game_cache.insert_terminal_value(state, evaluation);
         evaluation
     }
