@@ -127,8 +127,8 @@ pub struct ExpandAll<G: MCTSGame> {
 }
 
 impl<G: MCTSGame> ExpansionPolicy<G> for ExpandAll<G> {
-    fn new(state: &<G as MCTSGame>::State, is_terminal: bool) -> Self {
-        let moves = if is_terminal {
+    fn new(state: &<G as MCTSGame>::State, game_cache: &mut<G as MCTSGame>::Cache) -> Self {
+        let moves = if game_cache.get_terminal_value(state).is_some() {
             vec![]
         } else {
             G::available_moves(state).collect::<Vec<_>>()
@@ -171,8 +171,8 @@ impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame>
 impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame> ExpansionPolicy<G>
     for ProgressiveWidening<C, AN, AD, G>
 {
-    fn new(state: &<G as MCTSGame>::State, is_terminal: bool) -> Self {
-        let unexpanded_moves = if is_terminal {
+    fn new(state: &<G as MCTSGame>::State, game_cache: &mut<G as MCTSGame>::Cache) -> Self {
+        let unexpanded_moves = if game_cache.get_terminal_value(state).is_some() {
             vec![]
         } else {
             let mut unexpanded_moves = G::available_moves(state).collect::<Vec<_>>();
@@ -220,18 +220,22 @@ impl<const MXD: usize, G: MCTSGame, H: Heuristic<G>> SimulationPolicy<G, H>
     }
 }
 
-pub struct NoHeuristicCache {}
+pub struct NoHeuristicCache<State, Move> {
+    phantom: std::marker::PhantomData<(State, Move)>,
+}
 
-impl<G: MCTSGame> HeuristicCache<G> for NoHeuristicCache {
+impl<State, Move> HeuristicCache<State, Move> for NoHeuristicCache<State, Move> {
     fn new() -> Self {
-        NoHeuristicCache {}
+        NoHeuristicCache {
+            phantom: std::marker::PhantomData,
+        }
     }
 }
 
 pub struct NoHeuristic {}
 
 impl<G: MCTSGame> Heuristic<G> for NoHeuristic {
-    type Cache = NoHeuristicCache;
+    type Cache = NoHeuristicCache<G::State, G::Move>;
 
     fn evaluate_state(
         state: &<G as MCTSGame>::State,

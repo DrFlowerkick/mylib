@@ -29,9 +29,9 @@ where
     EP: ExpansionPolicy<G>,
     H: Heuristic<G>,
 {
-    pub fn root_node(state: G::State) -> Self {
+    pub fn root_node(state: G::State, expansion_policy: EP) -> Self {
         PlainNode {
-            expansion_policy: EP::new(&state, false),
+            expansion_policy,
             state,
             visits: 0,
             accumulated_value: 0.0,
@@ -41,9 +41,9 @@ where
             phantom: std::marker::PhantomData,
         }
     }
-    pub fn new(state: G::State, mv: G::Move, is_terminal: bool) -> Self {
+    pub fn new(state: G::State, mv: G::Move, expansion_policy: EP) -> Self {
         PlainNode {
-            expansion_policy: EP::new(&state, is_terminal),
+            expansion_policy,
             state,
             visits: 0,
             accumulated_value: 0.0,

@@ -5,18 +5,6 @@ pub trait MCTSPlayer: PartialEq {
     fn next(&self) -> Self;
 }
 
-pub trait GameCache<State, Move> {
-    fn new() -> Self;
-    fn get_applied_state(&self, _state: &State, _mv: &Move) -> Option<&State> {
-        None
-    }
-    fn insert_applied_state(&mut self, _state: &State, _mv: &Move, _result: State) {}
-    fn get_terminal_value(&self, _state: &State) -> Option<&Option<f32>> {
-        None
-    }
-    fn insert_terminal_value(&mut self, _state: &State, _value: Option<f32>) {}
-}
-
 pub trait MCTSGame: Sized {
     type State: Clone + PartialEq;
     type Move;
@@ -100,26 +88,14 @@ pub trait UTCCache<G: MCTSGame, UP: UCTPolicy<G>> {
 }
 
 pub trait ExpansionPolicy<G: MCTSGame> {
-    fn new(state: &G::State, is_terminal: bool) -> Self;
+    fn new(state: &G::State, game_cache: &mut G::Cache) -> Self;
     fn should_expand(&self, visits: usize, num_parent_children: usize) -> bool;
     fn pop_expandable_move(&mut self, visits: usize, num_parent_children: usize)
         -> Option<G::Move>;
 }
 
-pub trait HeuristicCache<G: MCTSGame> {
-    fn new() -> Self;
-    fn get_intermediate_score(&self, _state: &G::State) -> Option<f32> {
-        None
-    }
-    fn insert_intermediate_score(&mut self, _state: &G::State, _value: f32) {}
-    fn get_move_score(&self, _state: &G::State, _mv: &G::Move) -> Option<f32> {
-        None
-    }
-    fn insert_move_score(&mut self, _state: &G::State, _mv: &G::Move, _value: f32) {}
-}
-
 pub trait Heuristic<G: MCTSGame> {
-    type Cache: HeuristicCache<G>;
+    type Cache: HeuristicCache<G::State, G::Move>;
 
     fn evaluate_state(
         state: &G::State,
@@ -132,6 +108,30 @@ pub trait Heuristic<G: MCTSGame> {
         game_cache: &mut G::Cache,
         heuristic_cache: &mut Self::Cache,
     ) -> f32;
+}
+
+pub trait GameCache<State, Move> {
+    fn new() -> Self;
+    fn get_applied_state(&self, _state: &State, _mv: &Move) -> Option<&State> {
+        None
+    }
+    fn insert_applied_state(&mut self, _state: &State, _mv: &Move, _result: State) {}
+    fn get_terminal_value(&self, _state: &State) -> Option<&Option<f32>> {
+        None
+    }
+    fn insert_terminal_value(&mut self, _state: &State, _value: Option<f32>) {}
+}
+
+pub trait HeuristicCache<State, Move> {
+    fn new() -> Self;
+    fn get_intermediate_score(&self, _state: &State) -> Option<f32> {
+        None
+    }
+    fn insert_intermediate_score(&mut self, _state: &State, _value: f32) {}
+    fn get_move_score(&self, _state: &State, _mv: &Move) -> Option<f32> {
+        None
+    }
+    fn insert_move_score(&mut self, _state: &State, _mv: &Move, _value: f32) {}
 }
 
 pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>> {

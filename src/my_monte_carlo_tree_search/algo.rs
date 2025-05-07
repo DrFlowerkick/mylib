@@ -106,8 +106,8 @@ where
                         &mv,
                         &mut self.game_cache,
                     );
-                    let is_terminal = G::evaluate(&new_state, &mut self.game_cache).is_some();
-                    let new_node = PlainNode::new(new_state, mv, is_terminal);
+                    let expansion_policy = EP::new(&new_state, &mut self.game_cache);
+                    let new_node = PlainNode::new(new_state, mv, expansion_policy);
                     self.nodes.push(new_node);
                     let child_index = self.nodes.len() - 1;
                     self.nodes[current_index].add_child(child_index);
@@ -173,7 +173,8 @@ where
             }
         }
         self.nodes.clear();
-        self.nodes.push(PlainNode::root_node(state.clone()));
+        let expansion_policy = EP::new(state, &mut self.game_cache);
+        self.nodes.push(PlainNode::root_node(state.clone(), expansion_policy));
         self.root_index = 0;
         false
     }
