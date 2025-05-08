@@ -9,7 +9,7 @@ where
     G: MCTSGame,
     UP: UCTPolicy<G>,
     UC: UTCCache<G, UP>,
-    EP: ExpansionPolicy<G>,
+    EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
     SP: SimulationPolicy<G, H>,
 {
@@ -26,7 +26,7 @@ where
     G: MCTSGame,
     UP: UCTPolicy<G>,
     UC: UTCCache<G, UP>,
-    EP: ExpansionPolicy<G>,
+    EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
     SP: SimulationPolicy<G, H>,
 {
@@ -47,10 +47,32 @@ where
     G: MCTSGame,
     UP: UCTPolicy<G>,
     UC: UTCCache<G, UP>,
-    EP: ExpansionPolicy<G>,
+    EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
     SP: SimulationPolicy<G, H>,
 {
+    fn set_root(&mut self, state: &G::State) -> bool {
+        // tree is empty, if PlainMCTS was just created
+        if !self.nodes.is_empty() {
+            // search for node with same state
+            if let Some(new_root) = self.nodes[self.root_index]
+                .get_children()
+                .iter()
+                .flat_map(|&my_move_nodes| self.nodes[my_move_nodes].get_children())
+                .find(|&&opponent_move_nodes| self.nodes[opponent_move_nodes].get_state() == state)
+            {
+                self.root_index = *new_root;
+                return true;
+            }
+        }
+        self.nodes.clear();
+        let expansion_policy = EP::new(state, &mut self.game_cache, &mut self.heuristic_cache);
+        self.nodes
+            .push(PlainNode::root_node(state.clone(), expansion_policy));
+        self.root_index = 0;
+        false
+    }
+
     fn iterate(&mut self) {
         let mut path = vec![self.root_index];
         let mut current_index = self.root_index;
@@ -87,38 +109,35 @@ where
         }
 
         // Expansion
-        let current_index =
-            if G::evaluate(self.nodes[current_index].get_state(), &mut self.game_cache).is_some()
-                || self.nodes[current_index].get_visits() == 0
-            {
-                // If the node is terminal or has not been visited yet, we need to simulate it.
-                current_index
-            } else {
-                // If the node has been visited, we need to expand it by generating its children.
-                let visits = self.nodes[current_index].get_visits();
-                let num_parent_children = self.nodes[current_index].get_children().len();
-                while let Some(mv) = self.nodes[current_index]
-                    .expansion_policy
-                    .pop_expandable_move(visits, num_parent_children)
-                {
-                    let new_state = G::apply_move(
-                        self.nodes[current_index].get_state(),
-                        &mv,
-                        &mut self.game_cache,
-                    );
-                    let expansion_policy = EP::new(&new_state, &mut self.game_cache);
-                    let new_node = PlainNode::new(new_state, mv, expansion_policy);
-                    self.nodes.push(new_node);
-                    let child_index = self.nodes.len() - 1;
-                    self.nodes[current_index].add_child(child_index);
-                }
-                let child_index = *self.nodes[current_index]
-                    .get_children()
-                    .first()
-                    .expect("No children found");
-                path.push(child_index);
-                child_index
-            };
+        let current_index = if self.nodes[current_index].get_visits() == 0
+            || G::evaluate(self.nodes[current_index].get_state(), &mut self.game_cache).is_some()
+        {
+            // If the node has not been visited yet or is terminal, we need to simulate it.
+            current_index
+        } else {
+            // If the node has been visited, we need to expand it.
+            let num_parent_children = self.nodes[current_index].get_children().len();
+            let expandable_moves = self.nodes[current_index].expandable_moves();
+
+            // generate new children nodes from expandable moves
+            for mv in expandable_moves {
+                let new_state =
+                    G::apply_move(&self.nodes[current_index].state, &mv, &mut self.game_cache);
+                let expansion_policy =
+                    EP::new(&new_state, &mut self.game_cache, &mut self.heuristic_cache);
+                let new_node = PlainNode::new(new_state, mv, expansion_policy);
+                self.nodes.push(new_node);
+                let child_index = self.nodes.len() - 1;
+                self.nodes[current_index].add_child(child_index);
+            }
+            // take the first newly added child
+            let child_index = *self.nodes[current_index]
+                .get_children()
+                .get(num_parent_children)
+                .expect("No children found");
+            path.push(child_index);
+            child_index
+        };
 
         // Simulation
         // simulation result is expected as follows:
@@ -156,27 +175,6 @@ where
         for &node_index in path.iter().rev() {
             self.nodes[node_index].update_stats(simulation_result);
         }
-    }
-
-    fn set_root(&mut self, state: &G::State) -> bool {
-        // tree is empty, if PlainMCTS was just created
-        if !self.nodes.is_empty() {
-            // search for node with same state
-            if let Some(new_root) = self.nodes[self.root_index]
-                .get_children()
-                .iter()
-                .flat_map(|&my_move_nodes| self.nodes[my_move_nodes].get_children())
-                .find(|&&opponent_move_nodes| self.nodes[opponent_move_nodes].get_state() == state)
-            {
-                self.root_index = *new_root;
-                return true;
-            }
-        }
-        self.nodes.clear();
-        let expansion_policy = EP::new(state, &mut self.game_cache);
-        self.nodes.push(PlainNode::root_node(state.clone(), expansion_policy));
-        self.root_index = 0;
-        false
     }
 
     fn select_move(&self) -> &G::Move {

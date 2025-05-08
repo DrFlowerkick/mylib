@@ -1,5 +1,7 @@
 // type definition and functions of mcts node
 
+use rand::seq::SliceRandom;
+
 use super::{ExpansionPolicy, Heuristic, MCTSGame, MCTSNode, UCTPolicy, UTCCache};
 
 pub struct PlainNode<G, UP, UC, EP, H>
@@ -7,7 +9,7 @@ where
     G: MCTSGame,
     UP: UCTPolicy<G>,
     UC: UTCCache<G, UP>,
-    EP: ExpansionPolicy<G>,
+    EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
 {
     pub state: G::State,
@@ -26,7 +28,7 @@ where
     G: MCTSGame,
     UP: UCTPolicy<G>,
     UC: UTCCache<G, UP>,
-    EP: ExpansionPolicy<G>,
+    EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
 {
     pub fn root_node(state: G::State, expansion_policy: EP) -> Self {
@@ -59,6 +61,14 @@ where
     pub fn get_children(&self) -> &Vec<usize> {
         &self.children
     }
+    pub fn expandable_moves<'a>(&'a mut self) -> Vec<G::Move> {
+        let mut expandable_moves = self
+            .expansion_policy
+            .expandable_moves(self.visits, self.children.len(), &self.state)
+            .collect::<Vec<_>>();
+        expandable_moves.shuffle(&mut rand::thread_rng());
+        expandable_moves
+    }
 }
 
 impl<G, UP, UC, EP, H> MCTSNode<G> for PlainNode<G, UP, UC, EP, H>
@@ -66,7 +76,7 @@ where
     G: MCTSGame,
     UP: UCTPolicy<G>,
     UC: UTCCache<G, UP>,
-    EP: ExpansionPolicy<G>,
+    EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
 {
     fn get_state(&self) -> &G::State {

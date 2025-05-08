@@ -123,41 +123,27 @@ impl<G: MCTSGame, UP: UCTPolicy<G>> UTCCache<G, UP> for CachedUTC {
 }
 
 pub struct ExpandAll<G: MCTSGame> {
-    moves: Vec<G::Move>,
+    phantom: std::marker::PhantomData<G>,
 }
 
-impl<G: MCTSGame> ExpansionPolicy<G> for ExpandAll<G> {
-    fn new(state: &<G as MCTSGame>::State, game_cache: &mut<G as MCTSGame>::Cache) -> Self {
-        let moves = if game_cache.get_terminal_value(state).is_some() {
-            vec![]
-        } else {
-            G::available_moves(state).collect::<Vec<_>>()
-        };
-        ExpandAll { moves }
-    }
-    fn should_expand(&self, _v: usize, _n: usize) -> bool {
-        !self.moves.is_empty()
-    }
-    fn pop_expandable_move(&mut self, _v: usize, _n: usize) -> Option<<G as MCTSGame>::Move> {
-        self.moves.pop()
+impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for ExpandAll<G> {
+    fn new(
+        _state: &<G as MCTSGame>::State,
+        _game_cache: &mut <G as MCTSGame>::Cache,
+        _heuristic_cache: &mut <H as Heuristic<G>>::Cache,
+    ) -> Self {
+        ExpandAll {
+            phantom: std::marker::PhantomData,
+        }
     }
 }
 
-pub struct ProgressiveWidening<const C: usize, const AN: usize, const AD: usize, G: MCTSGame> {
-    unexpanded_moves: Vec<G::Move>,
+struct BaseProgressiveWidening<const C: usize, const AN: usize, const AD: usize, G: MCTSGame> {
+    pub unexpanded_moves: Vec<G::Move>,
 }
-
-// default progressive widening with C = 2, alpha = 1/2
-pub type PWDefault<G> = ProgressiveWidening<2, 1, 2, G>;
-
-// fast progressive widening with C = 4, alpha = 1/3
-pub type PWFast<G> = ProgressiveWidening<4, 1, 3, G>;
-
-// slow progressive widening with C = 1, alpha = 2/3
-pub type PWSlow<G> = ProgressiveWidening<1, 2, 3, G>;
 
 impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame>
-    ProgressiveWidening<C, AN, AD, G>
+    BaseProgressiveWidening<C, AN, AD, G>
 {
     fn allowed_children(visits: usize) -> usize {
         if visits == 0 {
@@ -166,33 +152,135 @@ impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame>
             (C as f32 * (visits as f32).powf(AN as f32 / AD as f32)).floor() as usize
         }
     }
-}
 
-impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame> ExpansionPolicy<G>
-    for ProgressiveWidening<C, AN, AD, G>
-{
-    fn new(state: &<G as MCTSGame>::State, game_cache: &mut<G as MCTSGame>::Cache) -> Self {
-        let unexpanded_moves = if game_cache.get_terminal_value(state).is_some() {
-            vec![]
-        } else {
-            let mut unexpanded_moves = G::available_moves(state).collect::<Vec<_>>();
-            unexpanded_moves.shuffle(&mut rand::thread_rng());
-            unexpanded_moves
-        };
-        ProgressiveWidening { unexpanded_moves }
-    }
     fn should_expand(&self, visits: usize, num_parent_children: usize) -> bool {
         num_parent_children < Self::allowed_children(visits) && !self.unexpanded_moves.is_empty()
     }
-    fn pop_expandable_move(
+
+    fn expandable_moves(
         &mut self,
         visits: usize,
         num_parent_children: usize,
-    ) -> Option<<G as MCTSGame>::Move> {
-        if !self.should_expand(visits, num_parent_children) {
-            return None;
+        _state: &<G as MCTSGame>::State,
+    ) -> Box<dyn Iterator<Item = <G as MCTSGame>::Move> + '_> {
+        let allowed_children = Self::allowed_children(visits);
+        if allowed_children > num_parent_children && !self.unexpanded_moves.is_empty() {
+            let num_expandable_moves = self
+                .unexpanded_moves
+                .len()
+                .min(allowed_children - num_parent_children);
+            Box::new(self.unexpanded_moves.drain(..num_expandable_moves))
+        } else {
+            Box::new(std::iter::empty())
         }
-        self.unexpanded_moves.pop()
+    }
+}
+
+pub struct ProgressiveWidening<const C: usize, const AN: usize, const AD: usize, G: MCTSGame>(
+    BaseProgressiveWidening<C, AN, AD, G>,
+);
+
+// default progressive widening with C = 2, alpha = 1/2, using heuristic
+pub type PWDefault<G> = ProgressiveWidening<2, 1, 2, G>;
+
+// fast progressive widening with C = 4, alpha = 1/3, using heuristic
+pub type PWFast<G> = ProgressiveWidening<4, 1, 3, G>;
+
+// slow progressive widening with C = 1, alpha = 2/3, using heuristic
+pub type PWSlow<G> = ProgressiveWidening<1, 2, 3, G>;
+
+impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame, H: Heuristic<G>>
+    ExpansionPolicy<G, H> for ProgressiveWidening<C, AN, AD, G>
+{
+    fn new(
+        state: &<G as MCTSGame>::State,
+        game_cache: &mut <G as MCTSGame>::Cache,
+        _heuristic_cache: &mut <H as Heuristic<G>>::Cache,
+    ) -> Self {
+        let is_terminal = match game_cache.get_terminal_value(state) {
+            Some(status) => status.is_some(),
+            None => G::evaluate(state, game_cache).is_some(),
+        };
+        if is_terminal {
+            return ProgressiveWidening(BaseProgressiveWidening {
+                unexpanded_moves: vec![],
+            });
+        }
+        let mut unexpanded_moves = G::available_moves(state).collect::<Vec<_>>();
+        unexpanded_moves.shuffle(&mut rand::thread_rng());
+        ProgressiveWidening(BaseProgressiveWidening { unexpanded_moves })
+    }
+    fn should_expand(&self, visits: usize, num_parent_children: usize) -> bool {
+        self.0.should_expand(visits, num_parent_children)
+    }
+    fn expandable_moves(
+        &mut self,
+        visits: usize,
+        num_parent_children: usize,
+        state: &<G as MCTSGame>::State,
+    ) -> Box<dyn Iterator<Item = <G as MCTSGame>::Move> + '_> {
+        self.0.expandable_moves(visits, num_parent_children, state)
+    }
+}
+
+pub struct HeuristicProgressiveWidening<
+    const C: usize,
+    const AN: usize,
+    const AD: usize,
+    G: MCTSGame,
+>(BaseProgressiveWidening<C, AN, AD, G>);
+
+// default progressive widening with C = 2, alpha = 1/2, using heuristic
+pub type HPWDefault<G> = HeuristicProgressiveWidening<2, 1, 2, G>;
+
+// fast progressive widening with C = 4, alpha = 1/3, using heuristic
+pub type HPWFast<G> = HeuristicProgressiveWidening<4, 1, 3, G>;
+
+// slow progressive widening with C = 1, alpha = 2/3, using heuristic
+pub type HPWSlow<G> = HeuristicProgressiveWidening<1, 2, 3, G>;
+
+impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame, H: Heuristic<G>>
+    ExpansionPolicy<G, H> for HeuristicProgressiveWidening<C, AN, AD, G>
+{
+    fn new(
+        state: &<G as MCTSGame>::State,
+        game_cache: &mut <G as MCTSGame>::Cache,
+        heuristic_cache: &mut <H as Heuristic<G>>::Cache,
+    ) -> Self {
+        let is_terminal = match game_cache.get_terminal_value(state) {
+            Some(status) => status.is_some(),
+            None => G::evaluate(state, game_cache).is_some(),
+        };
+        if is_terminal {
+            return HeuristicProgressiveWidening(BaseProgressiveWidening {
+                unexpanded_moves: vec![],
+            });
+        }
+        let mut unexpanded_moves = G::available_moves(state)
+            .map(|mv| {
+                let heuristic = H::evaluate_move(state, &mv, game_cache, heuristic_cache);
+                (mv, heuristic)
+            })
+            .collect::<Vec<_>>();
+        unexpanded_moves.shuffle(&mut rand::thread_rng());
+        unexpanded_moves
+            .sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        let unexpanded_moves = unexpanded_moves
+            .into_iter()
+            .map(|(mv, _)| mv)
+            .collect::<Vec<_>>();
+        HeuristicProgressiveWidening(BaseProgressiveWidening { unexpanded_moves })
+    }
+    fn should_expand(&self, visits: usize, num_parent_children: usize) -> bool {
+        self.0.should_expand(visits, num_parent_children)
+    }
+    fn expandable_moves(
+        &mut self,
+        visits: usize,
+        num_parent_children: usize,
+        state: &<G as MCTSGame>::State,
+    ) -> Box<dyn Iterator<Item = <G as MCTSGame>::Move> + '_> {
+        self.0.expandable_moves(visits, num_parent_children, state)
     }
 }
 

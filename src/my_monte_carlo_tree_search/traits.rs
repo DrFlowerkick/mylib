@@ -35,8 +35,8 @@ pub trait MCTSNode<G: MCTSGame> {
 }
 
 pub trait MCTSAlgo<G: MCTSGame> {
-    fn iterate(&mut self);
     fn set_root(&mut self, state: &G::State) -> bool;
+    fn iterate(&mut self);
     fn select_move(&self) -> &G::Move;
 }
 
@@ -87,11 +87,19 @@ pub trait UTCCache<G: MCTSGame, UP: UCTPolicy<G>> {
     fn get_exploration(&self, visits: usize, parent_visits: usize, base_c: f32) -> f32;
 }
 
-pub trait ExpansionPolicy<G: MCTSGame> {
-    fn new(state: &G::State, game_cache: &mut G::Cache) -> Self;
-    fn should_expand(&self, visits: usize, num_parent_children: usize) -> bool;
-    fn pop_expandable_move(&mut self, visits: usize, num_parent_children: usize)
-        -> Option<G::Move>;
+pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>> {
+    fn new(state: &G::State, game_cache: &mut G::Cache, heuristic_cache: &mut H::Cache) -> Self;
+    fn should_expand(&self, _visits: usize, _num_parent_children: usize) -> bool {
+        false
+    }
+    fn expandable_moves<'a>(
+        &'a mut self,
+        _visits: usize,
+        _num_parent_children: usize,
+        state: &'a G::State,
+    ) -> Box<dyn Iterator<Item = G::Move> + 'a> {
+        G::available_moves(state)
+    }
 }
 
 pub trait Heuristic<G: MCTSGame> {

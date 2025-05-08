@@ -1,7 +1,7 @@
 // simple minimap, mainly used in TicTacToe
 
-use std::fmt::Display;
 use std::convert::TryFrom;
+use std::fmt::Display;
 
 #[repr(u8)]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
