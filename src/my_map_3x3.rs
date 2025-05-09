@@ -18,6 +18,16 @@ pub enum CellIndex3x3 {
     BR = 8,
 }
 
+impl CellIndex3x3 {
+    pub fn cell_weight(&self) -> f32 {
+        match self {
+            CellIndex3x3::MM => 4.0,
+            CellIndex3x3::TL | CellIndex3x3::TR | CellIndex3x3::BL | CellIndex3x3::BR => 3.0,
+            CellIndex3x3::TM | CellIndex3x3::ML | CellIndex3x3::MR | CellIndex3x3::BM => 2.0,
+        }
+    }
+}
+
 impl From<CellIndex3x3> for usize {
     fn from(cell: CellIndex3x3) -> Self {
         cell as usize

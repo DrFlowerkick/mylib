@@ -121,6 +121,10 @@ impl TicTacToeGameData {
     }
 
     pub fn get_status_increment(&self, cell: &CellIndex3x3) -> TicTacToeStatus {
+        // check cell
+        if self.get_cell_value(*cell).is_vacant() {
+            return TicTacToeStatus::Vacant;
+        }
         // check score lines, which contain cell
         for score_line in Self::SCORE_LINES.iter() {
             if !score_line.contains(cell) {
@@ -178,7 +182,7 @@ impl TicTacToeGameData {
             .filter(|(_, v)| v.is_not_vacant())
             .count()
     }
-    pub fn get_threats(&self) -> (u8, u8) {
+    pub fn get_threats(&self) -> (usize, usize) {
         let mut me_threats: HashSet<CellIndex3x3> = HashSet::new();
         let mut opp_threats: HashSet<CellIndex3x3> = HashSet::new();
 
@@ -204,6 +208,34 @@ impl TicTacToeGameData {
                 _ => (),
             }
         }
-        (me_threats.len() as u8, opp_threats.len() as u8)
+        (me_threats.len(), opp_threats.len())
+    }
+    pub fn get_meta_cell_factors(&self, cell: CellIndex3x3) -> (f32, f32) {
+        if self.get_cell_value(cell).is_not_vacant() {
+            return (0.0, 0.0);
+        }
+
+        let mut my_factor = 1.0;
+        let mut opp_factor = 1.0;
+
+        for score_line in Self::SCORE_LINES.iter() {
+            if !score_line.contains(&cell) {
+                continue;
+            }
+            let threat: i8 = score_line
+                .iter()
+                .map(|&c| self.get_cell_value(c) as i8)
+                .sum();
+
+            match threat {
+                2 => my_factor += 3.0,
+                1 => my_factor += 1.5,
+                -1 => opp_factor += 1.5,
+                -2 => opp_factor += 3.0,
+                _ => (),
+            }
+        }
+
+        (my_factor, opp_factor)
     }
 }

@@ -23,6 +23,7 @@ impl MCTSPlayer for TicTacToeStatus {
 pub struct TicTacToeGame {
     pub ttt: TicTacToeGameData,
     pub current_player: TicTacToeStatus,
+    pub last_player: TicTacToeStatus,
 }
 
 impl TicTacToeGame {
@@ -30,6 +31,7 @@ impl TicTacToeGame {
         TicTacToeGame {
             ttt: TicTacToeGameData::new(),
             current_player: TicTacToeStatus::Me,
+            last_player: TicTacToeStatus::Me,
         }
     }
     pub fn set_current_player(&mut self, player: TicTacToeStatus) {
@@ -39,6 +41,7 @@ impl TicTacToeGame {
         }
     }
     pub fn next_player(&mut self) {
+        self.last_player = self.current_player;
         self.current_player = self.current_player.next();
     }
 }
@@ -90,6 +93,9 @@ impl MCTSGame for TicTacToeMCTSGame {
 
     fn current_player(state: &Self::State) -> Self::Player {
         state.current_player
+    }
+    fn last_player(state: &Self::State) -> Self::Player {
+        state.last_player
     }
     fn perspective_player() -> Self::Player {
         TicTacToeStatus::Me

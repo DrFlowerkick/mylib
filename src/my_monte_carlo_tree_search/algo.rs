@@ -157,6 +157,7 @@ where
                 depth,
                 &mut self.game_cache,
                 &mut self.heuristic_cache,
+                Some(G::perspective_player())
             ) {
                 break heuristic;
             }

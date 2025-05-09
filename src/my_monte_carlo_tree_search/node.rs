@@ -97,7 +97,7 @@ where
         self.utc_cache.update_exploitation(
             self.visits,
             self.accumulated_value,
-            G::current_player(&self.state),
+            G::last_player(&self.state),
             G::perspective_player(),
         );
     }
@@ -108,7 +108,7 @@ where
         let exploitation = self.utc_cache.get_exploitation(
             self.visits,
             self.accumulated_value,
-            G::current_player(&self.state),
+            G::last_player(&self.state),
             perspective_player,
         );
         self.utc_cache

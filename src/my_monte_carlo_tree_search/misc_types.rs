@@ -63,15 +63,15 @@ impl<G: MCTSGame, UP: UCTPolicy<G>> UTCCache<G, UP> for NoUTCCache {
         NoUTCCache
     }
 
-    fn update_exploitation(&mut self, _v: usize, _a: f32, _c: G::Player, _p: G::Player) {}
+    fn update_exploitation(&mut self, _v: usize, _a: f32, _l: G::Player, _p: G::Player) {}
     fn get_exploitation(
         &self,
         visits: usize,
         acc_value: f32,
-        current_player: G::Player,
+        last_player: G::Player,
         perspective_player: G::Player,
     ) -> f32 {
-        UP::exploitation_score(acc_value, visits, current_player, perspective_player)
+        UP::exploitation_score(acc_value, visits, last_player, perspective_player)
     }
 
     fn update_exploration(&mut self, _v: usize, _p: usize, _b: f32) {}
@@ -99,11 +99,11 @@ impl<G: MCTSGame, UP: UCTPolicy<G>> UTCCache<G, UP> for CachedUTC {
         &mut self,
         visits: usize,
         acc_value: f32,
-        current_player: G::Player,
+        last_player: G::Player,
         perspective_player: G::Player,
     ) {
         self.exploitation =
-            UP::exploitation_score(acc_value, visits, current_player, perspective_player);
+            UP::exploitation_score(acc_value, visits, last_player, perspective_player);
     }
 
     fn get_exploitation(&self, _v: usize, _a: f32, _c: G::Player, _p: G::Player) -> f32 {
@@ -256,19 +256,9 @@ impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame, H: Heuristic
                 unexpanded_moves: vec![],
             });
         }
-        let mut unexpanded_moves = G::available_moves(state)
-            .map(|mv| {
-                let heuristic = H::evaluate_move(state, &mv, game_cache, heuristic_cache);
-                (mv, heuristic)
-            })
+        let unexpanded_moves = G::available_moves(state)
             .collect::<Vec<_>>();
-        unexpanded_moves.shuffle(&mut rand::thread_rng());
-        unexpanded_moves
-            .sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        let unexpanded_moves = unexpanded_moves
-            .into_iter()
-            .map(|(mv, _)| mv)
-            .collect::<Vec<_>>();
+        let unexpanded_moves = H::sort_moves(state, unexpanded_moves, game_cache, heuristic_cache);
         HeuristicProgressiveWidening(BaseProgressiveWidening { unexpanded_moves })
     }
     fn should_expand(&self, visits: usize, num_parent_children: usize) -> bool {
@@ -298,8 +288,9 @@ impl<const MXD: usize, G: MCTSGame, H: Heuristic<G>> SimulationPolicy<G, H>
         depth: usize,
         game_cache: &mut G::Cache,
         heuristic_cache: &mut H::Cache,
+        perspective_player: Option<G::Player>
     ) -> Option<f32> {
-        let heuristic = H::evaluate_state(state, game_cache, heuristic_cache);
+        let heuristic = H::evaluate_state(state, game_cache, heuristic_cache, perspective_player);
         if depth >= MXD || heuristic <= 0.05 || heuristic >= 0.95 {
             Some(heuristic)
         } else {
@@ -329,6 +320,7 @@ impl<G: MCTSGame> Heuristic<G> for NoHeuristic {
         state: &<G as MCTSGame>::State,
         game_cache: &mut <G as MCTSGame>::Cache,
         _heuristic_cache: &mut Self::Cache,
+        _perspective_player: Option<G::Player>,
     ) -> f32 {
         G::evaluate(state, game_cache).unwrap_or(0.5)
     }

@@ -1,6 +1,8 @@
 // trait definitions for mcts
 // these traits have to implemented by game crate to properly use mcts
 
+use rand::seq::SliceRandom;
+
 pub trait MCTSPlayer: PartialEq {
     fn next(&self) -> Self;
 }
@@ -19,6 +21,7 @@ pub trait MCTSGame: Sized {
     ) -> Self::State;
     fn evaluate(state: &Self::State, game_cache: &mut Self::Cache) -> Option<f32>;
     fn current_player(state: &Self::State) -> Self::Player;
+    fn last_player(state: &Self::State) -> Self::Player;
     fn perspective_player() -> Self::Player;
 }
 
@@ -45,15 +48,15 @@ pub trait UCTPolicy<G: MCTSGame> {
     fn exploitation_score(
         accumulated_value: f32,
         visits: usize,
-        current_player: G::Player,
+        last_player: G::Player,
         perspective_player: G::Player,
     ) -> f32 {
         let raw = accumulated_value / visits as f32;
         // this works only for 2 player games
-        if current_player == perspective_player {
-            1.0 - raw
-        } else {
+        if last_player == perspective_player {
             raw
+        } else {
+            1.0 - raw
         }
     }
 
@@ -70,7 +73,7 @@ pub trait UTCCache<G: MCTSGame, UP: UCTPolicy<G>> {
         &mut self,
         visits: usize,
         acc_value: f32,
-        current_player: G::Player,
+        last_player: G::Player,
         perspective_player: G::Player,
     );
 
@@ -78,7 +81,7 @@ pub trait UTCCache<G: MCTSGame, UP: UCTPolicy<G>> {
         &self,
         visits: usize,
         acc_value: f32,
-        current_player: G::Player,
+        last_player: G::Player,
         perspective_player: G::Player,
     ) -> f32;
 
@@ -109,6 +112,7 @@ pub trait Heuristic<G: MCTSGame> {
         state: &G::State,
         game_cache: &mut G::Cache,
         heuristic_cache: &mut Self::Cache,
+        perspective_player: Option<G::Player>,
     ) -> f32;
     fn evaluate_move(
         state: &G::State,
@@ -116,6 +120,26 @@ pub trait Heuristic<G: MCTSGame> {
         game_cache: &mut G::Cache,
         heuristic_cache: &mut Self::Cache,
     ) -> f32;
+    fn sort_moves(
+        state: &G::State,
+        moves: Vec<G::Move>,
+        game_cache: &mut G::Cache,
+        heuristic_cache: &mut Self::Cache,
+    ) -> Vec<G::Move> {
+        let mut heuristic_moves = moves
+            .into_iter()
+            .map(|mv| {
+                (
+                    Self::evaluate_move(state, &mv, game_cache, heuristic_cache),
+                    mv,
+                )
+            })
+            .collect::<Vec<_>>();
+        heuristic_moves.shuffle(&mut rand::thread_rng());
+        heuristic_moves
+            .sort_unstable_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+        heuristic_moves.into_iter().map(|(_, mv)| mv).collect()
+    }
 }
 
 pub trait GameCache<State, Move> {
@@ -148,6 +172,7 @@ pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>> {
         _depth: usize,
         _game_cache: &mut G::Cache,
         _heuristic_cache: &mut H::Cache,
+        _perspective_player: Option<G::Player>
     ) -> Option<f32> {
         None
     }
