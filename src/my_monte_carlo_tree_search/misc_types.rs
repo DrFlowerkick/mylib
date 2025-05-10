@@ -131,6 +131,8 @@ impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for ExpandAll<G> {
         _state: &<G as MCTSGame>::State,
         _game_cache: &mut <G as MCTSGame>::Cache,
         _heuristic_cache: &mut <H as Heuristic<G>>::Cache,
+        _depth: usize,
+        _alpha: f32,
     ) -> Self {
         ExpandAll {
             phantom: std::marker::PhantomData,
@@ -196,6 +198,8 @@ impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame, H: Heuristic
         state: &<G as MCTSGame>::State,
         game_cache: &mut <G as MCTSGame>::Cache,
         _heuristic_cache: &mut <H as Heuristic<G>>::Cache,
+        _depth: usize,
+        _alpha: f32,
     ) -> Self {
         let is_terminal = match game_cache.get_terminal_value(state) {
             Some(status) => status.is_some(),
@@ -246,6 +250,8 @@ impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame, H: Heuristic
         state: &<G as MCTSGame>::State,
         game_cache: &mut <G as MCTSGame>::Cache,
         heuristic_cache: &mut <H as Heuristic<G>>::Cache,
+        depth: usize,
+        alpha: f32,
     ) -> Self {
         let is_terminal = match game_cache.get_terminal_value(state) {
             Some(status) => status.is_some(),
@@ -256,9 +262,15 @@ impl<const C: usize, const AN: usize, const AD: usize, G: MCTSGame, H: Heuristic
                 unexpanded_moves: vec![],
             });
         }
-        let unexpanded_moves = G::available_moves(state)
-            .collect::<Vec<_>>();
-        let unexpanded_moves = H::sort_moves(state, unexpanded_moves, game_cache, heuristic_cache);
+        let unexpanded_moves = G::available_moves(state).collect::<Vec<_>>();
+        let unexpanded_moves = H::sort_moves(
+            state,
+            unexpanded_moves,
+            game_cache,
+            heuristic_cache,
+            depth,
+            alpha,
+        );
         HeuristicProgressiveWidening(BaseProgressiveWidening { unexpanded_moves })
     }
     fn should_expand(&self, visits: usize, num_parent_children: usize) -> bool {
@@ -288,7 +300,7 @@ impl<const MXD: usize, G: MCTSGame, H: Heuristic<G>> SimulationPolicy<G, H>
         depth: usize,
         game_cache: &mut G::Cache,
         heuristic_cache: &mut H::Cache,
-        perspective_player: Option<G::Player>
+        perspective_player: Option<G::Player>,
     ) -> Option<f32> {
         let heuristic = H::evaluate_state(state, game_cache, heuristic_cache, perspective_player);
         if depth >= MXD || heuristic <= 0.05 || heuristic >= 0.95 {
@@ -329,6 +341,8 @@ impl<G: MCTSGame> Heuristic<G> for NoHeuristic {
         _mv: &<G as MCTSGame>::Move,
         _game_cache: &mut <G as MCTSGame>::Cache,
         _heuristic_cache: &mut Self::Cache,
+        _depth: usize,
+        _alpha: f32,
     ) -> f32 {
         0.0
     }

@@ -61,7 +61,7 @@ where
     pub fn get_children(&self) -> &Vec<usize> {
         &self.children
     }
-    pub fn expandable_moves<'a>(&'a mut self) -> Vec<G::Move> {
+    pub fn expandable_moves(&mut self) -> Vec<G::Move> {
         let mut expandable_moves = self
             .expansion_policy
             .expandable_moves(self.visits, self.children.len(), &self.state)

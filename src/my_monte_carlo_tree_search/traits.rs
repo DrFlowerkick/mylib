@@ -91,7 +91,13 @@ pub trait UTCCache<G: MCTSGame, UP: UCTPolicy<G>> {
 }
 
 pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>> {
-    fn new(state: &G::State, game_cache: &mut G::Cache, heuristic_cache: &mut H::Cache) -> Self;
+    fn new(
+        state: &G::State,
+        game_cache: &mut G::Cache,
+        heuristic_cache: &mut H::Cache,
+        depth: usize,
+        alpha: f32,
+    ) -> Self;
     fn should_expand(&self, _visits: usize, _num_parent_children: usize) -> bool {
         false
     }
@@ -114,23 +120,36 @@ pub trait Heuristic<G: MCTSGame> {
         heuristic_cache: &mut Self::Cache,
         perspective_player: Option<G::Player>,
     ) -> f32;
+    fn evaluate_state_recursive(
+        state: &G::State,
+        game_cache: &mut G::Cache,
+        heuristic_cache: &mut Self::Cache,
+        _depth: usize,
+        _alpha: f32,
+    ) -> f32 {
+        Self::evaluate_state(state, game_cache, heuristic_cache, None)
+    }
     fn evaluate_move(
         state: &G::State,
         mv: &G::Move,
         game_cache: &mut G::Cache,
         heuristic_cache: &mut Self::Cache,
+        depth: usize,
+        alpha: f32,
     ) -> f32;
     fn sort_moves(
         state: &G::State,
         moves: Vec<G::Move>,
         game_cache: &mut G::Cache,
         heuristic_cache: &mut Self::Cache,
+        depth: usize,
+        alpha: f32,
     ) -> Vec<G::Move> {
         let mut heuristic_moves = moves
             .into_iter()
             .map(|mv| {
                 (
-                    Self::evaluate_move(state, &mv, game_cache, heuristic_cache),
+                    Self::evaluate_move(state, &mv, game_cache, heuristic_cache, depth, alpha),
                     mv,
                 )
             })
@@ -159,11 +178,11 @@ pub trait HeuristicCache<State, Move> {
     fn get_intermediate_score(&self, _state: &State) -> Option<f32> {
         None
     }
-    fn insert_intermediate_score(&mut self, _state: &State, _value: f32) {}
+    fn insert_intermediate_score(&mut self, _state: &State, _score: f32) {}
     fn get_move_score(&self, _state: &State, _mv: &Move) -> Option<f32> {
         None
     }
-    fn insert_move_score(&mut self, _state: &State, _mv: &Move, _value: f32) {}
+    fn insert_move_score(&mut self, _state: &State, _mv: &Move, _score: f32) {}
 }
 
 pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>> {
@@ -172,7 +191,7 @@ pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>> {
         _depth: usize,
         _game_cache: &mut G::Cache,
         _heuristic_cache: &mut H::Cache,
-        _perspective_player: Option<G::Player>
+        _perspective_player: Option<G::Player>,
     ) -> Option<f32> {
         None
     }

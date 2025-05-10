@@ -16,6 +16,8 @@ where
     pub nodes: Vec<PlainNode<G, UP, UC, EP, H>>,
     pub root_index: usize,
     pub exploration_constant: f32,
+    pub depth: usize,
+    pub alpha: f32,
     pub game_cache: G::Cache,
     pub heuristic_cache: H::Cache,
     phantom: std::marker::PhantomData<SP>,
@@ -30,15 +32,29 @@ where
     H: Heuristic<G>,
     SP: SimulationPolicy<G, H>,
 {
-    pub fn new(exploration_constant: f32) -> Self {
+    pub fn new(exploration_constant: f32, depth: usize, alpha: f32) -> Self {
         Self {
             nodes: vec![],
             root_index: 0,
             exploration_constant,
+            depth,
+            alpha,
             game_cache: G::Cache::new(),
             heuristic_cache: H::Cache::new(),
             phantom: std::marker::PhantomData,
         }
+    }
+
+    pub fn set_exploration_constant(&mut self, exploration_constant: f32) {
+        self.exploration_constant = exploration_constant;
+    }
+
+    pub fn set_depth(&mut self, depth: usize) {
+        self.depth = depth;
+    }
+
+    pub fn set_alpha(&mut self, alpha: f32) {
+        self.alpha = alpha;
     }
 }
 
@@ -66,7 +82,13 @@ where
             }
         }
         self.nodes.clear();
-        let expansion_policy = EP::new(state, &mut self.game_cache, &mut self.heuristic_cache);
+        let expansion_policy = EP::new(
+            state,
+            &mut self.game_cache,
+            &mut self.heuristic_cache,
+            self.depth,
+            self.alpha,
+        );
         self.nodes
             .push(PlainNode::root_node(state.clone(), expansion_policy));
         self.root_index = 0;
@@ -123,8 +145,13 @@ where
             for mv in expandable_moves {
                 let new_state =
                     G::apply_move(&self.nodes[current_index].state, &mv, &mut self.game_cache);
-                let expansion_policy =
-                    EP::new(&new_state, &mut self.game_cache, &mut self.heuristic_cache);
+                let expansion_policy = EP::new(
+                    &new_state,
+                    &mut self.game_cache,
+                    &mut self.heuristic_cache,
+                    self.depth,
+                    self.alpha,
+                );
                 let new_node = PlainNode::new(new_state, mv, expansion_policy);
                 self.nodes.push(new_node);
                 let child_index = self.nodes.len() - 1;
@@ -157,7 +184,7 @@ where
                 depth,
                 &mut self.game_cache,
                 &mut self.heuristic_cache,
-                Some(G::perspective_player())
+                Some(G::perspective_player()),
             ) {
                 break heuristic;
             }

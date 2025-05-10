@@ -238,4 +238,37 @@ impl TicTacToeGameData {
 
         (my_factor, opp_factor)
     }
+
+    pub fn board_analysis(&self) -> BoardAnalysis {
+        let status = self.get_status();
+        let my_cells = self.count_me_cells() as f32;
+        let opp_cells = self.count_opp_cells() as f32;
+        let (my_threats, opp_threats) = self.get_threats();
+        let mut meta_cell_factors = MyMap3x3::default();
+        for cell in self
+            .iter_map()
+            .filter_map(|(c, v)| if v.is_vacant() { Some(c) } else { None })
+        {
+            let meta_cell_factor = self.get_meta_cell_factors(cell);
+            meta_cell_factors.set_cell(cell, meta_cell_factor);
+        }
+        BoardAnalysis {
+            status,
+            my_cells,
+            opp_cells,
+            my_threats: my_threats as f32,
+            opp_threats: opp_threats as f32,
+            meta_cell_factors,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Default)]
+pub struct BoardAnalysis {
+    pub status: TicTacToeStatus,
+    pub my_cells: f32,
+    pub opp_cells: f32,
+    pub my_threats: f32,
+    pub opp_threats: f32,
+    pub meta_cell_factors: MyMap3x3<(f32, f32)>,
 }

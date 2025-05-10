@@ -137,7 +137,10 @@ mod tests {
     use std::time::{Duration, Instant};
     const TIME_OUT_FIRST_TURN: Duration = Duration::from_millis(200);
     const TIME_OUT_SUCCESSIVE_TURNS: Duration = Duration::from_millis(50);
-    const WEIGHTING_FACTOR: f32 = 1.40;
+    const EXPLOITATION_CONSTANT: f32 = 1.40;
+    // the following const are only useful for heuristic, which is not used by this tic tac toe code
+    const DEPTH: usize = 0;
+    const ALPHA: f32 = 0.0;
 
     #[test]
     fn calc_max_number_of_possible_nodes() {
@@ -160,7 +163,7 @@ mod tests {
                 ExpandAllTTT,
                 NoHeuristic,
                 DefaultSimulationPolicy,
-            > = PlainMCTS::new(WEIGHTING_FACTOR);
+            > = PlainMCTS::new(EXPLOITATION_CONSTANT, DEPTH, ALPHA);
             let mut ttt_game_data = TicTacToeGame::new();
             ttt_game_data.set_current_player(TicTacToeStatus::Me);
             let mut time_out = TIME_OUT_FIRST_TURN;
@@ -235,7 +238,7 @@ mod tests {
                 ExpandAllTTT,
                 NoHeuristic,
                 DefaultSimulationPolicy,
-            > = PlainMCTS::new(WEIGHTING_FACTOR);
+            > = PlainMCTS::new(EXPLOITATION_CONSTANT, DEPTH, ALPHA);
             let mut ttt_game_data = TicTacToeGame::new();
             ttt_game_data.set_current_player(TicTacToeStatus::Me);
             let mut time_out = TIME_OUT_FIRST_TURN;
@@ -310,7 +313,7 @@ mod tests {
                 ExpandAllTTT,
                 NoHeuristic,
                 DefaultSimulationPolicy,
-            > = PlainMCTS::new(WEIGHTING_FACTOR);
+            > = PlainMCTS::new(EXPLOITATION_CONSTANT, DEPTH, ALPHA);
             let mut first_ttt_game_data = TicTacToeGame::new();
             first_ttt_game_data.set_current_player(TicTacToeStatus::Me);
             let mut first_time_out = TIME_OUT_FIRST_TURN;
@@ -321,7 +324,7 @@ mod tests {
                 PWDefaultTTT,
                 NoHeuristic,
                 DefaultSimulationPolicy,
-            > = PlainMCTS::new(WEIGHTING_FACTOR);
+            > = PlainMCTS::new(EXPLOITATION_CONSTANT, DEPTH, ALPHA);
             let mut second_ttt_game_data = TicTacToeGame::new();
             second_ttt_game_data.set_current_player(TicTacToeStatus::Opp);
             let mut second_time_out = TIME_OUT_FIRST_TURN;
