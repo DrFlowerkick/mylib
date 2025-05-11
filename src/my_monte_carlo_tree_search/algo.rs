@@ -130,8 +130,8 @@ where
             current_index = best_child_index;
         }
 
-        // Expansion
-        let current_index = if self.nodes[current_index].get_visits() == 0
+        // Expansion; force creation of nodes if current_index is root of tree
+        let current_index = if (self.nodes[current_index].get_visits() == 0 && current_index != self.root_index)
             || G::evaluate(self.nodes[current_index].get_state(), &mut self.game_cache).is_some()
         {
             // If the node has not been visited yet or is terminal, we need to simulate it.
