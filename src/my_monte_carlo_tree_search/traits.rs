@@ -7,11 +7,19 @@ pub trait MCTSPlayer: PartialEq {
     fn next(&self) -> Self;
 }
 
+pub trait MCTSConfig {
+    fn exploration_constant(&self) -> f32;
+    fn progressive_widening_constant(&self) -> f32;
+    fn progressive_widening_exponent(&self) -> f32;
+    fn early_cut_off_depth(&self) -> usize;
+}
+
 pub trait MCTSGame: Sized {
     type State: Clone + PartialEq;
     type Move;
     type Player: MCTSPlayer;
     type Cache: GameCache<Self::State, Self::Move>;
+    type Config: MCTSConfig;
 
     fn available_moves<'a>(state: &'a Self::State) -> Box<dyn Iterator<Item = Self::Move> + 'a>;
     fn apply_move(
@@ -33,7 +41,7 @@ pub trait MCTSNode<G: MCTSGame> {
     fn get_visits(&self) -> usize;
     fn get_accumulated_value(&self) -> f32;
     fn update_stats(&mut self, result: f32);
-    fn calc_utc(&mut self, parent_visits: usize, base_c: f32, perspective_player: G::Player)
+    fn calc_utc(&mut self, parent_visits: usize, perspective_player: G::Player, mcts_config: &G::Config)
         -> f32;
 }
 
@@ -61,8 +69,8 @@ pub trait UCTPolicy<G: MCTSGame> {
     }
 
     /// calculates the exploration score with default of constant base_c
-    fn exploration_score(visits: usize, parent_visits: usize, base_c: f32) -> f32 {
-        base_c * ((parent_visits as f32).ln() / visits as f32).sqrt()
+    fn exploration_score(visits: usize, parent_visits: usize, mcts_config: &G::Config) -> f32 {
+        mcts_config.exploration_constant() * ((parent_visits as f32).ln() / visits as f32).sqrt()
     }
 }
 
@@ -85,9 +93,9 @@ pub trait UTCCache<G: MCTSGame, UP: UCTPolicy<G>> {
         perspective_player: G::Player,
     ) -> f32;
 
-    fn update_exploration(&mut self, visits: usize, parent_visits: usize, base_c: f32);
+    fn update_exploration(&mut self, visits: usize, parent_visits: usize, mcts_config: &G::Config);
 
-    fn get_exploration(&self, visits: usize, parent_visits: usize, base_c: f32) -> f32;
+    fn get_exploration(&self, visits: usize, parent_visits: usize, mcts_config: &G::Config) -> f32;
 }
 
 pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>> {
@@ -95,10 +103,9 @@ pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>> {
         state: &G::State,
         game_cache: &mut G::Cache,
         heuristic_cache: &mut H::Cache,
-        depth: usize,
-        alpha: f32,
+        heuristic_config: &H::Config,
     ) -> Self;
-    fn should_expand(&self, _visits: usize, _num_parent_children: usize) -> bool {
+    fn should_expand(&self, _visits: usize, _num_parent_children: usize, _mcts_config: &G::Config) -> bool {
         false
     }
     fn expandable_moves<'a>(
@@ -106,50 +113,73 @@ pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>> {
         _visits: usize,
         _num_parent_children: usize,
         state: &'a G::State,
+        _mcts_config: &G::Config,
     ) -> Box<dyn Iterator<Item = G::Move> + 'a> {
         G::available_moves(state)
     }
 }
 
+pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>> {
+    fn should_cutoff(
+        _state: &G::State,
+        _depth: usize,
+        _game_cache: &mut G::Cache,
+        _heuristic_cache: &mut H::Cache,
+        _perspective_player: Option<G::Player>,
+        _mcts_config: &G::Config,
+        _heuristic_config: &H::Config,
+    ) -> Option<f32> {
+        None
+    }
+}
+
+pub trait HeuristicConfig {
+    fn early_cut_off_upper_bound(&self) -> f32;
+    fn early_cut_off_lower_bound(&self) -> f32;
+    fn evaluate_state_recursive_depth(&self) -> usize;
+    fn evaluate_state_recursive_alpha(&self) -> f32;
+}
+
 pub trait Heuristic<G: MCTSGame> {
     type Cache: HeuristicCache<G::State, G::Move>;
+    type Config: HeuristicConfig;
 
     fn evaluate_state(
         state: &G::State,
         game_cache: &mut G::Cache,
         heuristic_cache: &mut Self::Cache,
         perspective_player: Option<G::Player>,
+        heuristic_config: &Self::Config,
     ) -> f32;
     fn evaluate_state_recursive(
         state: &G::State,
         game_cache: &mut G::Cache,
         heuristic_cache: &mut Self::Cache,
+        heuristic_config: &Self::Config,
         _depth: usize,
         _alpha: f32,
     ) -> f32 {
-        Self::evaluate_state(state, game_cache, heuristic_cache, None)
+        Self::evaluate_state(state, game_cache, heuristic_cache, None, heuristic_config)
     }
     fn evaluate_move(
         state: &G::State,
         mv: &G::Move,
         game_cache: &mut G::Cache,
         heuristic_cache: &mut Self::Cache,
-        depth: usize,
-        alpha: f32,
+        heuristic_config: &Self::Config,
     ) -> f32;
     fn sort_moves(
         state: &G::State,
         moves: Vec<G::Move>,
         game_cache: &mut G::Cache,
         heuristic_cache: &mut Self::Cache,
-        depth: usize,
-        alpha: f32,
+        heuristic_config: &Self::Config,
     ) -> Vec<G::Move> {
         let mut heuristic_moves = moves
             .into_iter()
             .map(|mv| {
                 (
-                    Self::evaluate_move(state, &mv, game_cache, heuristic_cache, depth, alpha),
+                    Self::evaluate_move(state, &mv, game_cache, heuristic_cache, heuristic_config),
                     mv,
                 )
             })
@@ -183,16 +213,4 @@ pub trait HeuristicCache<State, Move> {
         None
     }
     fn insert_move_score(&mut self, _state: &State, _mv: &Move, _score: f32) {}
-}
-
-pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>> {
-    fn should_cutoff(
-        _state: &G::State,
-        _depth: usize,
-        _game_cache: &mut G::Cache,
-        _heuristic_cache: &mut H::Cache,
-        _perspective_player: Option<G::Player>,
-    ) -> Option<f32> {
-        None
-    }
 }

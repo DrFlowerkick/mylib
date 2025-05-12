@@ -61,10 +61,10 @@ where
     pub fn get_children(&self) -> &Vec<usize> {
         &self.children
     }
-    pub fn expandable_moves(&mut self) -> Vec<G::Move> {
+    pub fn expandable_moves(&mut self, mcts_config: &G::Config) -> Vec<G::Move> {
         let mut expandable_moves = self
             .expansion_policy
-            .expandable_moves(self.visits, self.children.len(), &self.state)
+            .expandable_moves(self.visits, self.children.len(), &self.state, mcts_config)
             .collect::<Vec<_>>();
         expandable_moves.shuffle(&mut rand::thread_rng());
         expandable_moves
@@ -101,7 +101,7 @@ where
             G::perspective_player(),
         );
     }
-    fn calc_utc(&mut self, parent_visits: usize, c: f32, perspective_player: G::Player) -> f32 {
+    fn calc_utc(&mut self, parent_visits: usize, perspective_player: G::Player, mcts_config: &G::Config) -> f32 {
         if self.visits == 0 {
             return f32::INFINITY;
         }
@@ -112,10 +112,10 @@ where
             perspective_player,
         );
         self.utc_cache
-            .update_exploration(self.visits, parent_visits, c);
+            .update_exploration(self.visits, parent_visits, mcts_config);
         let exploration = self
             .utc_cache
-            .get_exploration(self.visits, parent_visits, c);
+            .get_exploration(self.visits, parent_visits, mcts_config);
         exploitation + exploration
     }
 }

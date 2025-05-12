@@ -1,6 +1,6 @@
 use super::{
     ExpansionPolicy, GameCache, Heuristic, HeuristicCache, MCTSAlgo, MCTSGame, MCTSNode, PlainNode,
-    SimulationPolicy, UCTPolicy, UTCCache,
+    SimulationPolicy, UCTPolicy, UTCCache
 };
 use rand::prelude::IteratorRandom;
 
@@ -15,9 +15,8 @@ where
 {
     pub nodes: Vec<PlainNode<G, UP, UC, EP, H>>,
     pub root_index: usize,
-    pub exploration_constant: f32,
-    pub depth: usize,
-    pub alpha: f32,
+    pub mcts_config: G::Config,
+    pub heuristic_config: H::Config,
     pub game_cache: G::Cache,
     pub heuristic_cache: H::Cache,
     phantom: std::marker::PhantomData<SP>,
@@ -32,29 +31,24 @@ where
     H: Heuristic<G>,
     SP: SimulationPolicy<G, H>,
 {
-    pub fn new(exploration_constant: f32, depth: usize, alpha: f32) -> Self {
+    pub fn new(mcts_config: G::Config, heuristic_config: H::Config) -> Self {
         Self {
             nodes: vec![],
             root_index: 0,
-            exploration_constant,
-            depth,
-            alpha,
+            mcts_config,
+            heuristic_config,
             game_cache: G::Cache::new(),
             heuristic_cache: H::Cache::new(),
             phantom: std::marker::PhantomData,
         }
     }
 
-    pub fn set_exploration_constant(&mut self, exploration_constant: f32) {
-        self.exploration_constant = exploration_constant;
+    pub fn set_mcts_config(&mut self, mcts_config: G::Config) {
+        self.mcts_config = mcts_config;
     }
 
-    pub fn set_depth(&mut self, depth: usize) {
-        self.depth = depth;
-    }
-
-    pub fn set_alpha(&mut self, alpha: f32) {
-        self.alpha = alpha;
+    pub fn set_heuristic_config(&mut self, heuristic_config: H::Config) {
+        self.heuristic_config = heuristic_config;
     }
 }
 
@@ -86,8 +80,7 @@ where
             state,
             &mut self.game_cache,
             &mut self.heuristic_cache,
-            self.depth,
-            self.alpha,
+            &self.heuristic_config,
         );
         self.nodes
             .push(PlainNode::root_node(state.clone(), expansion_policy));
@@ -106,7 +99,7 @@ where
             // check expansion policy
             if self.nodes[current_index]
                 .expansion_policy
-                .should_expand(parent_visits, num_parent_children)
+                .should_expand(parent_visits, num_parent_children, &self.mcts_config)
             {
                 break;
             }
@@ -118,8 +111,8 @@ where
                 let child_index = self.nodes[current_index].get_children()[vec_index];
                 let utc = self.nodes[child_index].calc_utc(
                     parent_visits,
-                    self.exploration_constant,
                     G::perspective_player(),
+                    &self.mcts_config,
                 );
                 if utc > best_utc {
                     best_utc = utc;
@@ -139,7 +132,7 @@ where
         } else {
             // If the node has been visited, we need to expand it.
             let num_parent_children = self.nodes[current_index].get_children().len();
-            let expandable_moves = self.nodes[current_index].expandable_moves();
+            let expandable_moves = self.nodes[current_index].expandable_moves(&self.mcts_config);
 
             // generate new children nodes from expandable moves
             for mv in expandable_moves {
@@ -149,8 +142,7 @@ where
                     &new_state,
                     &mut self.game_cache,
                     &mut self.heuristic_cache,
-                    self.depth,
-                    self.alpha,
+                    &self.heuristic_config,
                 );
                 let new_node = PlainNode::new(new_state, mv, expansion_policy);
                 self.nodes.push(new_node);
@@ -185,6 +177,8 @@ where
                 &mut self.game_cache,
                 &mut self.heuristic_cache,
                 Some(G::perspective_player()),
+                &self.mcts_config,
+                &self.heuristic_config,
             ) {
                 break heuristic;
             }
