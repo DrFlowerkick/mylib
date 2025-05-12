@@ -230,10 +230,10 @@ impl TicTacToeGameData {
                 .sum();
 
             match threat {
-                2 => my_meta_threats += threat,
-                1 => my_meta_small_threats += threat,
-                -1 => opp_meta_small_threats -= threat,
-                -2 => opp_meta_threats -= threat,
+                2 => my_meta_threats += 1,
+                1 => my_meta_small_threats += 1,
+                -1 => opp_meta_small_threats += 1,
+                -2 => opp_meta_threats += 1,
                 _ => (),
             }
         }
@@ -243,8 +243,8 @@ impl TicTacToeGameData {
 
     pub fn board_analysis(&self) -> BoardAnalysis {
         let status = self.get_status();
-        let my_cells = self.count_me_cells() as f32;
-        let opp_cells = self.count_opp_cells() as f32;
+        let my_cells = self.count_me_cells();
+        let opp_cells = self.count_opp_cells();
         let (my_threats, opp_threats) = self.get_threats();
         let mut meta_cell_threats = MyMap3x3::default();
         for cell in self
@@ -258,8 +258,8 @@ impl TicTacToeGameData {
             status,
             my_cells,
             opp_cells,
-            my_threats: my_threats as f32,
-            opp_threats: opp_threats as f32,
+            my_threats,
+            opp_threats,
             meta_cell_threats,
         }
     }
@@ -268,9 +268,9 @@ impl TicTacToeGameData {
 #[derive(Copy, Clone, Default)]
 pub struct BoardAnalysis {
     pub status: TicTacToeStatus,
-    pub my_cells: f32,
-    pub opp_cells: f32,
-    pub my_threats: f32,
-    pub opp_threats: f32,
+    pub my_cells: usize,
+    pub opp_cells: usize,
+    pub my_threats: usize,
+    pub opp_threats: usize,
     pub meta_cell_threats: MyMap3x3<(i8, i8, i8, i8)>,
 }
