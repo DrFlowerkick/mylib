@@ -210,13 +210,15 @@ impl TicTacToeGameData {
         }
         (me_threats.len(), opp_threats.len())
     }
-    pub fn get_meta_cell_factors(&self, cell: CellIndex3x3) -> (f32, f32) {
+    pub fn get_meta_cell_threats(&self, cell: CellIndex3x3) -> (i8, i8, i8, i8) {
         if self.get_cell_value(cell).is_not_vacant() {
-            return (0.0, 0.0);
+            return (0, 0, 0, 0);
         }
 
-        let mut my_factor = 1.0;
-        let mut opp_factor = 1.0;
+        let mut my_meta_threats = 0;
+        let mut my_meta_small_threats = 0;
+        let mut opp_meta_threats = 0;
+        let mut opp_meta_small_threats = 0;
 
         for score_line in Self::SCORE_LINES.iter() {
             if !score_line.contains(&cell) {
@@ -228,15 +230,15 @@ impl TicTacToeGameData {
                 .sum();
 
             match threat {
-                2 => my_factor += 3.0,
-                1 => my_factor += 1.5,
-                -1 => opp_factor += 1.5,
-                -2 => opp_factor += 3.0,
+                2 => my_meta_threats += threat,
+                1 => my_meta_small_threats += threat,
+                -1 => opp_meta_small_threats -= threat,
+                -2 => opp_meta_threats -= threat,
                 _ => (),
             }
         }
 
-        (my_factor, opp_factor)
+        (my_meta_threats, my_meta_small_threats, opp_meta_threats, opp_meta_small_threats)
     }
 
     pub fn board_analysis(&self) -> BoardAnalysis {
@@ -244,13 +246,13 @@ impl TicTacToeGameData {
         let my_cells = self.count_me_cells() as f32;
         let opp_cells = self.count_opp_cells() as f32;
         let (my_threats, opp_threats) = self.get_threats();
-        let mut meta_cell_factors = MyMap3x3::default();
+        let mut meta_cell_threats = MyMap3x3::default();
         for cell in self
             .iter_map()
             .filter_map(|(c, v)| if v.is_vacant() { Some(c) } else { None })
         {
-            let meta_cell_factor = self.get_meta_cell_factors(cell);
-            meta_cell_factors.set_cell(cell, meta_cell_factor);
+            let meta_cell_threat = self.get_meta_cell_threats(cell);
+            meta_cell_threats.set_cell(cell, meta_cell_threat);
         }
         BoardAnalysis {
             status,
@@ -258,7 +260,7 @@ impl TicTacToeGameData {
             opp_cells,
             my_threats: my_threats as f32,
             opp_threats: opp_threats as f32,
-            meta_cell_factors,
+            meta_cell_threats,
         }
     }
 }
@@ -270,5 +272,5 @@ pub struct BoardAnalysis {
     pub opp_cells: f32,
     pub my_threats: f32,
     pub opp_threats: f32,
-    pub meta_cell_factors: MyMap3x3<(f32, f32)>,
+    pub meta_cell_threats: MyMap3x3<(i8, i8, i8, i8)>,
 }
