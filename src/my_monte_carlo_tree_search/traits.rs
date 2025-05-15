@@ -41,8 +41,12 @@ pub trait MCTSNode<G: MCTSGame> {
     fn get_visits(&self) -> usize;
     fn get_accumulated_value(&self) -> f32;
     fn update_stats(&mut self, result: f32);
-    fn calc_utc(&mut self, parent_visits: usize, perspective_player: G::Player, mcts_config: &G::Config)
-        -> f32;
+    fn calc_utc(
+        &mut self,
+        parent_visits: usize,
+        perspective_player: G::Player,
+        mcts_config: &G::Config,
+    ) -> f32;
 }
 
 pub trait MCTSAlgo<G: MCTSGame> {
@@ -105,7 +109,12 @@ pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>> {
         heuristic_cache: &mut H::Cache,
         heuristic_config: &H::Config,
     ) -> Self;
-    fn should_expand(&self, _visits: usize, _num_parent_children: usize, _mcts_config: &G::Config) -> bool {
+    fn should_expand(
+        &self,
+        _visits: usize,
+        _num_parent_children: usize,
+        _mcts_config: &G::Config,
+    ) -> bool {
         false
     }
     fn expandable_moves<'a>(

@@ -210,7 +210,7 @@ impl TicTacToeGameData {
         }
         (me_threats.len(), opp_threats.len())
     }
-    pub fn get_meta_cell_threats(&self, cell: CellIndex3x3) -> (i8, i8, i8, i8) {
+    pub fn get_meta_cell_threats(&self, cell: CellIndex3x3) -> (u8, u8, u8, u8) {
         if self.get_cell_value(cell).is_not_vacant() {
             return (0, 0, 0, 0);
         }
@@ -238,13 +238,19 @@ impl TicTacToeGameData {
             }
         }
 
-        (my_meta_threats, my_meta_small_threats, opp_meta_threats, opp_meta_small_threats)
+        (
+            my_meta_threats,
+            my_meta_small_threats,
+            opp_meta_threats,
+            opp_meta_small_threats,
+        )
     }
 
     pub fn board_analysis(&self) -> BoardAnalysis {
         let status = self.get_status();
         let my_cells = self.count_me_cells();
         let opp_cells = self.count_opp_cells();
+        let played_cells = self.count_non_vacant_cells();
         let (my_threats, opp_threats) = self.get_threats();
         let mut meta_cell_threats = MyMap3x3::default();
         for cell in self
@@ -258,6 +264,7 @@ impl TicTacToeGameData {
             status,
             my_cells,
             opp_cells,
+            played_cells,
             my_threats,
             opp_threats,
             meta_cell_threats,
@@ -270,7 +277,8 @@ pub struct BoardAnalysis {
     pub status: TicTacToeStatus,
     pub my_cells: usize,
     pub opp_cells: usize,
+    pub played_cells: usize,
     pub my_threats: usize,
     pub opp_threats: usize,
-    pub meta_cell_threats: MyMap3x3<(i8, i8, i8, i8)>,
+    pub meta_cell_threats: MyMap3x3<(u8, u8, u8, u8)>,
 }

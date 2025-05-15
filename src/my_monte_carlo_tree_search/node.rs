@@ -101,7 +101,12 @@ where
             G::perspective_player(),
         );
     }
-    fn calc_utc(&mut self, parent_visits: usize, perspective_player: G::Player, mcts_config: &G::Config) -> f32 {
+    fn calc_utc(
+        &mut self,
+        parent_visits: usize,
+        perspective_player: G::Player,
+        mcts_config: &G::Config,
+    ) -> f32 {
         if self.visits == 0 {
             return f32::INFINITY;
         }

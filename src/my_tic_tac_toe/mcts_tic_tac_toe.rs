@@ -1,5 +1,5 @@
 use super::*;
-use crate::my_monte_carlo_tree_search::{GameCache, MCTSGame, MCTSPlayer, BaseConfig};
+use crate::my_monte_carlo_tree_search::{BaseConfig, GameCache, MCTSGame, MCTSPlayer};
 use std::collections::HashMap;
 
 #[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
@@ -128,8 +128,8 @@ mod tests {
     use rand::prelude::*;
 
     use crate::my_monte_carlo_tree_search::{
-        CachedUTC, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo, NoHeuristic, NoUTCCache,
-        PlainMCTS, StaticC, ProgressiveWidening, BaseHeuristicConfig,
+        BaseHeuristicConfig, CachedUTC, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo,
+        NoHeuristic, NoUTCCache, PlainMCTS, ProgressiveWidening, StaticC,
     };
 
     type PWTTT = ProgressiveWidening<TicTacToeMCTSGame>;

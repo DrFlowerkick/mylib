@@ -1,6 +1,6 @@
 use super::{
     ExpansionPolicy, GameCache, Heuristic, HeuristicCache, MCTSAlgo, MCTSGame, MCTSNode, PlainNode,
-    SimulationPolicy, UCTPolicy, UTCCache
+    SimulationPolicy, UCTPolicy, UTCCache,
 };
 use rand::prelude::IteratorRandom;
 
@@ -97,10 +97,11 @@ where
             let parent_visits = self.nodes[current_index].get_visits();
             let num_parent_children = self.nodes[current_index].get_children().len();
             // check expansion policy
-            if self.nodes[current_index]
-                .expansion_policy
-                .should_expand(parent_visits, num_parent_children, &self.mcts_config)
-            {
+            if self.nodes[current_index].expansion_policy.should_expand(
+                parent_visits,
+                num_parent_children,
+                &self.mcts_config,
+            ) {
                 break;
             }
 
@@ -124,7 +125,8 @@ where
         }
 
         // Expansion; force creation of nodes if current_index is root of tree
-        let current_index = if (self.nodes[current_index].get_visits() == 0 && current_index != self.root_index)
+        let current_index = if (self.nodes[current_index].get_visits() == 0
+            && current_index != self.root_index)
             || G::evaluate(self.nodes[current_index].get_state(), &mut self.game_cache).is_some()
         {
             // If the node has not been visited yet or is terminal, we need to simulate it.

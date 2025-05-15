@@ -1,8 +1,8 @@
 // miscellaneous mcts type definitions
 
 use super::{
-    ExpansionPolicy, GameCache, Heuristic, HeuristicCache, MCTSGame, MCTSPlayer, SimulationPolicy,
-    UCTPolicy, UTCCache, MCTSConfig, HeuristicConfig,
+    ExpansionPolicy, GameCache, Heuristic, HeuristicCache, HeuristicConfig, MCTSConfig, MCTSGame,
+    MCTSPlayer, SimulationPolicy, UCTPolicy, UTCCache,
 };
 use rand::prelude::SliceRandom;
 
@@ -30,7 +30,6 @@ impl MCTSPlayer for TwoPlayer {
         }
     }
 }
-
 
 // default progressive widening with C = 2, alpha = 1/2
 // fast progressive widening with C = 4, alpha = 1/3
@@ -181,18 +180,25 @@ struct BaseProgressiveWidening<G: MCTSGame> {
     pub unexpanded_moves: Vec<G::Move>,
 }
 
-impl<G: MCTSGame> BaseProgressiveWidening<G>
-{
+impl<G: MCTSGame> BaseProgressiveWidening<G> {
     fn allowed_children(visits: usize, mcts_config: &G::Config) -> usize {
         if visits == 0 {
             1
         } else {
-            (mcts_config.progressive_widening_constant() * (visits as f32).powf(mcts_config.progressive_widening_exponent())).floor() as usize
+            (mcts_config.progressive_widening_constant()
+                * (visits as f32).powf(mcts_config.progressive_widening_exponent()))
+            .floor() as usize
         }
     }
 
-    fn should_expand(&self, visits: usize, num_parent_children: usize, mcts_config: &G::Config) -> bool {
-        num_parent_children < Self::allowed_children(visits, mcts_config) && !self.unexpanded_moves.is_empty()
+    fn should_expand(
+        &self,
+        visits: usize,
+        num_parent_children: usize,
+        mcts_config: &G::Config,
+    ) -> bool {
+        num_parent_children < Self::allowed_children(visits, mcts_config)
+            && !self.unexpanded_moves.is_empty()
     }
 
     fn expandable_moves(
@@ -217,8 +223,7 @@ impl<G: MCTSGame> BaseProgressiveWidening<G>
 
 pub struct ProgressiveWidening<G: MCTSGame>(BaseProgressiveWidening<G>);
 
-impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for ProgressiveWidening<G>
-{
+impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for ProgressiveWidening<G> {
     fn new(
         state: &<G as MCTSGame>::State,
         game_cache: &mut <G as MCTSGame>::Cache,
@@ -238,8 +243,14 @@ impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for ProgressiveWidening
         unexpanded_moves.shuffle(&mut rand::thread_rng());
         ProgressiveWidening(BaseProgressiveWidening { unexpanded_moves })
     }
-    fn should_expand(&self, visits: usize, num_parent_children: usize, mcts_config: &G::Config) -> bool {
-        self.0.should_expand(visits, num_parent_children, mcts_config)
+    fn should_expand(
+        &self,
+        visits: usize,
+        num_parent_children: usize,
+        mcts_config: &G::Config,
+    ) -> bool {
+        self.0
+            .should_expand(visits, num_parent_children, mcts_config)
     }
     fn expandable_moves(
         &mut self,
@@ -248,7 +259,8 @@ impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for ProgressiveWidening
         state: &<G as MCTSGame>::State,
         mcts_config: &G::Config,
     ) -> Box<dyn Iterator<Item = <G as MCTSGame>::Move> + '_> {
-        self.0.expandable_moves(visits, num_parent_children, state, mcts_config)
+        self.0
+            .expandable_moves(visits, num_parent_children, state, mcts_config)
     }
 }
 
@@ -280,8 +292,14 @@ impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for HeuristicProgressiv
         );
         HeuristicProgressiveWidening(BaseProgressiveWidening { unexpanded_moves })
     }
-    fn should_expand(&self, visits: usize, num_parent_children: usize, mcts_config: &G::Config) -> bool {
-        self.0.should_expand(visits, num_parent_children, mcts_config)
+    fn should_expand(
+        &self,
+        visits: usize,
+        num_parent_children: usize,
+        mcts_config: &G::Config,
+    ) -> bool {
+        self.0
+            .should_expand(visits, num_parent_children, mcts_config)
     }
     fn expandable_moves(
         &mut self,
@@ -290,7 +308,8 @@ impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for HeuristicProgressiv
         state: &<G as MCTSGame>::State,
         mcts_config: &G::Config,
     ) -> Box<dyn Iterator<Item = <G as MCTSGame>::Move> + '_> {
-        self.0.expandable_moves(visits, num_parent_children, state, mcts_config)
+        self.0
+            .expandable_moves(visits, num_parent_children, state, mcts_config)
     }
 }
 
@@ -310,8 +329,17 @@ impl<G: MCTSGame, H: Heuristic<G>> SimulationPolicy<G, H> for HeuristicCutoff {
         mcts_config: &G::Config,
         heuristic_config: &H::Config,
     ) -> Option<f32> {
-        let heuristic = H::evaluate_state(state, game_cache, heuristic_cache, perspective_player, heuristic_config);
-        if depth >= mcts_config.early_cut_off_depth() || heuristic <= heuristic_config.early_cut_off_lower_bound() || heuristic >= heuristic_config.early_cut_off_upper_bound() {
+        let heuristic = H::evaluate_state(
+            state,
+            game_cache,
+            heuristic_cache,
+            perspective_player,
+            heuristic_config,
+        );
+        if depth >= mcts_config.early_cut_off_depth()
+            || heuristic <= heuristic_config.early_cut_off_lower_bound()
+            || heuristic >= heuristic_config.early_cut_off_upper_bound()
+        {
             Some(heuristic)
         } else {
             None
