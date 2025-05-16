@@ -2,7 +2,7 @@
 
 use super::{
     ExpansionPolicy, GameCache, Heuristic, HeuristicCache, HeuristicConfig, MCTSConfig, MCTSGame,
-    MCTSPlayer, SimulationPolicy, UCTPolicy, UTCCache,
+    MCTSPlayer, SimulationPolicy, UCTPolicy, UTCCache, RecursiveHeuristicConfig,
 };
 use rand::prelude::SliceRandom;
 
@@ -398,8 +398,6 @@ pub struct BaseHeuristicConfig {
     pub progressive_widening_decay_rate: f32,
     pub early_cut_off_lower_bound: f32,
     pub early_cut_off_upper_bound: f32,
-    pub evaluate_state_recursive_depth: usize,
-    pub evaluate_state_recursive_alpha: f32,
 }
 
 impl Default for BaseHeuristicConfig {
@@ -409,8 +407,6 @@ impl Default for BaseHeuristicConfig {
             progressive_widening_decay_rate: 0.95,
             early_cut_off_lower_bound: 0.05,
             early_cut_off_upper_bound: 0.95,
-            evaluate_state_recursive_depth: 0,
-            evaluate_state_recursive_alpha: 0.7,
         }
     }
 }
@@ -427,12 +423,6 @@ impl HeuristicConfig for BaseHeuristicConfig {
     }
     fn early_cut_off_upper_bound(&self) -> f32 {
         self.early_cut_off_upper_bound
-    }
-    fn evaluate_state_recursive_depth(&self) -> usize {
-        self.evaluate_state_recursive_depth
-    }
-    fn evaluate_state_recursive_alpha(&self) -> f32 {
-        self.evaluate_state_recursive_alpha
     }
 }
 
@@ -459,5 +449,60 @@ impl<G: MCTSGame> Heuristic<G> for NoHeuristic {
         _heuristic_config: &Self::Config,
     ) -> f32 {
         0.0
+    }
+}
+
+pub struct BaseRecursiveConfig {
+    pub base_config: BaseHeuristicConfig,
+    pub max_depth: usize,
+    pub alpha: f32,
+    pub alpha_reduction_factor: f32,
+    pub target_alpha: f32,
+    pub early_exit_threshold: f32,
+}
+
+impl Default for BaseRecursiveConfig {
+    fn default() -> Self {
+        BaseRecursiveConfig {
+            base_config: BaseHeuristicConfig::default(),
+            max_depth: 0,
+            alpha: 0.7,
+            alpha_reduction_factor: 0.9,
+            target_alpha: 0.5,
+            early_exit_threshold: 0.95,
+        }
+    }
+}
+
+impl HeuristicConfig for BaseRecursiveConfig {
+    fn progressive_widening_initial_threshold(&self) -> f32 {
+        self.base_config.progressive_widening_initial_threshold
+    }
+    fn progressive_widening_decay_rate(&self) -> f32 {
+        self.base_config.progressive_widening_decay_rate
+    }
+    fn early_cut_off_lower_bound(&self) -> f32 {
+        self.base_config.early_cut_off_lower_bound
+    }
+    fn early_cut_off_upper_bound(&self) -> f32 {
+        self.base_config.early_cut_off_upper_bound
+    }
+}
+
+impl RecursiveHeuristicConfig for BaseRecursiveConfig {
+    fn max_depth(&self) -> usize {
+        self.max_depth
+    }
+    fn alpha(&self) -> f32 {
+        self.alpha
+    }
+    fn alpha_reduction_factor(&self) -> f32 {
+        self.alpha_reduction_factor
+    }
+    fn target_alpha(&self) -> f32 {
+        self.target_alpha
+    }
+    fn early_exit_threshold(&self) -> f32 {
+        self.early_exit_threshold
     }
 }

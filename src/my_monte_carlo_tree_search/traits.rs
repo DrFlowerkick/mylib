@@ -149,8 +149,6 @@ pub trait HeuristicConfig {
     fn progressive_widening_decay_rate(&self) -> f32;
     fn early_cut_off_upper_bound(&self) -> f32;
     fn early_cut_off_lower_bound(&self) -> f32;
-    fn evaluate_state_recursive_depth(&self) -> usize;
-    fn evaluate_state_recursive_alpha(&self) -> f32;
 }
 
 pub trait Heuristic<G: MCTSGame> {
@@ -195,9 +193,11 @@ pub trait Heuristic<G: MCTSGame> {
 }
 
 pub trait RecursiveHeuristicConfig: HeuristicConfig {
-    fn evaluate_state_recursive_alpha_reduction_factor(&self) -> f32;
-    fn evaluate_state_recursive_early_exit_threshold(&self) -> f32;
+    fn max_depth(&self) -> usize;
+    fn alpha(&self) -> f32;
+    fn alpha_reduction_factor(&self) -> f32;
     fn target_alpha(&self) -> f32;
+    fn early_exit_threshold(&self) -> f32;
 }
 
 pub trait RecursiveHeuristic<G: MCTSGame>: Heuristic<G>
@@ -222,7 +222,7 @@ where
         let mut worst_response = f32::NEG_INFINITY;
         let next_player_alpha = alpha
             - (alpha - heuristic_config.target_alpha())
-                * heuristic_config.evaluate_state_recursive_alpha_reduction_factor();
+                * heuristic_config.alpha_reduction_factor();
         // If no constraint on next move, this will be many moves to consider.
         // Therefore we use early exit to reduce calculation time.
         for next_player_move in G::available_moves(state) {
@@ -241,7 +241,7 @@ where
                 worst_response = response_value;
                 // early exit, because next player does have guaranteed win
                 if worst_response
-                    >= heuristic_config.evaluate_state_recursive_early_exit_threshold()
+                    >= heuristic_config.early_exit_threshold()
                 {
                     break;
                 }
