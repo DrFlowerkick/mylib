@@ -114,6 +114,7 @@ pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>> {
         _visits: usize,
         _num_parent_children: usize,
         _mcts_config: &G::Config,
+        _heuristic_config: &H::Config,
     ) -> bool {
         false
     }
@@ -123,6 +124,7 @@ pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>> {
         _num_parent_children: usize,
         state: &'a G::State,
         _mcts_config: &G::Config,
+        _heuristic_config: &H::Config,
     ) -> Box<dyn Iterator<Item = G::Move> + 'a> {
         G::available_moves(state)
     }
@@ -143,6 +145,8 @@ pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>> {
 }
 
 pub trait HeuristicConfig {
+    fn progressive_widening_initial_threshold(&self) -> f32;
+    fn progressive_widening_decay_rate(&self) -> f32;
     fn early_cut_off_upper_bound(&self) -> f32;
     fn early_cut_off_lower_bound(&self) -> f32;
     fn evaluate_state_recursive_depth(&self) -> usize;
@@ -183,7 +187,7 @@ pub trait Heuristic<G: MCTSGame> {
         game_cache: &mut G::Cache,
         heuristic_cache: &mut Self::Cache,
         heuristic_config: &Self::Config,
-    ) -> Vec<G::Move> {
+    ) -> Vec<(f32, G::Move)> {
         let mut heuristic_moves = moves
             .into_iter()
             .map(|mv| {
@@ -196,7 +200,7 @@ pub trait Heuristic<G: MCTSGame> {
         heuristic_moves.shuffle(&mut rand::thread_rng());
         heuristic_moves
             .sort_unstable_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
-        heuristic_moves.into_iter().map(|(_, mv)| mv).collect()
+        heuristic_moves
     }
 }
 

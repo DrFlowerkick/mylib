@@ -101,6 +101,7 @@ where
                 parent_visits,
                 num_parent_children,
                 &self.mcts_config,
+                &self.heuristic_config,
             ) {
                 break;
             }
@@ -134,7 +135,8 @@ where
         } else {
             // If the node has been visited, we need to expand it.
             let num_parent_children = self.nodes[current_index].get_children().len();
-            let expandable_moves = self.nodes[current_index].expandable_moves(&self.mcts_config);
+            let expandable_moves = self.nodes[current_index]
+                .expandable_moves(&self.mcts_config, &self.heuristic_config);
 
             // generate new children nodes from expandable moves
             for mv in expandable_moves {
@@ -155,7 +157,7 @@ where
             let child_index = *self.nodes[current_index]
                 .get_children()
                 .get(num_parent_children)
-                .expect("No children found");
+                .expect("No children at current node");
             path.push(child_index);
             child_index
         };

@@ -61,10 +61,20 @@ where
     pub fn get_children(&self) -> &Vec<usize> {
         &self.children
     }
-    pub fn expandable_moves(&mut self, mcts_config: &G::Config) -> Vec<G::Move> {
+    pub fn expandable_moves(
+        &mut self,
+        mcts_config: &G::Config,
+        heuristic_config: &H::Config,
+    ) -> Vec<G::Move> {
         let mut expandable_moves = self
             .expansion_policy
-            .expandable_moves(self.visits, self.children.len(), &self.state, mcts_config)
+            .expandable_moves(
+                self.visits,
+                self.children.len(),
+                &self.state,
+                mcts_config,
+                heuristic_config,
+            )
             .collect::<Vec<_>>();
         expandable_moves.shuffle(&mut rand::thread_rng());
         expandable_moves
