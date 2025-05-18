@@ -1,5 +1,6 @@
 // library for generic optimization functions.
 
+pub mod coarse_grid_search;
 /// Example usage of tracing
 /// tracing setup in main.rs for console (env controlled)
 /*
@@ -47,6 +48,8 @@ pub mod core;
 pub mod evolutionary;
 pub mod random_search;
 
-pub use self::core::{Candidate, ObjectiveFunction, Optimizer, Population, SelectionSchedule};
+pub use self::core::{
+    Candidate, Explorer, ObjectiveFunction, Optimizer, ParamBound, Population, SelectionSchedule,
+};
 pub use evolutionary::EvolutionaryOptimizer;
 pub use random_search::RandomSearch;

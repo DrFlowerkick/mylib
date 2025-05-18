@@ -1,8 +1,7 @@
 // evolutionary algorithm
 
-use super::{Candidate, ObjectiveFunction, Optimizer, Population, SelectionSchedule};
+use super::{Candidate, ObjectiveFunction, Optimizer, ParamBound, Population, SelectionSchedule};
 use rand::prelude::*;
-use rand_distr::Normal;
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, info, span, Level};
@@ -20,7 +19,7 @@ impl<S: SelectionSchedule> EvolutionaryOptimizer<S> {
     pub fn init_population<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
-        param_bounds: &[(f64, f64)],
+        param_bounds: &[ParamBound],
         population_size: usize,
     ) -> Population {
         let init_span = span!(Level::INFO, "InitPopulation", size = population_size);
@@ -36,7 +35,7 @@ impl<S: SelectionSchedule> EvolutionaryOptimizer<S> {
             let mut rng = rand::thread_rng();
             let params: Vec<f64> = param_bounds
                 .iter()
-                .map(|(min, max)| rng.gen_range(*min..=*max))
+                .map(|pb| pb.rng_sample(&mut rng))
                 .collect();
             debug!(?params, "Generated initial candidate parameters");
 
@@ -65,7 +64,7 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
     fn optimize<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
-        param_bounds: &[(f64, f64)],
+        param_bounds: &[ParamBound],
         population_size: usize,
     ) -> Population {
         let evo_span = span!(
@@ -120,18 +119,13 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
                 let parent = top_parents.choose(&mut rng).expect("Empty population.");
                 let mut child_params = parent.params.clone();
 
-                for (i, (min, max)) in param_bounds.iter().enumerate() {
-                    if rng.gen::<f64>() < self.mutation_rate {
-                        if rng.gen::<f64>() < self.hard_mutation_rate {
-                            // hard mutation: random value in given range
-                            child_params[i] = rng.gen_range(*min..=*max);
-                        } else {
-                            // soft mutation: Normal distribution
-                            let noise =
-                                rng.sample(Normal::new(0.0, self.soft_mutation_std_dev).unwrap());
-                            child_params[i] = (child_params[i] + noise).clamp(*min, *max);
-                        }
-                    }
+                for (i, pb) in param_bounds.iter().enumerate() {
+                    child_params[i] = pb.mutate(
+                        child_params[i],
+                        &mut rng,
+                        self.soft_mutation_std_dev,
+                        self.hard_mutation_rate,
+                    );
                 }
 
                 let score = objective.evaluate(&child_params);

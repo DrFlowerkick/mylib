@@ -1,5 +1,8 @@
 // traits & type definitions
 
+use rand::prelude::SliceRandom;
+use rand::Rng;
+use rand_distr::Normal;
 use std::cmp::Ordering;
 use std::collections::BTreeSet;
 
@@ -18,14 +21,83 @@ where
     }
 }
 
+// common trait for all explorer
+pub trait Explorer {
+    fn explore<F: ObjectiveFunction + Sync>(
+        &self,
+        objective: &F,
+        param_bounds: &[ParamBound],
+        population_size: usize, // Top-N results
+    ) -> Population;
+}
+
 // common trait for all optimizer
 pub trait Optimizer {
     fn optimize<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
-        param_bounds: &[(f64, f64)],
+        param_bounds: &[ParamBound],
         population_size: usize,
     ) -> Population;
+}
+
+// enum to provide parameter bounds
+#[derive(Clone, Debug)]
+pub enum ParamBound {
+    Static(f64),      // static value, parameter will not be changed
+    MinMax(f64, f64), // continuous value range
+    List(Vec<f64>),   // discreet values
+}
+
+impl ParamBound {
+    pub fn rng_sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
+        match self {
+            ParamBound::Static(val) => *val,
+            ParamBound::MinMax(min, max) => rng.gen_range(*min..=*max),
+            ParamBound::List(values) => *values.choose(rng).expect("Empty parameter list."),
+        }
+    }
+
+    pub fn mutate<R: Rng + ?Sized>(
+        &self,
+        current_value: f64,
+        rng: &mut R,
+        soft_mutation_std_dev: f64,
+        hard_mutation_rate: f64,
+    ) -> f64 {
+        match self {
+            ParamBound::Static(val) => *val, // mutation is not allowed
+            ParamBound::MinMax(min, max) => {
+                if rng.gen::<f64>() < hard_mutation_rate {
+                    // hard mutation → new value in range
+                    rng.gen_range(*min..=*max)
+                } else {
+                    // soft mutation → Gaussian Noise
+                    let noise = rng.sample(Normal::new(0.0, soft_mutation_std_dev).unwrap());
+                    (current_value + noise).clamp(*min, *max)
+                }
+            }
+            ParamBound::List(values) => {
+                if rng.gen::<f64>() < hard_mutation_rate {
+                    // hard mutation → random value from list
+                    *values.choose(rng).expect("Parameter list is empty!")
+                } else {
+                    // soft mutation → choose value nearest to current value plus noise
+                    let noise = rng.sample(Normal::new(0.0, soft_mutation_std_dev).unwrap());
+                    let target_value = current_value + noise;
+
+                    *values
+                        .iter()
+                        .min_by(|&&a, &&b| {
+                            (a - target_value)
+                                .abs()
+                                .total_cmp(&(b - target_value).abs())
+                        })
+                        .expect("Parameter list is empty!")
+                }
+            }
+        }
+    }
 }
 
 // struct to return optimization result

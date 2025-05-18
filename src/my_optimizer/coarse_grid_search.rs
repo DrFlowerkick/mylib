@@ -1,0 +1,142 @@
+// grid search for significant parameter sets
+
+use super::{Candidate, Explorer, ObjectiveFunction, ParamBound, Population};
+use crossbeam::channel::{bounded, Sender};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use tracing::{debug, info, span, Level};
+
+pub struct CoarseGridSearch {
+    pub steps_per_param: usize,
+    pub channel_capacity: usize, // control over back pressure
+    pub worker_threads: usize,   // number of consumer workers
+}
+
+impl Explorer for CoarseGridSearch {
+    fn explore<F: ObjectiveFunction + Sync>(
+        &self,
+        objective: &F,
+        param_bounds: &[ParamBound],
+        population_size: usize,
+    ) -> Population {
+        let span_search = span!(Level::INFO, "CoarseGridSearch");
+        let _enter = span_search.enter();
+
+        info!(
+            "Starting Coarse Grid Search with {} consumers",
+            self.worker_threads
+        );
+
+        let (sender, receiver) = bounded::<Vec<f64>>(self.channel_capacity);
+
+        // Producer-Thread
+        let producer_handle = {
+            //let sender = sender.clone();
+            let steps_per_param = self.steps_per_param;
+            let param_bounds = param_bounds.to_vec();
+            thread::spawn(move || {
+                generate_params_recursive(
+                    &param_bounds,
+                    steps_per_param.max(2),
+                    &mut vec![],
+                    sender,
+                );
+            })
+        };
+
+        // Shared Population
+        let shared_population = Arc::new(Mutex::new(Population::new(population_size)));
+
+        // Consumers parallelization with Rayon
+        let objective = Arc::new(objective);
+        rayon::scope(|s| {
+            for _ in 0..self.worker_threads {
+                let receiver = receiver.clone();
+                let shared_pop = Arc::clone(&shared_population);
+                let objective = Arc::clone(&objective);
+
+                s.spawn(move |_| {
+                    for params in receiver.iter() {
+                        let score = objective.evaluate(&params);
+
+                        debug!(?params, score, "Generated Coarse Grid Search candidate");
+
+                        let mut pop = shared_pop.lock().unwrap();
+                        pop.insert(Candidate { params, score });
+                    }
+                });
+            }
+        });
+
+        // wait on end of Producer
+        producer_handle.join().expect("Producer thread panicked.");
+
+        let population = Arc::try_unwrap(shared_population)
+            .expect("Population still has multiple references.")
+            .into_inner()
+            .unwrap();
+
+        info!(
+            "Coarse Grid Search completed. Best Score: {:.3}",
+            population.best().map(|c| c.score).unwrap_or(-1.0)
+        );
+
+        population
+    }
+}
+
+fn generate_params_recursive(
+    param_bounds: &[ParamBound],
+    steps_per_param: usize,
+    current_params: &mut Vec<f64>,
+    sender: Sender<Vec<f64>>,
+) {
+    if current_params.len() == param_bounds.len() {
+        debug!(
+            ?current_params,
+            "Generated parameter combination for grid search."
+        );
+
+        if sender.send(current_params.clone()).is_err() {
+            return;
+        }
+    }
+
+    match &param_bounds[current_params.len()] {
+        ParamBound::Static(val) => {
+            current_params.push(*val);
+            generate_params_recursive(
+                param_bounds,
+                steps_per_param,
+                current_params,
+                sender,
+            );
+            current_params.pop();
+        }
+        ParamBound::MinMax(min, max) => {
+            for step in 0..steps_per_param {
+                let value = min + (max - min) * (step as f64) / (steps_per_param - 1) as f64;
+                current_params.push(value);
+                generate_params_recursive(
+                    param_bounds,
+                    steps_per_param,
+                    current_params,
+                    sender.clone(),
+                );
+                current_params.pop();
+            }
+        }
+        ParamBound::List(values) => {
+            for &value in values {
+                current_params.push(value);
+                generate_params_recursive(
+                    param_bounds,
+                    steps_per_param,
+                    current_params,
+                    sender.clone(),
+                );
+                current_params.pop();
+            }
+        }
+    }
+}

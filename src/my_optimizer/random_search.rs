@@ -1,7 +1,6 @@
-// Random Search Optimizer
+// Random Search explorer
 
-use super::{Candidate, ObjectiveFunction, Optimizer, Population};
-use rand::prelude::*;
+use super::{Candidate, Explorer, ObjectiveFunction, ParamBound, Population};
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, info, span, Level};
@@ -10,11 +9,11 @@ pub struct RandomSearch {
     pub iterations: usize,
 }
 
-impl Optimizer for RandomSearch {
-    fn optimize<F: ObjectiveFunction + Sync>(
+impl Explorer for RandomSearch {
+    fn explore<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
-        param_bounds: &[(f64, f64)],
+        param_bounds: &[ParamBound],
         population_size: usize,
     ) -> Population {
         let search_span = span!(Level::INFO, "RandomSearch", iterations = self.iterations);
@@ -30,7 +29,7 @@ impl Optimizer for RandomSearch {
             let mut rng = rand::thread_rng();
             let params: Vec<f64> = param_bounds
                 .iter()
-                .map(|(min, max)| rng.gen_range(*min..=*max))
+                .map(|pb| pb.rng_sample(&mut rng))
                 .collect();
 
             debug!(?params, "Generated random parameters");
