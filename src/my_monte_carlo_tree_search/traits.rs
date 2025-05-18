@@ -221,8 +221,7 @@ where
 
         let mut worst_response = f32::NEG_INFINITY;
         let next_player_alpha = alpha
-            - (alpha - heuristic_config.target_alpha())
-                * heuristic_config.alpha_reduction_factor();
+            - (alpha - heuristic_config.target_alpha()) * heuristic_config.alpha_reduction_factor();
         // If no constraint on next move, this will be many moves to consider.
         // Therefore we use early exit to reduce calculation time.
         for next_player_move in G::available_moves(state) {
@@ -240,9 +239,7 @@ where
             if response_value > worst_response {
                 worst_response = response_value;
                 // early exit, because next player does have guaranteed win
-                if worst_response
-                    >= heuristic_config.early_exit_threshold()
-                {
+                if worst_response >= heuristic_config.early_exit_threshold() {
                     break;
                 }
             }

@@ -2,7 +2,7 @@
 
 use super::{
     ExpansionPolicy, GameCache, Heuristic, HeuristicCache, HeuristicConfig, MCTSConfig, MCTSGame,
-    MCTSPlayer, SimulationPolicy, UCTPolicy, UTCCache, RecursiveHeuristicConfig,
+    MCTSPlayer, RecursiveHeuristicConfig, SimulationPolicy, UCTPolicy, UTCCache,
 };
 use rand::prelude::SliceRandom;
 

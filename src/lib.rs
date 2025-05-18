@@ -12,6 +12,7 @@ pub mod my_map_point;
 pub mod my_map_two_dim;
 pub mod my_monte_carlo_tree_search;
 pub mod my_open_map;
+pub mod my_optimizer;
 pub mod my_simple_binary_tree;
 pub mod my_steady_solution_tree;
 pub mod my_tic_tac_toe;
