@@ -5,6 +5,7 @@ use rand::prelude::*;
 use rand_distr::Normal;
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
+use tracing::{debug, info, span, Level};
 
 pub struct EvolutionaryOptimizer<S: SelectionSchedule> {
     pub generations: usize,
@@ -22,22 +23,41 @@ impl<S: SelectionSchedule> EvolutionaryOptimizer<S> {
         param_bounds: &[(f64, f64)],
         population_size: usize,
     ) -> Population {
+        let init_span = span!(Level::INFO, "InitPopulation", size = population_size);
+        let _enter = init_span.enter();
+
+        info!(
+            "Initializing population with {} candidates",
+            population_size
+        );
+
         let shared_population = Arc::new(Mutex::new(Population::new(population_size)));
-        let _ = (0..population_size).into_par_iter().map(|_| {
+        (0..population_size).into_par_iter().for_each(|_| {
             let mut rng = rand::thread_rng();
             let params: Vec<f64> = param_bounds
                 .iter()
                 .map(|(min, max)| rng.gen_range(*min..=*max))
                 .collect();
+            debug!(?params, "Generated initial candidate parameters");
 
             let score = objective.evaluate(&params);
+            debug!(score, "Initial candidate evaluated");
+
             let mut pop = shared_population.lock().expect("Population lock poisoned.");
             pop.insert(Candidate { params, score });
         });
-        Arc::try_unwrap(shared_population)
+
+        let population = Arc::try_unwrap(shared_population)
             .expect("Expected sole ownership of Arc")
             .into_inner()
-            .expect("Population lock poisoned.")
+            .expect("Population lock poisoned.");
+
+        info!(
+            "Initial population created. Best Score: {:.3}",
+            population.best().map(|c| c.score).unwrap_or(-1.0)
+        );
+
+        population
     }
 }
 
@@ -48,6 +68,18 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
         param_bounds: &[(f64, f64)],
         population_size: usize,
     ) -> Population {
+        let evo_span = span!(
+            Level::INFO,
+            "EvolutionaryOptimizer",
+            generations = self.generations
+        );
+        let _evo_enter = evo_span.enter();
+
+        info!(
+            "Starting Evolutionary Optimizer with {} generations",
+            self.generations
+        );
+
         // use initial_population if provided
         let initial_population = self
             .initial_population
@@ -58,6 +90,9 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
 
         // evolution loop
         for gen in 0..self.generations {
+            let gen_span = span!(Level::INFO, "Generation", number = gen + 1);
+            let _gen_enter = gen_span.enter();
+
             let selection_fraction = self
                 .selection_schedule
                 .selection_fraction(gen, self.generations)
@@ -71,8 +106,16 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
                 .cloned()
                 .collect();
 
+            info!(
+                "Starting offspring generation: Parent count = {}, Mutation rate = {:.2}",
+                parent_count, self.mutation_rate
+            );
+
             // offspring generation (parallel)
-            let _offspring = (0..parent_count).into_par_iter().map(|_| {
+            (0..parent_count).into_par_iter().for_each(|offspring_id| {
+                let offspring_span = span!(Level::DEBUG, "Offspring", id = offspring_id);
+                let _offspring_enter = offspring_span.enter();
+
                 let mut rng = rand::thread_rng();
                 let parent = top_parents.choose(&mut rng).expect("Empty population.");
                 let mut child_params = parent.params.clone();
@@ -92,6 +135,9 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
                 }
 
                 let score = objective.evaluate(&child_params);
+
+                debug!(?child_params, score, "Generated offspring candidate");
+
                 let mut pop = shared_population.lock().expect("Population lock poisoned.");
                 pop.insert(Candidate {
                     params: child_params,
@@ -99,21 +145,29 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
                 });
             });
 
-            // Logging
+            // Logging best candidate after this generation
             let population = shared_population.lock().expect("Population lock poisoned.");
-            let best = population.best().expect("Empty population.");
-            println!(
-                "Generation {}: Best Score = {:.3}, Params = {:?}",
+            let best = population.best().expect("Population is empty!");
+
+            info!(
+                "Generation {} completed. Best Score: {:.3}, Params: {:?}",
                 gen + 1,
                 best.score,
                 best.params
             );
         }
 
-        // best candidate is first candidate in population
-        Arc::try_unwrap(shared_population)
+        // final population
+        let population = Arc::try_unwrap(shared_population)
             .expect("Expected sole ownership of Arc")
             .into_inner()
-            .expect("Population lock poisoned.")
+            .expect("Population lock poisoned.");
+
+        info!(
+            "Evolutionary Optimizer completed. Best Score: {:.3}",
+            population.best().map(|c| c.score).unwrap_or(-1.0)
+        );
+
+        population
     }
 }
