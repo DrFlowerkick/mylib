@@ -101,8 +101,11 @@ impl ParamBound {
 }
 
 // conversion trait
-pub trait ToCsv {
+pub trait CsvConversion {
     fn to_csv(&self, precision: usize) -> String;
+    fn from_csv(csv: &str) -> Option<Self>
+    where
+        Self: Sized;
 }
 
 // struct to return optimization result
@@ -118,7 +121,7 @@ impl Candidate {
     }
 }
 
-impl ToCsv for Candidate {
+impl CsvConversion for Candidate {
     fn to_csv(&self, precision: usize) -> String {
         let mut csv_line = String::new();
 
@@ -139,6 +142,17 @@ impl ToCsv for Candidate {
 
         csv_line
     }
+    fn from_csv(csv: &str) -> Option<Self> {
+        if let Ok(mut params) = csv
+            .split(',')
+            .map(|num| num.parse::<f64>())
+            .collect::<Result<Vec<_>, _>>()
+        {
+            let Some(score) = params.pop() else { return None };
+            return Some(Candidate { params, score });
+        }
+        None
+    }
 }
 
 impl Eq for Candidate {}
@@ -158,8 +172,8 @@ impl PartialOrd for Candidate {
 // struct of population of candidates
 #[derive(Debug, Clone)]
 pub struct Population {
-    members: BTreeSet<Candidate>,
-    capacity: usize,
+    pub members: BTreeSet<Candidate>,
+    pub capacity: usize,
 }
 
 impl Population {
@@ -207,7 +221,7 @@ impl Population {
     }
 }
 
-impl ToCsv for Population {
+impl CsvConversion for Population {
     fn to_csv(&self, precision: usize) -> String {
         let mut csv = String::new();
 
@@ -219,6 +233,21 @@ impl ToCsv for Population {
         }
 
         csv
+    }
+    fn from_csv(csv: &str) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        let candidates: Vec<Candidate> = csv.lines().filter_map(Candidate::from_csv).collect();
+        let capacity = candidates.len();
+        if capacity == 0 {
+            return None;
+        }
+        let mut population = Population::new(capacity);
+        candidates.into_iter().for_each(|c| {
+            population.insert(c);
+        });
+        Some(population)
     }
 }
 

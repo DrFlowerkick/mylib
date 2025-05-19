@@ -1,13 +1,13 @@
 // utilities of optimization
 
-use super::{Population, ToCsv};
+use super::{CsvConversion, Population};
 use once_cell::sync::Lazy;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{fmt::Display, io};
-use tracing::info;
+use tracing::{info, Level};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
 use tracing_subscriber::{filter::EnvFilter, fmt, prelude::*, Registry};
@@ -122,8 +122,13 @@ pub fn reset_progress_counter() {
     PROGRESS_COUNTER.store(0, Ordering::Relaxed);
 }
 
-pub fn save_population(population: &Population, param_names: &[impl Display], filename: &str) {
-    let file = File::create(filename).expect("Unable to create file");
+pub fn save_population<P: AsRef<Path>>(
+    population: &Population,
+    param_names: &[impl Display],
+    filename: P,
+) {
+    let path = filename.as_ref();
+    let file = File::create(path).expect("Unable to create file");
     let mut writer = BufWriter::new(file);
 
     let header = param_names
@@ -132,7 +137,43 @@ pub fn save_population(population: &Population, param_names: &[impl Display], fi
         .collect::<Vec<String>>()
         .join(",");
 
-    writeln!(writer, "{},average_score\n{}", header, population.to_csv(3)).unwrap();
+    writeln!(writer, "{},average_score\n{}", header, population.to_csv(3))
+        .expect("Unable to write to file");
 
-    println!("Results written to {}", filename);
+    log_or_print(&format!("Population written to {}", path.display()));
+}
+
+pub fn load_population<P: AsRef<Path>>(
+    filename: P,
+    has_headers: bool,
+) -> Option<(Population, Vec<String>)> {
+    let path = filename.as_ref();
+    let csv = std::fs::read_to_string(path).expect("Unable to read from file");
+
+    let (parameter_names, csv) = if has_headers {
+        let (parameter_names, csv) = csv.split_once('\n')?;
+        (
+            parameter_names
+                .split(',')
+                .map(|pn| pn.to_string())
+                .collect::<Vec<_>>(),
+            csv,
+        )
+    } else {
+        (vec![], csv.as_str())
+    };
+
+    let population = Population::from_csv(csv);
+
+    log_or_print(&format!("Results written to {}", path.display()));
+
+    population.map(|p| (p, parameter_names))
+}
+
+fn log_or_print(message: &str) {
+    if tracing::event_enabled!(Level::INFO) {
+        tracing::info!("{}", message);
+    } else {
+        println!("{}", message);
+    }
 }

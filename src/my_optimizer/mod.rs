@@ -50,13 +50,13 @@ pub mod random_search;
 pub mod utils;
 
 pub use self::core::{
-    Candidate, Explorer, ObjectiveFunction, Optimizer, ParamBound, Population, ProgressReporter,
-    SelectionSchedule, ToCsv,
+    Candidate, CsvConversion, Explorer, ExponentialSchedule, LinearSchedule, ObjectiveFunction,
+    Optimizer, ParamBound, Population, ProgressReporter, SelectionSchedule,
 };
 pub use evolutionary::EvolutionaryOptimizer;
 pub use grid_search::GridSearch;
 pub use random_search::RandomSearch;
 pub use utils::{
-    increment_progress_counter_by, reset_progress_counter, save_population, update_progress,
-    FileLogConfig, LogFormat, TracingConfig,
+    increment_progress_counter_by, load_population, reset_progress_counter, save_population,
+    update_progress, FileLogConfig, LogFormat, TracingConfig,
 };
