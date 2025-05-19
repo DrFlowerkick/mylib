@@ -56,4 +56,7 @@ pub use self::core::{
 pub use evolutionary::EvolutionaryOptimizer;
 pub use grid_search::GridSearch;
 pub use random_search::RandomSearch;
-pub use utils::{save_population, update_progress, FileLogConfig, LogFormat, TracingConfig};
+pub use utils::{
+    increment_progress_counter_by, reset_progress_counter, save_population, update_progress,
+    FileLogConfig, LogFormat, TracingConfig,
+};

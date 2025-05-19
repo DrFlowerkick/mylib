@@ -96,7 +96,7 @@ impl<'a, P: AsRef<Path>> TracingConfig<'a, P> {
 static PROGRESS_COUNTER: Lazy<AtomicUsize> = Lazy::new(|| AtomicUsize::new(0));
 
 pub fn update_progress(total: Option<usize>, step_size: usize) {
-    let current = PROGRESS_COUNTER.fetch_add(1, Ordering::Relaxed) + 1;
+    let current = increment_progress_counter_by(1);
 
     if current % step_size == 0 {
         let percent = total.map(|t| (current as f64 / t as f64) * 100.0);
@@ -111,6 +111,10 @@ pub fn update_progress(total: Option<usize>, step_size: usize) {
             info!(current = current, total = total, "Progress update:");
         }
     }
+}
+
+pub fn increment_progress_counter_by(inc: usize) -> usize {
+    PROGRESS_COUNTER.fetch_add(inc, Ordering::Relaxed) + inc
 }
 
 // reset counter at start of a new optimization or exploration

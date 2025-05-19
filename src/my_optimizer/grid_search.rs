@@ -36,7 +36,7 @@ impl Explorer for GridSearch {
         let _enter = span_search.enter();
 
         info!(
-            "Starting Coarse Grid Search with {} consumers",
+            "Starting Grid Search with {} consumers",
             self.worker_threads
         );
 
