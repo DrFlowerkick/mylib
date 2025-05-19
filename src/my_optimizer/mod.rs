@@ -47,9 +47,11 @@ fn main() {
 pub mod core;
 pub mod evolutionary;
 pub mod random_search;
+pub mod utils;
 
 pub use self::core::{
     Candidate, Explorer, ObjectiveFunction, Optimizer, ParamBound, Population, SelectionSchedule,
 };
+pub use coarse_grid_search::CoarseGridSearch;
 pub use evolutionary::EvolutionaryOptimizer;
 pub use random_search::RandomSearch;

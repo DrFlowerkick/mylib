@@ -105,12 +105,7 @@ fn generate_params_recursive(
     match &param_bounds[current_params.len()] {
         ParamBound::Static(val) => {
             current_params.push(*val);
-            generate_params_recursive(
-                param_bounds,
-                steps_per_param,
-                current_params,
-                sender,
-            );
+            generate_params_recursive(param_bounds, steps_per_param, current_params, sender);
             current_params.pop();
         }
         ParamBound::MinMax(min, max) => {
