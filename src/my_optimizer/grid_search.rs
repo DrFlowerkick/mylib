@@ -1,25 +1,38 @@
 // grid search for significant parameter sets
 
-use super::{Candidate, Explorer, ObjectiveFunction, ParamBound, Population};
+use super::{Candidate, Explorer, ObjectiveFunction, ParamBound, Population, ProgressReporter};
 use crossbeam::channel::{bounded, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use tracing::{debug, info, span, Level};
 
-pub struct CoarseGridSearch {
+pub struct GridSearch {
     pub steps_per_param: usize,
     pub channel_capacity: usize, // control over back pressure
     pub worker_threads: usize,   // number of consumer workers
 }
 
-impl Explorer for CoarseGridSearch {
+impl ProgressReporter for GridSearch {
+    fn get_estimate_of_cycles(&self, param_bounds: &[ParamBound]) -> usize {
+        param_bounds
+            .iter()
+            .map(|bound| match bound {
+                ParamBound::Static(_) => 1,
+                ParamBound::MinMax(_, _) => self.steps_per_param,
+                ParamBound::List(values) => values.len(),
+            })
+            .product()
+    }
+}
+
+impl Explorer for GridSearch {
     fn explore<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
         param_bounds: &[ParamBound],
         population_size: usize,
     ) -> Population {
-        let span_search = span!(Level::INFO, "CoarseGridSearch");
+        let span_search = span!(Level::INFO, "GridSearch");
         let _enter = span_search.enter();
 
         info!(
@@ -98,8 +111,12 @@ fn generate_params_recursive(
         );
 
         if sender.send(current_params.clone()).is_err() {
-            return;
+            tracing::warn!(
+                "Failed to send parameter combination: Receiver has likely been dropped. Aborting this branch."
+            );
         }
+
+        return;
     }
 
     match &param_bounds[current_params.len()] {

@@ -100,6 +100,11 @@ impl ParamBound {
     }
 }
 
+// conversion trait
+pub trait ToCsv {
+    fn to_csv(&self, precision: usize) -> String;
+}
+
 // struct to return optimization result
 #[derive(Clone, Debug, PartialEq)]
 pub struct Candidate {
@@ -110,6 +115,29 @@ pub struct Candidate {
 impl Candidate {
     pub fn new(params: Vec<f64>, score: f64) -> Self {
         Self { params, score }
+    }
+}
+
+impl ToCsv for Candidate {
+    fn to_csv(&self, precision: usize) -> String {
+        let mut csv_line = String::new();
+
+        for (i, param) in self.params.iter().enumerate() {
+            if i > 0 {
+                csv_line.push(',');
+            }
+            csv_line.push_str(&format!("{:.precision$}", param, precision = precision));
+        }
+
+        // Append the score at the end
+        csv_line.push(',');
+        csv_line.push_str(&format!(
+            "{:.precision$}",
+            self.score,
+            precision = precision
+        ));
+
+        csv_line
     }
 }
 
@@ -179,6 +207,21 @@ impl Population {
     }
 }
 
+impl ToCsv for Population {
+    fn to_csv(&self, precision: usize) -> String {
+        let mut csv = String::new();
+
+        for (index, candidate) in self.members.iter().enumerate() {
+            if index > 0 {
+                csv.push('\n');
+            }
+            csv.push_str(&candidate.to_csv(precision));
+        }
+
+        csv
+    }
+}
+
 // trait to control dynamic parent selection over sequences of optimization
 pub trait SelectionSchedule: Sync {
     // calculates the current fraction of selection of population (between 0.0 and 1.0)
@@ -186,6 +229,18 @@ pub trait SelectionSchedule: Sync {
         // default: linear interpolation
         let progress = current_generation as f64 / total_generations as f64;
         self.end_fraction() + (self.start_fraction() - self.end_fraction()) * (1.0 - progress)
+    }
+
+    fn estimate_evaluations(&self, total_generations: usize, population_size: usize) -> usize {
+        let mut total = 0;
+        for gen in 0..total_generations {
+            let fraction = self
+                .selection_fraction(gen, total_generations)
+                .clamp(0.0, 1.0);
+            let parents = (population_size as f64 * fraction).ceil() as usize;
+            total += parents;
+        }
+        total
     }
 
     fn start_fraction(&self) -> f64 {
@@ -230,4 +285,9 @@ impl SelectionSchedule for ExponentialSchedule {
     fn end_fraction(&self) -> f64 {
         self.end
     }
+}
+
+pub trait ProgressReporter {
+    // returns estimation of number of steps of exploration or optimization
+    fn get_estimate_of_cycles(&self, param_bounds: &[ParamBound]) -> usize;
 }

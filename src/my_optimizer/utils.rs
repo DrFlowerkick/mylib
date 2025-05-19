@@ -1,7 +1,13 @@
 // utilities of optimization
 
-use std::io;
+use super::{Population, ToCsv};
+use once_cell::sync::Lazy;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{fmt::Display, io};
+use tracing::info;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
 use tracing_subscriber::{filter::EnvFilter, fmt, prelude::*, Registry};
@@ -61,13 +67,22 @@ impl<'a, P: AsRef<Path>> TracingConfig<'a, P> {
                 match self.format {
                     LogFormat::PlainText => {
                         base_registry
-                            .with(fmt::layer().with_writer(io::stdout))
+                            .with(
+                                fmt::layer()
+                                    .with_writer(io::stdout)
+                                    .with_filter(tracing_subscriber::filter::LevelFilter::INFO),
+                            )
                             .with(fmt::layer().with_writer(non_blocking))
                             .init();
                     }
                     LogFormat::Json => {
                         base_registry
-                            .with(fmt::layer().json().with_writer(io::stdout))
+                            .with(
+                                fmt::layer()
+                                    .json()
+                                    .with_writer(io::stdout)
+                                    .with_filter(tracing_subscriber::filter::LevelFilter::INFO),
+                            )
                             .with(fmt::layer().json().with_writer(non_blocking))
                             .init();
                     }
@@ -76,4 +91,44 @@ impl<'a, P: AsRef<Path>> TracingConfig<'a, P> {
             }
         }
     }
+}
+
+static PROGRESS_COUNTER: Lazy<AtomicUsize> = Lazy::new(|| AtomicUsize::new(0));
+
+pub fn update_progress(total: Option<usize>, step_size: usize) {
+    let current = PROGRESS_COUNTER.fetch_add(1, Ordering::Relaxed) + 1;
+
+    if current % step_size == 0 {
+        let percent = total.map(|t| (current as f64 / t as f64) * 100.0);
+        if let Some(p) = percent {
+            info!(
+                current = current,
+                total = total,
+                "Progress update ({:.1}%):",
+                p
+            );
+        } else {
+            info!(current = current, total = total, "Progress update:");
+        }
+    }
+}
+
+// reset counter at start of a new optimization or exploration
+pub fn reset_progress_counter() {
+    PROGRESS_COUNTER.store(0, Ordering::Relaxed);
+}
+
+pub fn save_population(population: &Population, param_names: &[impl Display], filename: &str) {
+    let file = File::create(filename).expect("Unable to create file");
+    let mut writer = BufWriter::new(file);
+
+    let header = param_names
+        .iter()
+        .map(|name| name.to_string())
+        .collect::<Vec<String>>()
+        .join(",");
+
+    writeln!(writer, "{},average_score\n{}", header, population.to_csv(3)).unwrap();
+
+    println!("Results written to {}", filename);
 }

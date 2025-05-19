@@ -1,12 +1,18 @@
 // Random Search explorer
 
-use super::{Candidate, Explorer, ObjectiveFunction, ParamBound, Population};
+use super::{Candidate, Explorer, ObjectiveFunction, ParamBound, Population, ProgressReporter};
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, info, span, Level};
 
 pub struct RandomSearch {
     pub iterations: usize,
+}
+
+impl ProgressReporter for RandomSearch {
+    fn get_estimate_of_cycles(&self, _param_bounds: &[ParamBound]) -> usize {
+        self.iterations
+    }
 }
 
 impl Explorer for RandomSearch {

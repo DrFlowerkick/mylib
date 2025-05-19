@@ -1,13 +1,17 @@
 // evolutionary algorithm
 
-use super::{Candidate, ObjectiveFunction, Optimizer, ParamBound, Population, SelectionSchedule};
+use super::{
+    Candidate, ObjectiveFunction, Optimizer, ParamBound, Population, ProgressReporter,
+    SelectionSchedule,
+};
 use rand::prelude::*;
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
-use tracing::{debug, info, span, Level};
+use tracing::{debug, info, span, warn, Level};
 
 pub struct EvolutionaryOptimizer<S: SelectionSchedule> {
     pub generations: usize,
+    pub population_size: usize,
     pub mutation_rate: f64,
     pub hard_mutation_rate: f64,
     pub soft_mutation_std_dev: f64,
@@ -15,23 +19,29 @@ pub struct EvolutionaryOptimizer<S: SelectionSchedule> {
     pub initial_population: Option<Population>,
 }
 
+impl<S: SelectionSchedule + Sync> ProgressReporter for EvolutionaryOptimizer<S> {
+    fn get_estimate_of_cycles(&self, _param_bounds: &[ParamBound]) -> usize {
+        self.selection_schedule
+            .estimate_evaluations(self.generations, self.population_size)
+    }
+}
+
 impl<S: SelectionSchedule> EvolutionaryOptimizer<S> {
     pub fn init_population<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
         param_bounds: &[ParamBound],
-        population_size: usize,
     ) -> Population {
-        let init_span = span!(Level::INFO, "InitPopulation", size = population_size);
+        let init_span = span!(Level::INFO, "InitPopulation", size = self.population_size);
         let _enter = init_span.enter();
 
         info!(
             "Initializing population with {} candidates",
-            population_size
+            self.population_size
         );
 
-        let shared_population = Arc::new(Mutex::new(Population::new(population_size)));
-        (0..population_size).into_par_iter().for_each(|_| {
+        let shared_population = Arc::new(Mutex::new(Population::new(self.population_size)));
+        (0..self.population_size).into_par_iter().for_each(|_| {
             let mut rng = rand::thread_rng();
             let params: Vec<f64> = param_bounds
                 .iter()
@@ -79,11 +89,18 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
             self.generations
         );
 
+        if self.population_size != population_size {
+            warn!(
+                "Input of population_size {} is not equal to self.population_size {}",
+                population_size, self.population_size
+            );
+        }
+
         // use initial_population if provided
         let initial_population = self
             .initial_population
             .clone()
-            .unwrap_or_else(|| self.init_population(objective, param_bounds, population_size));
+            .unwrap_or_else(|| self.init_population(objective, param_bounds));
 
         let shared_population = Arc::new(Mutex::new(initial_population));
 
