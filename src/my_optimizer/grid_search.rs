@@ -1,6 +1,9 @@
 // grid search for significant parameter sets
 
-use super::{Candidate, Explorer, ObjectiveFunction, ParamBound, Population, ProgressReporter};
+use super::{
+    Candidate, Explorer, ObjectiveFunction, ParamBound, Population, PopulationSaver,
+    ProgressReporter,
+};
 use crossbeam::channel::{bounded, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -10,6 +13,7 @@ pub struct GridSearch {
     pub steps_per_param: usize,
     pub channel_capacity: usize, // control over back pressure
     pub worker_threads: usize,   // number of consumer workers
+    pub population_saver: Option<PopulationSaver>,
 }
 
 impl ProgressReporter for GridSearch {
@@ -57,8 +61,9 @@ impl Explorer for GridSearch {
             })
         };
 
-        // Shared Population
+        // Shared Population and Saver
         let shared_population = Arc::new(Mutex::new(Population::new(population_size)));
+        let shared_population_saver = Arc::new(Mutex::new(self.population_saver.clone()));
 
         // Consumers parallelization with Rayon
         let objective = Arc::new(objective);
@@ -67,6 +72,7 @@ impl Explorer for GridSearch {
                 let receiver = receiver.clone();
                 let shared_pop = Arc::clone(&shared_population);
                 let objective = Arc::clone(&objective);
+                let shared_ps = Arc::clone(&shared_population_saver);
 
                 s.spawn(move |_| {
                     for params in receiver.iter() {
@@ -74,8 +80,12 @@ impl Explorer for GridSearch {
 
                         debug!(?params, score, "Generated Coarse Grid Search candidate");
 
-                        let mut pop = shared_pop.lock().unwrap();
+                        let mut pop = shared_pop.lock().expect("Population lock poisoned.");
                         pop.insert(Candidate { params, score });
+                        let ops = shared_ps.lock().expect("PopulationSaver lock poisoned.");
+                        if let Some(ps) = ops.as_ref() {
+                            ps.save_population(&pop);
+                        }
                     }
                 });
             }

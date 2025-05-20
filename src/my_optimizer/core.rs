@@ -21,8 +21,13 @@ where
     }
 }
 
+pub trait ProgressReporter {
+    // returns estimation of number of steps of exploration or optimization
+    fn get_estimate_of_cycles(&self, param_bounds: &[ParamBound]) -> usize;
+}
+
 // common trait for all explorer
-pub trait Explorer {
+pub trait Explorer: ProgressReporter {
     fn explore<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
@@ -32,7 +37,7 @@ pub trait Explorer {
 }
 
 // common trait for all optimizer
-pub trait Optimizer {
+pub trait Optimizer: ProgressReporter {
     fn optimize<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
@@ -40,6 +45,8 @@ pub trait Optimizer {
         population_size: usize,
     ) -> Population;
 }
+
+// ToDo: implemented saving Population every N cycles to file
 
 // enum to provide parameter bounds
 #[derive(Clone, Debug)]
@@ -314,9 +321,4 @@ impl SelectionSchedule for ExponentialSchedule {
     fn end_fraction(&self) -> f64 {
         self.end
     }
-}
-
-pub trait ProgressReporter {
-    // returns estimation of number of steps of exploration or optimization
-    fn get_estimate_of_cycles(&self, param_bounds: &[ParamBound]) -> usize;
 }

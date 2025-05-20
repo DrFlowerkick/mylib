@@ -4,7 +4,7 @@ use super::{CsvConversion, Population};
 use once_cell::sync::Lazy;
 use std::fs::File;
 use std::io::{BufWriter, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{fmt::Display, io};
 use tracing::{info, Level};
@@ -122,23 +122,48 @@ pub fn reset_progress_counter() {
     PROGRESS_COUNTER.store(0, Ordering::Relaxed);
 }
 
+static SAVE_POPULATION_COUNTER: Lazy<AtomicUsize> = Lazy::new(|| AtomicUsize::new(0));
+
+// helper to save population after N cycles
+#[derive(Debug, Clone)]
+pub struct PopulationSaver {
+    pub file_path: PathBuf,
+    pub step_size: usize,
+    pub precision: usize,
+}
+
+impl PopulationSaver {
+    pub fn save_population(&self, population: &Population) {
+        let current = SAVE_POPULATION_COUNTER.fetch_add(1, Ordering::Relaxed) + 1;
+
+        if current % self.step_size == 0 {
+            save_population(population, &[""; 0], &self.file_path, self.precision);
+        }
+    }
+}
+
 pub fn save_population<P: AsRef<Path>>(
     population: &Population,
     param_names: &[impl Display],
     filename: P,
+    precision: usize,
 ) {
     let path = filename.as_ref();
     let file = File::create(path).expect("Unable to create file");
     let mut writer = BufWriter::new(file);
 
-    let header = param_names
-        .iter()
-        .map(|name| name.to_string())
-        .collect::<Vec<String>>()
-        .join(",");
+    if !param_names.is_empty() {
+        let header = param_names
+            .iter()
+            .map(|name| name.to_string())
+            .collect::<Vec<String>>()
+            .join(",");
 
-    writeln!(writer, "{},average_score\n{}", header, population.to_csv(3))
-        .expect("Unable to write to file");
+        writeln!(writer, "{},average_score", header).expect("Unable to write header to file");
+    }
+
+    writeln!(writer, "{}", population.to_csv(precision))
+        .expect("Unable to write population to file");
 
     log_or_print(&format!("Population written to {}", path.display()));
 }

@@ -1,12 +1,16 @@
 // Random Search explorer
 
-use super::{Candidate, Explorer, ObjectiveFunction, ParamBound, Population, ProgressReporter};
+use super::{
+    Candidate, Explorer, ObjectiveFunction, ParamBound, Population, PopulationSaver,
+    ProgressReporter,
+};
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, info, span, Level};
 
 pub struct RandomSearch {
     pub iterations: usize,
+    pub population_saver: Option<PopulationSaver>,
 }
 
 impl ProgressReporter for RandomSearch {
@@ -27,7 +31,10 @@ impl Explorer for RandomSearch {
 
         info!("Starting Random Search with {} iterations", self.iterations);
 
+        // Shared Population and Saver
         let shared_population = Arc::new(Mutex::new(Population::new(population_size)));
+        let shared_population_saver = Arc::new(Mutex::new(self.population_saver.clone()));
+
         (0..self.iterations).into_par_iter().for_each(|_| {
             let iter_span = span!(Level::DEBUG, "Iteration");
             let _iter_enter = iter_span.enter();
@@ -45,6 +52,12 @@ impl Explorer for RandomSearch {
 
             let mut pop = shared_population.lock().expect("Population lock poisoned.");
             pop.insert(Candidate { params, score });
+            let ops = shared_population_saver
+                .lock()
+                .expect("PopulationSaver lock poisoned.");
+            if let Some(ps) = ops.as_ref() {
+                ps.save_population(&pop);
+            }
         });
 
         let population = Arc::try_unwrap(shared_population)

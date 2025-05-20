@@ -58,5 +58,5 @@ pub use grid_search::GridSearch;
 pub use random_search::RandomSearch;
 pub use utils::{
     increment_progress_counter_by, load_population, reset_progress_counter, save_population,
-    update_progress, FileLogConfig, LogFormat, TracingConfig,
+    update_progress, FileLogConfig, LogFormat, PopulationSaver, TracingConfig,
 };

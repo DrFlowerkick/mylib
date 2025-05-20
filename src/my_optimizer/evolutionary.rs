@@ -1,8 +1,8 @@
 // evolutionary algorithm
 
 use super::{
-    Candidate, ObjectiveFunction, Optimizer, ParamBound, Population, ProgressReporter,
-    SelectionSchedule,
+    Candidate, ObjectiveFunction, Optimizer, ParamBound, Population, PopulationSaver,
+    ProgressReporter, SelectionSchedule,
 };
 use rand::prelude::*;
 use rayon::prelude::*;
@@ -17,6 +17,7 @@ pub struct EvolutionaryOptimizer<S: SelectionSchedule> {
     pub soft_mutation_std_dev: f64,
     pub selection_schedule: S,
     pub initial_population: Option<Population>,
+    pub population_saver: Option<PopulationSaver>,
 }
 
 impl<S: SelectionSchedule + Sync> ProgressReporter for EvolutionaryOptimizer<S> {
@@ -41,6 +42,7 @@ impl<S: SelectionSchedule> EvolutionaryOptimizer<S> {
         );
 
         let shared_population = Arc::new(Mutex::new(Population::new(self.population_size)));
+
         (0..self.population_size).into_par_iter().for_each(|_| {
             let mut rng = rand::thread_rng();
             let params: Vec<f64> = param_bounds
@@ -102,7 +104,9 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
             .clone()
             .unwrap_or_else(|| self.init_population(objective, param_bounds));
 
+        // Shared Population and Saver
         let shared_population = Arc::new(Mutex::new(initial_population));
+        let shared_population_saver = Arc::new(Mutex::new(self.population_saver.clone()));
 
         // evolution loop
         for gen in 0..self.generations {
@@ -154,6 +158,12 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
                     params: child_params,
                     score,
                 });
+                let ops = shared_population_saver
+                    .lock()
+                    .expect("PopulationSaver lock poisoned.");
+                if let Some(ps) = ops.as_ref() {
+                    ps.save_population(&pop);
+                }
             });
 
             // Logging best candidate after this generation
