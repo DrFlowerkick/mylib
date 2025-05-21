@@ -1,6 +1,6 @@
 // utilities of optimization
 
-use super::{CsvConversion, Population};
+use super::{CsvConversion, ParamDescriptor, Population};
 use once_cell::sync::Lazy;
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -133,11 +133,15 @@ pub struct PopulationSaver {
 }
 
 impl PopulationSaver {
-    pub fn save_population(&self, population: &Population) {
+    pub fn save_population(&self, population: &Population, param_bounds: &[ParamDescriptor]) {
         let current = SAVE_POPULATION_COUNTER.fetch_add(1, Ordering::Relaxed) + 1;
 
         if current % self.step_size == 0 {
-            save_population(population, &[""; 0], &self.file_path, self.precision);
+            let param_names = param_bounds
+                .iter()
+                .map(|pd| pd.name.as_str())
+                .collect::<Vec<_>>();
+            save_population(population, &param_names, &self.file_path, self.precision);
         }
     }
 }

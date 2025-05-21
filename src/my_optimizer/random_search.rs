@@ -1,7 +1,7 @@
 // Random Search explorer
 
 use super::{
-    Candidate, Explorer, ObjectiveFunction, ParamBound, Population, PopulationSaver,
+    Candidate, Explorer, ObjectiveFunction, ParamDescriptor, Population, PopulationSaver,
     ProgressReporter,
 };
 use rayon::prelude::*;
@@ -14,7 +14,7 @@ pub struct RandomSearch {
 }
 
 impl ProgressReporter for RandomSearch {
-    fn get_estimate_of_cycles(&self, _param_bounds: &[ParamBound]) -> usize {
+    fn get_estimate_of_cycles(&self, _param_bounds: &[ParamDescriptor]) -> usize {
         self.iterations
     }
 }
@@ -23,7 +23,7 @@ impl Explorer for RandomSearch {
     fn explore<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
-        param_bounds: &[ParamBound],
+        param_bounds: &[ParamDescriptor],
         population_size: usize,
     ) -> Population {
         let search_span = span!(Level::INFO, "RandomSearch", iterations = self.iterations);
@@ -56,7 +56,7 @@ impl Explorer for RandomSearch {
                 .lock()
                 .expect("PopulationSaver lock poisoned.");
             if let Some(ps) = ops.as_ref() {
-                ps.save_population(&pop);
+                ps.save_population(&pop, param_bounds);
             }
         });
 

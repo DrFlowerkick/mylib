@@ -1,8 +1,8 @@
 // grid search for significant parameter sets
 
 use super::{
-    Candidate, Explorer, ObjectiveFunction, ParamBound, Population, PopulationSaver,
-    ProgressReporter,
+    Candidate, Explorer, ObjectiveFunction, ParamBound, ParamDescriptor, Population,
+    PopulationSaver, ProgressReporter,
 };
 use crossbeam::channel::{bounded, Sender};
 use std::sync::{Arc, Mutex};
@@ -17,13 +17,14 @@ pub struct GridSearch {
 }
 
 impl ProgressReporter for GridSearch {
-    fn get_estimate_of_cycles(&self, param_bounds: &[ParamBound]) -> usize {
+    fn get_estimate_of_cycles(&self, param_bounds: &[ParamDescriptor]) -> usize {
         param_bounds
             .iter()
-            .map(|bound| match bound {
+            .map(|bound| match &bound.bound {
                 ParamBound::Static(_) => 1,
                 ParamBound::MinMax(_, _) => self.steps_per_param,
                 ParamBound::List(values) => values.len(),
+                ParamBound::LogScale(_, _) => self.steps_per_param,
             })
             .product()
     }
@@ -33,7 +34,7 @@ impl Explorer for GridSearch {
     fn explore<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
-        param_bounds: &[ParamBound],
+        param_bounds: &[ParamDescriptor],
         population_size: usize,
     ) -> Population {
         let span_search = span!(Level::INFO, "GridSearch");
@@ -84,7 +85,7 @@ impl Explorer for GridSearch {
                         pop.insert(Candidate { params, score });
                         let ops = shared_ps.lock().expect("PopulationSaver lock poisoned.");
                         if let Some(ps) = ops.as_ref() {
-                            ps.save_population(&pop);
+                            ps.save_population(&pop, param_bounds);
                         }
                     }
                 });
@@ -109,7 +110,7 @@ impl Explorer for GridSearch {
 }
 
 fn generate_params_recursive(
-    param_bounds: &[ParamBound],
+    param_bounds: &[ParamDescriptor],
     steps_per_param: usize,
     current_params: &mut Vec<f64>,
     sender: Sender<Vec<f64>>,
@@ -129,7 +130,7 @@ fn generate_params_recursive(
         return;
     }
 
-    match &param_bounds[current_params.len()] {
+    match &param_bounds[current_params.len()].bound {
         ParamBound::Static(val) => {
             current_params.push(*val);
             generate_params_recursive(param_bounds, steps_per_param, current_params, sender);
@@ -150,6 +151,25 @@ fn generate_params_recursive(
         }
         ParamBound::List(values) => {
             for &value in values {
+                current_params.push(value);
+                generate_params_recursive(
+                    param_bounds,
+                    steps_per_param,
+                    current_params,
+                    sender.clone(),
+                );
+                current_params.pop();
+            }
+        }
+        ParamBound::LogScale(min, max) => {
+            let log_min = min.ln();
+            let log_max = max.ln();
+
+            for step in 0..steps_per_param {
+                let ratio = step as f64 / (steps_per_param - 1).max(1) as f64;
+                let log_value = log_min + (log_max - log_min) * ratio;
+                let value = log_value.exp();
+
                 current_params.push(value);
                 generate_params_recursive(
                     param_bounds,

@@ -1,7 +1,7 @@
 // evolutionary algorithm
 
 use super::{
-    Candidate, ObjectiveFunction, Optimizer, ParamBound, Population, PopulationSaver,
+    Candidate, ObjectiveFunction, Optimizer, ParamDescriptor, Population, PopulationSaver,
     ProgressReporter, SelectionSchedule,
 };
 use rand::prelude::*;
@@ -16,59 +16,14 @@ pub struct EvolutionaryOptimizer<S: SelectionSchedule> {
     pub hard_mutation_rate: f64,
     pub soft_mutation_std_dev: f64,
     pub selection_schedule: S,
-    pub initial_population: Option<Population>,
+    pub initial_population: Population,
     pub population_saver: Option<PopulationSaver>,
 }
 
 impl<S: SelectionSchedule + Sync> ProgressReporter for EvolutionaryOptimizer<S> {
-    fn get_estimate_of_cycles(&self, _param_bounds: &[ParamBound]) -> usize {
+    fn get_estimate_of_cycles(&self, _param_bounds: &[ParamDescriptor]) -> usize {
         self.selection_schedule
             .estimate_evaluations(self.generations, self.population_size)
-    }
-}
-
-impl<S: SelectionSchedule> EvolutionaryOptimizer<S> {
-    pub fn init_population<F: ObjectiveFunction + Sync>(
-        &self,
-        objective: &F,
-        param_bounds: &[ParamBound],
-    ) -> Population {
-        let init_span = span!(Level::INFO, "InitPopulation", size = self.population_size);
-        let _enter = init_span.enter();
-
-        info!(
-            "Initializing population with {} candidates",
-            self.population_size
-        );
-
-        let shared_population = Arc::new(Mutex::new(Population::new(self.population_size)));
-
-        (0..self.population_size).into_par_iter().for_each(|_| {
-            let mut rng = rand::thread_rng();
-            let params: Vec<f64> = param_bounds
-                .iter()
-                .map(|pb| pb.rng_sample(&mut rng))
-                .collect();
-            debug!(?params, "Generated initial candidate parameters");
-
-            let score = objective.evaluate(&params);
-            debug!(score, "Initial candidate evaluated");
-
-            let mut pop = shared_population.lock().expect("Population lock poisoned.");
-            pop.insert(Candidate { params, score });
-        });
-
-        let population = Arc::try_unwrap(shared_population)
-            .expect("Expected sole ownership of Arc")
-            .into_inner()
-            .expect("Population lock poisoned.");
-
-        info!(
-            "Initial population created. Best Score: {:.3}",
-            population.best().map(|c| c.score).unwrap_or(-1.0)
-        );
-
-        population
     }
 }
 
@@ -76,7 +31,7 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
     fn optimize<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
-        param_bounds: &[ParamBound],
+        param_bounds: &[ParamDescriptor],
         population_size: usize,
     ) -> Population {
         let evo_span = span!(
@@ -98,14 +53,8 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
             );
         }
 
-        // use initial_population if provided
-        let initial_population = self
-            .initial_population
-            .clone()
-            .unwrap_or_else(|| self.init_population(objective, param_bounds));
-
         // Shared Population and Saver
-        let shared_population = Arc::new(Mutex::new(initial_population));
+        let shared_population = Arc::new(Mutex::new(self.initial_population.clone()));
         let shared_population_saver = Arc::new(Mutex::new(self.population_saver.clone()));
 
         // evolution loop
@@ -162,7 +111,7 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
                     .lock()
                     .expect("PopulationSaver lock poisoned.");
                 if let Some(ps) = ops.as_ref() {
-                    ps.save_population(&pop);
+                    ps.save_population(&pop, param_bounds);
                 }
             });
 
