@@ -2,11 +2,11 @@
 
 use super::{
     evaluate_with_shared_error, Candidate, Explorer, ObjectiveFunction, ParamBound,
-    ParamDescriptor, Population, PopulationSaver, ProgressReporter, SharedError,
+    ParamDescriptor, Population, PopulationSaver, ProgressReporter, SharedError, SharedPopulation,
 };
+use anyhow::Context;
 use itertools::Itertools;
 use rayon::prelude::*;
-use std::sync::{Arc, Mutex};
 use tracing::{debug, info, span, Level};
 
 pub struct GridSearch {
@@ -16,16 +16,27 @@ pub struct GridSearch {
 }
 
 impl ProgressReporter for GridSearch {
-    fn get_estimate_of_cycles(&self, param_bounds: &[ParamDescriptor]) -> usize {
-        param_bounds
-            .iter()
-            .map(|bound| match &bound.bound {
+    fn get_estimate_of_cycles(&self, param_bounds: &[ParamDescriptor]) -> anyhow::Result<usize> {
+        let mut num_cycles = 1;
+        for bound in param_bounds.iter() {
+            num_cycles *= match &bound.bound {
                 ParamBound::Static(_) => 1,
                 ParamBound::MinMax(_, _) => self.steps_per_param,
-                ParamBound::List(values) => values.len(),
+                ParamBound::List(values) => {
+                    let num_entries = values.len();
+                    if num_entries == 0 {
+                        return Err(anyhow::anyhow!(
+                            "ParamBound::List: empty list of parameter {}",
+                            bound.name
+                        ));
+                    }
+                    num_entries
+                }
                 ParamBound::LogScale(_, _) => self.steps_per_param,
-            })
-            .product()
+            };
+        }
+
+        Ok(num_cycles)
     }
 }
 
@@ -41,12 +52,14 @@ impl Explorer for GridSearch {
 
         info!(
             "Starting Grid Search with {} candidates",
-            self.get_estimate_of_cycles(param_bounds)
+            self.get_estimate_of_cycles(param_bounds)?
         );
 
-        // Shared Population and Saver
-        let shared_population = Arc::new(Mutex::new(Population::new(population_size)));
-        let shared_population_saver = Arc::new(Mutex::new(self.population_saver.clone()));
+        // Shared Population and Error
+        let shared_population = SharedPopulation::new(
+            Population::new(population_size),
+            self.population_saver.clone(),
+        );
         let shared_error = SharedError::new();
         let param_generator = GridSearchIterator::new(param_bounds, self.steps_per_param);
 
@@ -66,14 +79,11 @@ impl Explorer for GridSearch {
                 if let Some(score) = evaluate_with_shared_error(objective, &params, &shared_error) {
                     debug!(?params, score, "Evaluated candidate");
 
-                    let mut pop = shared_population.lock().expect("Population lock poisoned.");
-                    pop.insert(Candidate { params, score });
-                    let ops = shared_population_saver
-                        .lock()
-                        .expect("PopulationSaver lock poisoned.");
-                    if let Some(ps) = ops.as_ref() {
-                        ps.save_population(&pop, param_bounds);
-                    }
+                    shared_population.insert(
+                        Candidate { params, score },
+                        param_bounds,
+                        &shared_error,
+                    );
                 }
             });
 
@@ -82,14 +92,14 @@ impl Explorer for GridSearch {
             }
         }
 
-        let population = Arc::try_unwrap(shared_population)
-            .expect("Population still has multiple references.")
-            .into_inner()
-            .unwrap();
+        let population = shared_population.take();
 
         info!(
             "Coarse Grid Search completed. Best Score: {:.3}",
-            population.best().map(|c| c.score).unwrap_or(-1.0)
+            population
+                .best()
+                .map(|c| c.score)
+                .context("Empty population")?
         );
 
         Ok(population)

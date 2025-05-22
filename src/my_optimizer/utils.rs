@@ -1,15 +1,13 @@
 // utilities of optimization
 
-use super::{CsvConversion, ObjectiveFunction, ParamDescriptor, Population};
+use super::ObjectiveFunction;
 use anyhow::Error;
 use once_cell::sync::Lazy;
-use std::fs::File;
-use std::io::{BufWriter, Write};
-use std::path::{Path, PathBuf};
+use std::io;
+use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::{fmt::Display, io};
-use tracing::{error, info, Level};
+use tracing::{error, info};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
 use tracing_subscriber::{filter::EnvFilter, fmt, prelude::*, Registry};
@@ -124,91 +122,6 @@ pub fn reset_progress_counter() {
     PROGRESS_COUNTER.store(0, Ordering::Relaxed);
 }
 
-static SAVE_POPULATION_COUNTER: Lazy<AtomicUsize> = Lazy::new(|| AtomicUsize::new(0));
-
-// helper to save population after N cycles
-#[derive(Debug, Clone)]
-pub struct PopulationSaver {
-    pub file_path: PathBuf,
-    pub step_size: usize,
-    pub precision: usize,
-}
-
-impl PopulationSaver {
-    pub fn save_population(&self, population: &Population, param_bounds: &[ParamDescriptor]) {
-        let current = SAVE_POPULATION_COUNTER.fetch_add(1, Ordering::Relaxed) + 1;
-
-        if current % self.step_size == 0 {
-            let param_names = param_bounds
-                .iter()
-                .map(|pd| pd.name.as_str())
-                .collect::<Vec<_>>();
-            save_population(population, &param_names, &self.file_path, self.precision);
-        }
-    }
-}
-
-pub fn save_population<P: AsRef<Path>>(
-    population: &Population,
-    param_names: &[impl Display],
-    filename: P,
-    precision: usize,
-) {
-    let path = filename.as_ref();
-    let file = File::create(path).expect("Unable to create file");
-    let mut writer = BufWriter::new(file);
-
-    if !param_names.is_empty() {
-        let header = param_names
-            .iter()
-            .map(|name| name.to_string())
-            .collect::<Vec<String>>()
-            .join(",");
-
-        writeln!(writer, "{},average_score", header).expect("Unable to write header to file");
-    }
-
-    writeln!(writer, "{}", population.to_csv(precision))
-        .expect("Unable to write population to file");
-
-    log_or_print(&format!("Population written to {}", path.display()));
-}
-
-pub fn load_population<P: AsRef<Path>>(
-    filename: P,
-    has_headers: bool,
-) -> Option<(Population, Vec<String>)> {
-    let path = filename.as_ref();
-    let csv = std::fs::read_to_string(path).expect("Unable to read from file");
-
-    let (parameter_names, csv) = if has_headers {
-        let (parameter_names, csv) = csv.split_once('\n')?;
-        let mut parameter_names = parameter_names
-            .split(',')
-            .map(|pn| pn.to_string())
-            .collect::<Vec<_>>();
-        // remove "average_score" at the end
-        parameter_names.pop();
-        (parameter_names, csv)
-    } else {
-        (vec![], csv.as_str())
-    };
-
-    let population = Population::from_csv(csv);
-
-    log_or_print(&format!("Results written to {}", path.display()));
-
-    population.map(|p| (p, parameter_names))
-}
-
-fn log_or_print(message: &str) {
-    if tracing::event_enabled!(Level::INFO) {
-        tracing::info!("{}", message);
-    } else {
-        println!("{}", message);
-    }
-}
-
 // thread safe error handling
 #[derive(Clone, Default)]
 pub struct SharedError {
@@ -224,7 +137,7 @@ impl SharedError {
 
     // save first error, discard any successive errors (with log)
     pub fn set_if_empty(&self, err: Error) {
-        let mut guard = self.inner.lock().unwrap();
+        let mut guard = self.inner.lock().expect("SharedError lock poisoned.");
         if guard.is_none() {
             *guard = Some(err);
         } else {
@@ -233,11 +146,17 @@ impl SharedError {
     }
 
     pub fn is_set(&self) -> bool {
-        self.inner.lock().unwrap().is_some()
+        self.inner
+            .lock()
+            .expect("SharedError lock poisoned.")
+            .is_some()
     }
 
     pub fn take(&self) -> Option<Error> {
-        self.inner.lock().unwrap().take()
+        self.inner
+            .lock()
+            .expect("SharedError lock poisoned.")
+            .take()
     }
 }
 
@@ -259,7 +178,7 @@ pub fn evaluate_with_shared_error<F: ObjectiveFunction>(
                 error = %e,
                 "Parameter conversion failed, aborting..."
             );
-            error_slot.set_if_empty(e.into());
+            error_slot.set_if_empty(e);
             return None;
         }
     };

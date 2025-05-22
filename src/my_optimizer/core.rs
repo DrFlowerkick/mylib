@@ -11,7 +11,7 @@ pub trait ObjectiveFunction {
 
 pub trait ProgressReporter {
     // returns estimation of number of steps of exploration or optimization
-    fn get_estimate_of_cycles(&self, param_bounds: &[ParamDescriptor]) -> usize;
+    fn get_estimate_of_cycles(&self, param_bounds: &[ParamDescriptor]) -> anyhow::Result<usize>;
 }
 
 // common trait for all explorer

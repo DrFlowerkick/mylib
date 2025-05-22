@@ -3,11 +3,12 @@
 use super::{
     evaluate_with_shared_error, Candidate, ObjectiveFunction, Optimizer, ParamDescriptor,
     Population, PopulationSaver, ProgressReporter, SelectionSchedule, SharedError,
+    SharedPopulation,
 };
+use anyhow::Context;
 use rand::prelude::*;
 use rayon::prelude::*;
-use std::sync::{Arc, Mutex};
-use tracing::{debug, info, span, warn, Level};
+use tracing::{debug, error, info, span, warn, Level};
 
 pub struct EvolutionaryOptimizer<S: SelectionSchedule> {
     pub generations: usize,
@@ -21,9 +22,10 @@ pub struct EvolutionaryOptimizer<S: SelectionSchedule> {
 }
 
 impl<S: SelectionSchedule + Sync> ProgressReporter for EvolutionaryOptimizer<S> {
-    fn get_estimate_of_cycles(&self, _param_bounds: &[ParamDescriptor]) -> usize {
-        self.selection_schedule
-            .estimate_evaluations(self.generations, self.population_size)
+    fn get_estimate_of_cycles(&self, _param_bounds: &[ParamDescriptor]) -> anyhow::Result<usize> {
+        Ok(self
+            .selection_schedule
+            .estimate_evaluations(self.generations, self.population_size))
     }
 }
 
@@ -53,9 +55,11 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
             );
         }
 
-        // Shared Population and Saver
-        let shared_population = Arc::new(Mutex::new(self.initial_population.clone()));
-        let shared_population_saver = Arc::new(Mutex::new(self.population_saver.clone()));
+        // Shared Population and Error
+        let shared_population = SharedPopulation::new(
+            self.initial_population.clone(),
+            self.population_saver.clone(),
+        );
         let shared_error = SharedError::new();
 
         // evolution loop
@@ -69,13 +73,13 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
                 .clamp(0.0, 1.0);
 
             let parent_count = ((population_size as f64) * selection_fraction).ceil() as usize;
-            let top_parents: Vec<Candidate> = shared_population
-                .lock()
-                .expect("Population lock poisoned.")
-                .top_n(parent_count)
-                .cloned()
-                .collect();
 
+            if parent_count == 0 {
+                warn!("Selection schedule resulted in empty selection");
+                continue;
+            }
+
+            let top_parents = shared_population.top_n(parent_count);
             info!(
                 "Starting offspring generation: Parent count = {}, Mutation rate = {:.2}",
                 parent_count, self.mutation_rate
@@ -90,16 +94,30 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
                 let _offspring_enter = offspring_span.enter();
 
                 let mut rng = rand::thread_rng();
-                let parent = top_parents.choose(&mut rng).expect("Empty population.");
+                let parent = top_parents.choose(&mut rng).unwrap();
                 let mut child_params = parent.params.clone();
 
                 for (i, pb) in param_bounds.iter().enumerate() {
-                    child_params[i] = pb.mutate(
+                    match pb.mutate(
                         child_params[i],
                         &mut rng,
                         self.soft_mutation_std_dev,
                         self.hard_mutation_rate,
-                    );
+                    ) {
+                        Ok(mutate_value) => {
+                            child_params[i] = mutate_value;
+                        }
+                        Err(e) => {
+                            let param_name = &param_bounds[i].name;
+                            error!(
+                                ?param_name,
+                                error = %e,
+                                "Mutation failed, aborting..."
+                            );
+                            shared_error.set_if_empty(e);
+                            return;
+                        }
+                    }
                 }
 
                 if let Some(score) =
@@ -107,17 +125,14 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
                 {
                     debug!(?child_params, score, "Generated offspring candidate");
 
-                    let mut pop = shared_population.lock().expect("Population lock poisoned.");
-                    pop.insert(Candidate {
-                        params: child_params,
-                        score,
-                    });
-                    let ops = shared_population_saver
-                        .lock()
-                        .expect("PopulationSaver lock poisoned.");
-                    if let Some(ps) = ops.as_ref() {
-                        ps.save_population(&pop, param_bounds);
-                    }
+                    shared_population.insert(
+                        Candidate {
+                            params: child_params,
+                            score,
+                        },
+                        param_bounds,
+                        &shared_error,
+                    );
                 }
             });
 
@@ -126,8 +141,8 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
             }
 
             // Logging best candidate after this generation
-            let population = shared_population.lock().expect("Population lock poisoned.");
-            let best = population.best().expect("Population is empty!");
+            let population = shared_population.lock();
+            let best = population.best().context("Population is empty!")?;
 
             info!(
                 "Generation {} completed. Best Score: {:.3}, Params: {:?}",
@@ -138,14 +153,14 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
         }
 
         // final population
-        let population = Arc::try_unwrap(shared_population)
-            .expect("Expected sole ownership of Arc")
-            .into_inner()
-            .expect("Population lock poisoned.");
+        let population = shared_population.take();
 
         info!(
             "Evolutionary Optimizer completed. Best Score: {:.3}",
-            population.best().map(|c| c.score).unwrap_or(-1.0)
+            population
+                .best()
+                .map(|c| c.score)
+                .context("Empty population")?
         );
 
         Ok(population)
