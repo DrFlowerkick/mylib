@@ -1,8 +1,8 @@
 // evolutionary algorithm
 
 use super::{
-    Candidate, ObjectiveFunction, Optimizer, ParamDescriptor, Population, PopulationSaver,
-    ProgressReporter, SelectionSchedule,
+    evaluate_with_shared_error, Candidate, ObjectiveFunction, Optimizer, ParamDescriptor,
+    Population, PopulationSaver, ProgressReporter, SelectionSchedule, SharedError,
 };
 use rand::prelude::*;
 use rayon::prelude::*;
@@ -33,7 +33,7 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
         objective: &F,
         param_bounds: &[ParamDescriptor],
         population_size: usize,
-    ) -> Population {
+    ) -> anyhow::Result<Population> {
         let evo_span = span!(
             Level::INFO,
             "EvolutionaryOptimizer",
@@ -56,6 +56,7 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
         // Shared Population and Saver
         let shared_population = Arc::new(Mutex::new(self.initial_population.clone()));
         let shared_population_saver = Arc::new(Mutex::new(self.population_saver.clone()));
+        let shared_error = SharedError::new();
 
         // evolution loop
         for gen in 0..self.generations {
@@ -82,6 +83,9 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
 
             // offspring generation (parallel)
             (0..parent_count).into_par_iter().for_each(|offspring_id| {
+                if shared_error.is_set() {
+                    return;
+                }
                 let offspring_span = span!(Level::DEBUG, "Offspring", id = offspring_id);
                 let _offspring_enter = offspring_span.enter();
 
@@ -98,22 +102,28 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
                     );
                 }
 
-                let score = objective.evaluate(&child_params);
+                if let Some(score) =
+                    evaluate_with_shared_error(objective, &child_params, &shared_error)
+                {
+                    debug!(?child_params, score, "Generated offspring candidate");
 
-                debug!(?child_params, score, "Generated offspring candidate");
-
-                let mut pop = shared_population.lock().expect("Population lock poisoned.");
-                pop.insert(Candidate {
-                    params: child_params,
-                    score,
-                });
-                let ops = shared_population_saver
-                    .lock()
-                    .expect("PopulationSaver lock poisoned.");
-                if let Some(ps) = ops.as_ref() {
-                    ps.save_population(&pop, param_bounds);
+                    let mut pop = shared_population.lock().expect("Population lock poisoned.");
+                    pop.insert(Candidate {
+                        params: child_params,
+                        score,
+                    });
+                    let ops = shared_population_saver
+                        .lock()
+                        .expect("PopulationSaver lock poisoned.");
+                    if let Some(ps) = ops.as_ref() {
+                        ps.save_population(&pop, param_bounds);
+                    }
                 }
             });
+
+            if let Some(err) = shared_error.take() {
+                return Err(err);
+            }
 
             // Logging best candidate after this generation
             let population = shared_population.lock().expect("Population lock poisoned.");
@@ -138,6 +148,6 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
             population.best().map(|c| c.score).unwrap_or(-1.0)
         );
 
-        population
+        Ok(population)
     }
 }

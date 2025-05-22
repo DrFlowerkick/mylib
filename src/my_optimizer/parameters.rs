@@ -1,6 +1,8 @@
 // data types for handling parameters
 
-use super::ObjectiveFunction;
+use crate::my_optimizer::utils::evaluate_with_shared_error;
+
+use super::{ObjectiveFunction, PopulationSaver, SharedError};
 use rand::prelude::*;
 use rand_distr::Normal;
 use rayon::prelude::*;
@@ -90,7 +92,7 @@ impl ParamBound {
                     let log_value = (current_log + noise).clamp(log_min, log_max);
                     let value = log_value.exp();
                     if value <= *min || value >= *max {
-                        debug!(%name, %value, "Log-clamped value");
+                        debug!(%name, %value, "Value clamped to Log bounds.");
                     }
                     value
                 }
@@ -231,7 +233,8 @@ impl Population {
         self,
         objective: &F,
         param_bounds: &[ParamDescriptor],
-    ) -> Population {
+        population_saver: Option<PopulationSaver>,
+    ) -> anyhow::Result<Population> {
         // since objective may be a costly objective, tracing is used to signal status of populate
         let init_span = span!(Level::INFO, "PopulatePopulation", size = self.capacity);
         let _enter = init_span.enter();
@@ -243,7 +246,7 @@ impl Population {
                 "Population is already populated with {} candidates",
                 self.capacity
             );
-            return self;
+            return Ok(self);
         }
 
         if current_population_size > 0 {
@@ -256,8 +259,13 @@ impl Population {
         info!("Populating population until {} candidates", self.capacity);
         let remaining_candidates = self.capacity - current_population_size;
         let shared_population = Arc::new(Mutex::new(self));
+        let shared_population_saver = Arc::new(Mutex::new(population_saver));
+        let shared_error = SharedError::new();
 
         (0..remaining_candidates).into_par_iter().for_each(|_| {
+            if shared_error.is_set() {
+                return;
+            }
             let mut rng = rand::thread_rng();
             let params: Vec<f64> = param_bounds
                 .iter()
@@ -265,12 +273,23 @@ impl Population {
                 .collect();
             debug!(?params, "Generated initial candidate parameters");
 
-            let score = objective.evaluate(&params);
-            debug!(score, "Initial candidate evaluated");
+            if let Some(score) = evaluate_with_shared_error(objective, &params, &shared_error) {
+                debug!(score, "Initial candidate evaluated");
 
-            let mut pop = shared_population.lock().expect("Population lock poisoned.");
-            pop.insert(Candidate { params, score });
+                let mut pop = shared_population.lock().expect("Population lock poisoned.");
+                pop.insert(Candidate { params, score });
+                let ops = shared_population_saver
+                    .lock()
+                    .expect("PopulationSaver lock poisoned.");
+                if let Some(ps) = ops.as_ref() {
+                    ps.save_population(&pop, param_bounds);
+                }
+            }
         });
+
+        if let Some(err) = shared_error.take() {
+            return Err(err);
+        }
 
         let population = Arc::try_unwrap(shared_population)
             .expect("Expected sole ownership of Arc")
@@ -282,14 +301,15 @@ impl Population {
             population.best().map(|c| c.score).unwrap_or(-1.0)
         );
 
-        population
+        Ok(population)
     }
 
     pub fn resize_population<F: ObjectiveFunction + Sync>(
         mut self,
         new_capacity: usize,
         populate_with: Option<(&F, &[ParamDescriptor])>,
-    ) -> Population {
+        population_saver: Option<PopulationSaver>,
+    ) -> anyhow::Result<Population> {
         match self.capacity.cmp(&new_capacity) {
             Ordering::Equal => (),
             Ordering::Greater => {
@@ -300,11 +320,11 @@ impl Population {
             }
             Ordering::Less => {
                 if let Some((objective, param_bounds)) = populate_with {
-                    self = self.populate(objective, param_bounds);
+                    self = self.populate(objective, param_bounds, population_saver)?;
                 }
             }
         }
-        self
+        Ok(self)
     }
 
     pub fn top_n(&self, n: usize) -> impl Iterator<Item = &Candidate> {

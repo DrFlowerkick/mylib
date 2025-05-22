@@ -4,17 +4,9 @@ use super::{ParamDescriptor, Population};
 
 // trait of target function
 pub trait ObjectiveFunction {
-    fn evaluate(&self, params: &[f64]) -> f64;
-}
+    type Config: for<'a> TryFrom<&'a [f64], Error = anyhow::Error>;
 
-// enable usage of closures as ObjectiveFunction
-impl<F> ObjectiveFunction for F
-where
-    F: Fn(&[f64]) -> f64 + Sync,
-{
-    fn evaluate(&self, params: &[f64]) -> f64 {
-        self(params)
-    }
+    fn evaluate(&self, config: Self::Config) -> anyhow::Result<f64>;
 }
 
 pub trait ProgressReporter {
@@ -29,7 +21,7 @@ pub trait Explorer: ProgressReporter {
         objective: &F,
         param_bounds: &[ParamDescriptor],
         population_size: usize, // Top-N results
-    ) -> Population;
+    ) -> anyhow::Result<Population>;
 }
 
 // common trait for all optimizer
@@ -39,7 +31,7 @@ pub trait Optimizer: ProgressReporter {
         objective: &F,
         param_bounds: &[ParamDescriptor],
         population_size: usize,
-    ) -> Population;
+    ) -> anyhow::Result<Population>;
 }
 
 // trait to control dynamic parent selection over sequences of optimization

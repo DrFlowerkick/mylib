@@ -1,18 +1,17 @@
 // grid search for significant parameter sets
 
 use super::{
-    Candidate, Explorer, ObjectiveFunction, ParamBound, ParamDescriptor, Population,
-    PopulationSaver, ProgressReporter,
+    evaluate_with_shared_error, Candidate, Explorer, ObjectiveFunction, ParamBound,
+    ParamDescriptor, Population, PopulationSaver, ProgressReporter, SharedError,
 };
-use crossbeam::channel::{bounded, Sender};
+use itertools::Itertools;
+use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
-use std::thread;
 use tracing::{debug, info, span, Level};
 
 pub struct GridSearch {
     pub steps_per_param: usize,
-    pub channel_capacity: usize, // control over back pressure
-    pub worker_threads: usize,   // number of consumer workers
+    pub chunk_size: usize,
     pub population_saver: Option<PopulationSaver>,
 }
 
@@ -36,64 +35,52 @@ impl Explorer for GridSearch {
         objective: &F,
         param_bounds: &[ParamDescriptor],
         population_size: usize,
-    ) -> Population {
+    ) -> anyhow::Result<Population> {
         let span_search = span!(Level::INFO, "GridSearch");
         let _enter = span_search.enter();
 
         info!(
-            "Starting Grid Search with {} consumers",
-            self.worker_threads
+            "Starting Grid Search with {} candidates",
+            self.get_estimate_of_cycles(param_bounds)
         );
-
-        let (sender, receiver) = bounded::<Vec<f64>>(self.channel_capacity);
-
-        // Producer-Thread
-        let producer_handle = {
-            //let sender = sender.clone();
-            let steps_per_param = self.steps_per_param;
-            let param_bounds = param_bounds.to_vec();
-            thread::spawn(move || {
-                generate_params_recursive(
-                    &param_bounds,
-                    steps_per_param.max(2),
-                    &mut vec![],
-                    sender,
-                );
-            })
-        };
 
         // Shared Population and Saver
         let shared_population = Arc::new(Mutex::new(Population::new(population_size)));
         let shared_population_saver = Arc::new(Mutex::new(self.population_saver.clone()));
+        let shared_error = SharedError::new();
+        let param_generator = GridSearchIterator::new(param_bounds, self.steps_per_param);
 
-        // Consumers parallelization with Rayon
-        let objective = Arc::new(objective);
-        rayon::scope(|s| {
-            for _ in 0..self.worker_threads {
-                let receiver = receiver.clone();
-                let shared_pop = Arc::clone(&shared_population);
-                let objective = Arc::clone(&objective);
-                let shared_ps = Arc::clone(&shared_population_saver);
+        for (chunk_index, chunks) in param_generator
+            .chunks(self.chunk_size)
+            .into_iter()
+            .enumerate()
+        {
+            let chunk_span = span!(Level::INFO, "GridChunk", chunk_index);
+            let _chunk_enter = chunk_span.enter();
 
-                s.spawn(move |_| {
-                    for params in receiver.iter() {
-                        let score = objective.evaluate(&params);
+            info!("Starting grid search in chunk {}", chunk_index);
 
-                        debug!(?params, score, "Generated Coarse Grid Search candidate");
+            let batch: Vec<_> = chunks.collect();
 
-                        let mut pop = shared_pop.lock().expect("Population lock poisoned.");
-                        pop.insert(Candidate { params, score });
-                        let ops = shared_ps.lock().expect("PopulationSaver lock poisoned.");
-                        if let Some(ps) = ops.as_ref() {
-                            ps.save_population(&pop, param_bounds);
-                        }
+            batch.into_par_iter().for_each(|params| {
+                if let Some(score) = evaluate_with_shared_error(objective, &params, &shared_error) {
+                    debug!(?params, score, "Evaluated candidate");
+
+                    let mut pop = shared_population.lock().expect("Population lock poisoned.");
+                    pop.insert(Candidate { params, score });
+                    let ops = shared_population_saver
+                        .lock()
+                        .expect("PopulationSaver lock poisoned.");
+                    if let Some(ps) = ops.as_ref() {
+                        ps.save_population(&pop, param_bounds);
                     }
-                });
-            }
-        });
+                }
+            });
 
-        // wait on end of Producer
-        producer_handle.join().expect("Producer thread panicked.");
+            if let Some(err) = shared_error.take() {
+                return Err(err);
+            }
+        }
 
         let population = Arc::try_unwrap(shared_population)
             .expect("Population still has multiple references.")
@@ -105,80 +92,88 @@ impl Explorer for GridSearch {
             population.best().map(|c| c.score).unwrap_or(-1.0)
         );
 
-        population
+        Ok(population)
     }
 }
 
-fn generate_params_recursive(
-    param_bounds: &[ParamDescriptor],
+struct GridSearchIterator<'a> {
+    param_bounds: &'a [ParamDescriptor],
     steps_per_param: usize,
-    current_params: &mut Vec<f64>,
-    sender: Sender<Vec<f64>>,
-) {
-    if current_params.len() == param_bounds.len() {
-        debug!(
-            ?current_params,
-            "Generated parameter combination for grid search."
-        );
+    current_indices: Vec<usize>, // index per parameter bound
+    done: bool,
+}
 
-        if sender.send(current_params.clone()).is_err() {
-            tracing::warn!(
-                "Failed to send parameter combination: Receiver has likely been dropped. Aborting this branch."
-            );
+impl<'a> GridSearchIterator<'a> {
+    pub fn new(param_bounds: &'a [ParamDescriptor], steps_per_param: usize) -> Self {
+        GridSearchIterator {
+            param_bounds,
+            steps_per_param,
+            current_indices: vec![0; param_bounds.len()],
+            done: false,
         }
-
-        return;
     }
+}
 
-    match &param_bounds[current_params.len()].bound {
-        ParamBound::Static(val) => {
-            current_params.push(*val);
-            generate_params_recursive(param_bounds, steps_per_param, current_params, sender);
-            current_params.pop();
+impl<'a> Iterator for GridSearchIterator<'a> {
+    type Item = Vec<f64>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
         }
-        ParamBound::MinMax(min, max) => {
-            for step in 0..steps_per_param {
-                let value = min + (max - min) * (step as f64) / (steps_per_param - 1) as f64;
-                current_params.push(value);
-                generate_params_recursive(
-                    param_bounds,
-                    steps_per_param,
-                    current_params,
-                    sender.clone(),
-                );
-                current_params.pop();
+
+        // build params from current_indices
+        let params = self
+            .current_indices
+            .iter()
+            .enumerate()
+            .map(|(i, &idx)| {
+                let bound = &self.param_bounds[i].bound;
+                match bound {
+                    ParamBound::MinMax(min, max) => {
+                        let step_size = (*max - *min) / (self.steps_per_param - 1) as f64;
+                        *min + step_size * idx as f64
+                    }
+                    ParamBound::List(values) => {
+                        assert!(
+                            !values.is_empty(),
+                            "Empty value list in parameter descriptor {}",
+                            &self.param_bounds[i].name
+                        );
+                        values[idx]
+                    }
+                    ParamBound::Static(val) => *val,
+                    ParamBound::LogScale(min, max) => {
+                        let log_min = min.ln();
+                        let log_max = max.ln();
+                        let step_size = (log_max - log_min) / (self.steps_per_param - 1) as f64;
+                        (log_min + step_size * idx as f64).exp()
+                    }
+                }
+            })
+            .collect();
+
+        // set next current_indices
+        let mut i = self.current_indices.len();
+        while i > 0 {
+            i -= 1;
+            self.current_indices[i] += 1;
+            let limit = match &self.param_bounds[i].bound {
+                ParamBound::MinMax(_, _) => self.steps_per_param,
+                ParamBound::List(v) => v.len(),
+                ParamBound::Static(_) => 1,
+                ParamBound::LogScale(_, _) => self.steps_per_param,
+            };
+            if self.current_indices[i] < limit {
+                break;
+            } else {
+                self.current_indices[i] = 0;
+                if i == 0 {
+                    self.done = true;
+                }
             }
         }
-        ParamBound::List(values) => {
-            for &value in values {
-                current_params.push(value);
-                generate_params_recursive(
-                    param_bounds,
-                    steps_per_param,
-                    current_params,
-                    sender.clone(),
-                );
-                current_params.pop();
-            }
-        }
-        ParamBound::LogScale(min, max) => {
-            let log_min = min.ln();
-            let log_max = max.ln();
 
-            for step in 0..steps_per_param {
-                let ratio = step as f64 / (steps_per_param - 1).max(1) as f64;
-                let log_value = log_min + (log_max - log_min) * ratio;
-                let value = log_value.exp();
-
-                current_params.push(value);
-                generate_params_recursive(
-                    param_bounds,
-                    steps_per_param,
-                    current_params,
-                    sender.clone(),
-                );
-                current_params.pop();
-            }
-        }
+        Some(params)
     }
 }

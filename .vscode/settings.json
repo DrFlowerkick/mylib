@@ -3,16 +3,19 @@
     "cSpell.words": [
         "appender",
         "cdir",
+        "chrono",
         "codingame",
         "fract",
         "Hasher",
         "imec",
+        "itertools",
         "mcts",
         "mylib",
         "ndir",
         "nesw",
         "PWTTT",
-        "repr"
+        "repr",
+        "serde"
     ],
     // windows
     "[windows]": {

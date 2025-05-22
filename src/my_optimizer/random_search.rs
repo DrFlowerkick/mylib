@@ -1,8 +1,8 @@
 // Random Search explorer
 
 use super::{
-    Candidate, Explorer, ObjectiveFunction, ParamDescriptor, Population, PopulationSaver,
-    ProgressReporter,
+    evaluate_with_shared_error, Candidate, Explorer, ObjectiveFunction, ParamDescriptor,
+    Population, PopulationSaver, ProgressReporter, SharedError,
 };
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
@@ -25,7 +25,7 @@ impl Explorer for RandomSearch {
         objective: &F,
         param_bounds: &[ParamDescriptor],
         population_size: usize,
-    ) -> Population {
+    ) -> anyhow::Result<Population> {
         let search_span = span!(Level::INFO, "RandomSearch", iterations = self.iterations);
         let _enter = search_span.enter();
 
@@ -34,8 +34,12 @@ impl Explorer for RandomSearch {
         // Shared Population and Saver
         let shared_population = Arc::new(Mutex::new(Population::new(population_size)));
         let shared_population_saver = Arc::new(Mutex::new(self.population_saver.clone()));
+        let shared_error = SharedError::new();
 
         (0..self.iterations).into_par_iter().for_each(|_| {
+            if shared_error.is_set() {
+                return;
+            }
             let iter_span = span!(Level::DEBUG, "Iteration");
             let _iter_enter = iter_span.enter();
 
@@ -45,20 +49,23 @@ impl Explorer for RandomSearch {
                 .map(|pb| pb.rng_sample(&mut rng))
                 .collect();
 
-            debug!(?params, "Generated random parameters");
+            if let Some(score) = evaluate_with_shared_error(objective, &params, &shared_error) {
+                debug!(?params, score, "Evaluated random generated candidate");
 
-            let score = objective.evaluate(&params);
-            debug!(score, "Evaluated candidate");
-
-            let mut pop = shared_population.lock().expect("Population lock poisoned.");
-            pop.insert(Candidate { params, score });
-            let ops = shared_population_saver
-                .lock()
-                .expect("PopulationSaver lock poisoned.");
-            if let Some(ps) = ops.as_ref() {
-                ps.save_population(&pop, param_bounds);
+                let mut pop = shared_population.lock().expect("Population lock poisoned.");
+                pop.insert(Candidate { params, score });
+                let ops = shared_population_saver
+                    .lock()
+                    .expect("PopulationSaver lock poisoned.");
+                if let Some(ps) = ops.as_ref() {
+                    ps.save_population(&pop, param_bounds);
+                }
             }
         });
+
+        if let Some(err) = shared_error.take() {
+            return Err(err);
+        }
 
         let population = Arc::try_unwrap(shared_population)
             .expect("Expected sole ownership of Arc")
@@ -70,6 +77,6 @@ impl Explorer for RandomSearch {
             population.best().map(|c| c.score).unwrap_or(-1.0)
         );
 
-        population
+        Ok(population)
     }
 }

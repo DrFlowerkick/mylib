@@ -5,6 +5,7 @@ pub mod evolutionary;
 pub mod grid_search;
 pub mod parameters;
 pub mod random_search;
+pub mod trace_analysis;
 pub mod utils;
 
 pub use self::core::{
@@ -16,6 +17,7 @@ pub use grid_search::GridSearch;
 pub use parameters::{Candidate, CsvConversion, ParamBound, ParamDescriptor, Population};
 pub use random_search::RandomSearch;
 pub use utils::{
-    increment_progress_counter_by, load_population, reset_progress_counter, save_population,
-    update_progress, FileLogConfig, LogFormat, PopulationSaver, TracingConfig,
+    evaluate_with_shared_error, increment_progress_counter_by, load_population,
+    reset_progress_counter, save_population, update_progress, FileLogConfig, LogFormat,
+    PopulationSaver, SharedError, TracingConfig,
 };

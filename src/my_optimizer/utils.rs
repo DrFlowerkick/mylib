@@ -1,13 +1,15 @@
 // utilities of optimization
 
-use super::{CsvConversion, ParamDescriptor, Population};
+use super::{CsvConversion, ObjectiveFunction, ParamDescriptor, Population};
+use anyhow::Error;
 use once_cell::sync::Lazy;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 use std::{fmt::Display, io};
-use tracing::{info, Level};
+use tracing::{error, info, Level};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
 use tracing_subscriber::{filter::EnvFilter, fmt, prelude::*, Registry};
@@ -181,13 +183,13 @@ pub fn load_population<P: AsRef<Path>>(
 
     let (parameter_names, csv) = if has_headers {
         let (parameter_names, csv) = csv.split_once('\n')?;
-        (
-            parameter_names
-                .split(',')
-                .map(|pn| pn.to_string())
-                .collect::<Vec<_>>(),
-            csv,
-        )
+        let mut parameter_names = parameter_names
+            .split(',')
+            .map(|pn| pn.to_string())
+            .collect::<Vec<_>>();
+        // remove "average_score" at the end
+        parameter_names.pop();
+        (parameter_names, csv)
     } else {
         (vec![], csv.as_str())
     };
@@ -204,5 +206,74 @@ fn log_or_print(message: &str) {
         tracing::info!("{}", message);
     } else {
         println!("{}", message);
+    }
+}
+
+// thread safe error handling
+#[derive(Clone, Default)]
+pub struct SharedError {
+    inner: Arc<Mutex<Option<Error>>>,
+}
+
+impl SharedError {
+    pub fn new() -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    // save first error, discard any successive errors (with log)
+    pub fn set_if_empty(&self, err: Error) {
+        let mut guard = self.inner.lock().unwrap();
+        if guard.is_none() {
+            *guard = Some(err);
+        } else {
+            tracing::trace!("Discarded error because one was already set");
+        }
+    }
+
+    pub fn is_set(&self) -> bool {
+        self.inner.lock().unwrap().is_some()
+    }
+
+    pub fn take(&self) -> Option<Error> {
+        self.inner.lock().unwrap().take()
+    }
+}
+
+// execute evaluate and config conversion with shared error
+pub fn evaluate_with_shared_error<F: ObjectiveFunction>(
+    objective: &F,
+    params: &[f64],
+    error_slot: &SharedError,
+) -> Option<f64> {
+    if error_slot.is_set() {
+        return None;
+    }
+
+    let config = match F::Config::try_from(params) {
+        Ok(c) => c,
+        Err(e) => {
+            error!(
+                ?params,
+                error = %e,
+                "Parameter conversion failed, aborting..."
+            );
+            error_slot.set_if_empty(e.into());
+            return None;
+        }
+    };
+
+    match objective.evaluate(config) {
+        Ok(score) => Some(score),
+        Err(e) => {
+            error!(
+                ?params,
+                error = %e,
+                "Evaluation failed, aborting..."
+            );
+            error_slot.set_if_empty(e);
+            None
+        }
     }
 }
