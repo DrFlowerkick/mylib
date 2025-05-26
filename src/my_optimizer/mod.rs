@@ -21,6 +21,7 @@ pub use population::{
     SharedPopulation,
 };
 pub use random_search::RandomSearch;
+pub use trace_analysis::{analyze_clamps_from_dir, ClampStats};
 pub use utils::{
     evaluate_with_shared_error, increment_progress_counter_by, reset_progress_counter,
     update_progress, FileLogConfig, LogFormat, SharedError, TracingConfig,

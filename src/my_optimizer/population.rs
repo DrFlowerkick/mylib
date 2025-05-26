@@ -79,7 +79,7 @@ impl Eq for Candidate {}
 
 impl Ord for Candidate {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.score.total_cmp(&other.score).reverse()
+        self.score.total_cmp(&other.score)
     }
 }
 
@@ -113,14 +113,14 @@ impl Population {
 
     // if capacity is reached, remove worst candidate and return it
     pub fn insert(&mut self, candidate: Candidate) -> PopulationInsertResult {
-        if let Some(smallest) = self.members.last() {
+        if let Some(smallest) = self.members.first() {
             if candidate <= *smallest {
                 return PopulationInsertResult::Rejected;
             }
         }
         self.members.insert(candidate);
         if self.members.len() > self.capacity {
-            return PopulationInsertResult::Replaced(self.members.pop_last().unwrap());
+            return PopulationInsertResult::Replaced(self.members.pop_first().unwrap());
         }
         PopulationInsertResult::Accepted
     }
@@ -203,7 +203,7 @@ impl Population {
             cmp::Ordering::Greater => {
                 self.capacity = new_capacity;
                 (0..self.capacity - new_capacity).for_each(|_| {
-                    self.members.pop_last();
+                    self.members.pop_first();
                 });
             }
             cmp::Ordering::Less => {
@@ -216,7 +216,7 @@ impl Population {
     }
 
     pub fn top_n(&self, n: usize) -> impl Iterator<Item = &Candidate> {
-        self.members.iter().take(n)
+        self.members.iter().rev().take(n)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Candidate> {
@@ -239,11 +239,11 @@ impl Population {
     }
 
     pub fn best(&self) -> Option<&Candidate> {
-        self.members.first()
+        self.members.last()
     }
 
     pub fn pop_best(&mut self) -> Option<Candidate> {
-        self.members.pop_first()
+        self.members.pop_last()
     }
 }
 

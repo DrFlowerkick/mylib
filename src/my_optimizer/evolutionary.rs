@@ -64,7 +64,7 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
 
         // evolution loop
         for gen in 0..self.generations {
-            let gen_span = span!(Level::INFO, "Generation", number = gen + 1);
+            let gen_span = span!(Level::INFO, "Generation", generation = gen + 1);
             let _gen_enter = gen_span.enter();
 
             let selection_fraction = self
@@ -90,7 +90,7 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
                 if shared_error.is_set() {
                     return;
                 }
-                let offspring_span = span!(Level::DEBUG, "Offspring", id = offspring_id);
+                let offspring_span = span!(Level::DEBUG, "Offspring", id = offspring_id, generation = gen + 1);
                 let _offspring_enter = offspring_span.enter();
 
                 let mut rng = rand::thread_rng();

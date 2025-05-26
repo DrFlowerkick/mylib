@@ -21,6 +21,7 @@ pub enum LogFormat {
 pub struct FileLogConfig<P: AsRef<Path>> {
     pub directory: P,
     pub prefix: String,
+    pub format: LogFormat,
 }
 
 impl<P: AsRef<Path>> FileLogConfig<P> {
@@ -32,7 +33,7 @@ impl<P: AsRef<Path>> FileLogConfig<P> {
 
 pub struct TracingConfig<'a, P: AsRef<Path>> {
     pub default_level: &'a str,
-    pub format: LogFormat,
+    pub console_format: LogFormat,
     pub file_log: Option<FileLogConfig<P>>,
 }
 
@@ -47,7 +48,7 @@ impl<'a, P: AsRef<Path>> TracingConfig<'a, P> {
         match self.file_log {
             None => {
                 // console only
-                match self.format {
+                match self.console_format {
                     LogFormat::PlainText => {
                         base_registry
                             .with(fmt::layer().with_writer(io::stdout))
@@ -64,8 +65,8 @@ impl<'a, P: AsRef<Path>> TracingConfig<'a, P> {
             Some(file_cfg) => {
                 let (non_blocking, guard) = file_cfg.prepare_writer();
 
-                match self.format {
-                    LogFormat::PlainText => {
+                match (self.console_format, file_cfg.format) {
+                    (LogFormat::PlainText, LogFormat::PlainText) => {
                         base_registry
                             .with(
                                 fmt::layer()
@@ -75,7 +76,28 @@ impl<'a, P: AsRef<Path>> TracingConfig<'a, P> {
                             .with(fmt::layer().with_writer(non_blocking))
                             .init();
                     }
-                    LogFormat::Json => {
+                    (LogFormat::PlainText, LogFormat::Json) => {
+                        base_registry
+                            .with(
+                                fmt::layer()
+                                    .with_writer(io::stdout)
+                                    .with_filter(tracing_subscriber::filter::LevelFilter::INFO),
+                            )
+                            .with(fmt::layer().json().with_writer(non_blocking))
+                            .init();
+                    }
+                    (LogFormat::Json, LogFormat::PlainText) => {
+                        base_registry
+                            .with(
+                                fmt::layer()
+                                    .json()
+                                    .with_writer(io::stdout)
+                                    .with_filter(tracing_subscriber::filter::LevelFilter::INFO),
+                            )
+                            .with(fmt::layer().with_writer(non_blocking))
+                            .init();
+                    }
+                    (LogFormat::Json, LogFormat::Json) => {
                         base_registry
                             .with(
                                 fmt::layer()

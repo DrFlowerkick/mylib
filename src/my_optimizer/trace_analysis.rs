@@ -9,8 +9,6 @@ use chrono::NaiveDate;
 use glob::glob;
 use serde_json::Value;
 
-use super::{ParamBound, ParamDescriptor};
-
 #[derive(Default, Debug)]
 pub struct ClampStats {
     pub min_count: usize,
@@ -20,18 +18,13 @@ pub struct ClampStats {
 }
 
 impl ClampStats {
-    pub fn record(&mut self, value: f64, bound: &ParamBound) {
-        match bound {
-            ParamBound::MinMax(min, max) | ParamBound::LogScale(min, max) => {
-                if (value - min).abs() < 1e-9 {
-                    self.min_count += 1;
-                    self.min_deviation_sum += value - min;
-                } else if (value - max).abs() < 1e-9 {
-                    self.max_count += 1;
-                    self.max_deviation_sum += value - max;
-                }
-            }
-            _ => {}
+    pub fn record(&mut self, value: f64) {
+        if value < 0.0 {
+            self.min_count += 1;
+            self.min_deviation_sum += value;
+        } else {
+            self.max_count += 1;
+            self.max_deviation_sum += value;
         }
     }
 
@@ -59,13 +52,8 @@ pub fn analyze_clamps_from_dir(
     dir: &str,
     pattern: &str, // e.g. "patten.YYYY-MM-DD"
     date_range: Option<(NaiveDate, NaiveDate)>,
-    param_bounds: &[ParamDescriptor],
 ) -> anyhow::Result<()> {
     let mut stats: HashMap<String, ClampStats> = HashMap::new();
-    let name_to_bound: HashMap<&str, &ParamBound> = param_bounds
-        .iter()
-        .map(|desc| (desc.name.as_str(), &desc.bound))
-        .collect();
 
     let full_pattern = format!("{dir}/{pattern}");
     for entry in glob(&full_pattern)? {
@@ -77,8 +65,7 @@ pub fn analyze_clamps_from_dir(
                 }
             }
         }
-
-        analyze_file(&path, &name_to_bound, &mut stats)?;
+        analyze_file(&path, &mut stats)?;
     }
 
     for (name, stat) in stats {
@@ -88,11 +75,7 @@ pub fn analyze_clamps_from_dir(
     Ok(())
 }
 
-fn analyze_file(
-    path: &Path,
-    name_to_bound: &HashMap<&str, &ParamBound>,
-    stats: &mut HashMap<String, ClampStats>,
-) -> anyhow::Result<()> {
+fn analyze_file(path: &Path, stats: &mut HashMap<String, ClampStats>) -> anyhow::Result<()> {
     let file = File::open(path)?;
     for line in BufReader::new(file).lines() {
         let line = line?;
@@ -100,21 +83,18 @@ fn analyze_file(
             Ok(val) => val,
             Err(_) => continue,
         };
-
-        let message = json.get("message").and_then(|v| v.as_str()).unwrap_or("");
+        let Some(field) = json.get("fields") else { continue; };
+        let message = field.get("message").and_then(|v| v.as_str()).unwrap_or("");
         if !message.contains("clamped") {
             continue;
         }
-
-        let name = json.get("name").and_then(|v| v.as_str());
-        let value = json.get("value").and_then(|v| v.as_f64());
-        if let (Some(name), Some(value)) = (name, value) {
-            if let Some(bound) = name_to_bound.get(name) {
-                stats
-                    .entry(name.to_string())
-                    .or_default()
-                    .record(value, bound);
-            }
+        let name = field.get("name").and_then(|v| v.as_str());
+        let delta_clamp = field
+            .get("delta_clamp")
+            .and_then(|v| v.as_str())
+            .and_then(|v| v.parse::<f64>().ok());
+        if let (Some(name), Some(value)) = (name, delta_clamp) {
+            stats.entry(name.to_string()).or_default().record(value);
         }
     }
     Ok(())
@@ -122,12 +102,7 @@ fn analyze_file(
 
 // extract date from filename of format "patten.YYYY-MM-DD"
 fn extract_date_from_filename(path: &Path) -> Option<NaiveDate> {
-    path.file_stem().and_then(|s| s.to_str()).and_then(|stem| {
-        let parts: Vec<&str> = stem.split('.').collect();
-        if parts.len() >= 2 {
-            NaiveDate::parse_from_str(parts[1], "%Y-%m-%d").ok()
-        } else {
-            None
-        }
-    })
+    path.extension()
+        .and_then(|s| s.to_str())
+        .and_then(|extension| NaiveDate::parse_from_str(extension, "%Y-%m-%d").ok())
 }

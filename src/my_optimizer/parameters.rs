@@ -54,7 +54,7 @@ impl ParamBound {
                         let delta_clamp = value - clamped;
                         debug!(%name, %delta_clamp, "Value clamped to bounds.");
                     }
-                    Ok(value)
+                    Ok(clamped)
                 }
             }
             ParamBound::List(values) => {
@@ -101,7 +101,7 @@ impl ParamBound {
                         let delta_clamp = value - clamped;
                         debug!(%name, %delta_clamp, "Value clamped to bounds.");
                     }
-                    Ok(value)
+                    Ok(clamped)
                 }
             }
         }
