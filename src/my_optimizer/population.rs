@@ -114,7 +114,7 @@ impl Population {
     // if capacity is reached, remove worst candidate and return it
     pub fn insert(&mut self, candidate: Candidate) -> PopulationInsertResult {
         if let Some(smallest) = self.members.first() {
-            if candidate <= *smallest {
+            if self.members.len() == self.capacity && candidate <= *smallest {
                 return PopulationInsertResult::Rejected;
             }
         }
@@ -251,7 +251,8 @@ impl CsvConversion for Population {
     fn to_csv(&self, precision: usize) -> String {
         let mut csv = String::new();
 
-        for (index, candidate) in self.members.iter().enumerate() {
+        // best candidates first
+        for (index, candidate) in self.members.iter().rev().enumerate() {
             if index > 0 {
                 csv.push('\n');
             }
@@ -432,7 +433,7 @@ pub fn load_population<P: AsRef<Path>>(
 
     let population = Population::from_csv(csv).context("Empty population")?;
 
-    log_or_print(&format!("Results written to {}", path.display()));
+    log_or_print(&format!("Results loaded from {}", path.display()));
 
     Ok((population, parameter_names))
 }
