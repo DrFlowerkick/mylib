@@ -246,11 +246,32 @@ impl TicTacToeGameData {
         )
     }
 
+    pub fn get_board_control(&self) -> (f32, f32) {
+        self.map.iterate().fold(
+            (0.0, 0.0),
+            |(mut my_control, mut opp_control), (cell, status)| {
+                match status {
+                    TicTacToeStatus::Me => {
+                        my_control += cell.cell_weight();
+                    },
+                    TicTacToeStatus::Opp => {
+                        opp_control += cell.cell_weight();
+                    },
+                    TicTacToeStatus::Vacant | TicTacToeStatus::Tie => {
+                        // do nothing
+                    },
+                }
+                (my_control, opp_control)
+            },
+        )
+    }
+
     pub fn board_analysis(&self) -> BoardAnalysis {
         let status = self.get_status();
         let my_cells = self.count_me_cells();
         let opp_cells = self.count_opp_cells();
         let played_cells = self.count_non_vacant_cells();
+        let (my_control, opp_control) = self.get_board_control();
         let (my_threats, opp_threats) = self.get_threats();
         let mut meta_cell_threats = MyMap3x3::default();
         for cell in self
@@ -265,6 +286,8 @@ impl TicTacToeGameData {
             my_cells,
             opp_cells,
             played_cells,
+            my_control,
+            opp_control,
             my_threats,
             opp_threats,
             meta_cell_threats,
@@ -278,6 +301,8 @@ pub struct BoardAnalysis {
     pub my_cells: usize,
     pub opp_cells: usize,
     pub played_cells: usize,
+    pub my_control: f32,
+    pub opp_control: f32,
     pub my_threats: usize,
     pub opp_threats: usize,
     pub meta_cell_threats: MyMap3x3<(u8, u8, u8, u8)>,
