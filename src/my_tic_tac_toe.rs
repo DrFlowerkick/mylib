@@ -182,7 +182,7 @@ impl TicTacToeGameData {
             .filter(|(_, v)| v.is_not_vacant())
             .count()
     }
-    pub fn get_threats(&self) -> (usize, usize) {
+    pub fn get_threats(&self) -> (HashSet<CellIndex3x3>, HashSet<CellIndex3x3>) {
         let mut me_threats: HashSet<CellIndex3x3> = HashSet::new();
         let mut opp_threats: HashSet<CellIndex3x3> = HashSet::new();
 
@@ -208,7 +208,7 @@ impl TicTacToeGameData {
                 _ => (),
             }
         }
-        (me_threats.len(), opp_threats.len())
+        (me_threats, opp_threats)
     }
     pub fn get_meta_cell_threats(&self, cell: CellIndex3x3) -> (u8, u8, u8, u8) {
         if self.get_cell_value(cell).is_not_vacant() {
@@ -295,7 +295,7 @@ impl TicTacToeGameData {
     }
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct BoardAnalysis {
     pub status: TicTacToeStatus,
     pub my_cells: usize,
@@ -303,7 +303,7 @@ pub struct BoardAnalysis {
     pub played_cells: usize,
     pub my_control: f32,
     pub opp_control: f32,
-    pub my_threats: usize,
-    pub opp_threats: usize,
+    pub my_threats: HashSet<CellIndex3x3>,
+    pub opp_threats: HashSet<CellIndex3x3>,
     pub meta_cell_threats: MyMap3x3<(u8, u8, u8, u8)>,
 }
