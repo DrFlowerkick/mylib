@@ -8,10 +8,13 @@ pub mod population;
 pub mod random_search;
 pub mod trace_analysis;
 pub mod utils;
+pub mod schedule;
 
 pub use self::core::{
-    Explorer, ExponentialSchedule, LinearSchedule, ObjectiveFunction, Optimizer, ProgressReporter,
-    SelectionSchedule,
+    Explorer,ObjectiveFunction, Optimizer, ProgressReporter,
+};
+pub use schedule::{
+    Schedule, ConstantSchedule, LinearSchedule, ExponentialSchedule, DecaySchedule, SigmoidSchedule
 };
 pub use evolutionary::EvolutionaryOptimizer;
 pub use grid_search::GridSearch;

@@ -6,7 +6,7 @@ use super::{
 };
 use anyhow::Context;
 use rayon::prelude::*;
-use tracing::{debug, info, span, Level};
+use tracing::{debug, error, info, span, Level};
 
 pub struct RandomSearch {
     pub iterations: usize,
@@ -46,10 +46,18 @@ impl Explorer for RandomSearch {
             let _iter_enter = iter_span.enter();
 
             let mut rng = rand::thread_rng();
-            let params: Vec<f64> = param_bounds
+            let params = match param_bounds
                 .iter()
                 .map(|pb| pb.rng_sample(&mut rng))
-                .collect();
+                .collect::<anyhow::Result<Vec<_>>>()
+            {
+                Ok(params) => params,
+                Err(err) => {
+                    error!(error = ?err, "Failed to sample parameters");
+                    shared_error.set_if_empty(err);
+                    return;
+                }
+            };
 
             if let Some(score) = evaluate_with_shared_error(objective, &params, &shared_error) {
                 debug!(?params, score, "Evaluated random generated candidate");

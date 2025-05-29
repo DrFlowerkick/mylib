@@ -253,13 +253,13 @@ impl TicTacToeGameData {
                 match status {
                     TicTacToeStatus::Me => {
                         my_control += cell.cell_weight();
-                    },
+                    }
                     TicTacToeStatus::Opp => {
                         opp_control += cell.cell_weight();
-                    },
+                    }
                     TicTacToeStatus::Vacant | TicTacToeStatus::Tie => {
                         // do nothing
-                    },
+                    }
                 }
                 (my_control, opp_control)
             },

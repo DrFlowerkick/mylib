@@ -14,16 +14,26 @@ pub enum ParamBound {
 }
 
 impl ParamBound {
-    pub fn rng_sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
+    pub fn rng_sample<R: Rng + ?Sized>(&self, rng: &mut R) -> anyhow::Result<f64> {
         match self {
-            ParamBound::Static(val) => *val,
-            ParamBound::MinMax(min, max) => rng.gen_range(*min..=*max),
-            ParamBound::List(values) => *values.choose(rng).expect("Empty parameter list."),
+            ParamBound::Static(val) => Ok(*val),
+            ParamBound::MinMax(min, max) => {
+                if max <= min {
+                    return Err(anyhow::anyhow!("ParamBound::MinMax: Max <= Min"));
+                }
+                Ok(rng.gen_range(*min..=*max))
+            }
+            ParamBound::List(values) => {
+                values.choose(rng).cloned().context("Empty parameter list.")
+            }
             ParamBound::LogScale(min, max) => {
+                if max <= min {
+                    return Err(anyhow::anyhow!("ParamBound::LogScale: Max <= Min"));
+                }
                 let log_min = min.ln();
                 let log_max = max.ln();
                 let sample_log = rng.gen_range(log_min..=log_max);
-                sample_log.exp()
+                Ok(sample_log.exp())
             }
         }
     }
@@ -32,8 +42,8 @@ impl ParamBound {
         &self,
         current_value: f64,
         rng: &mut R,
-        soft_mutation_std_dev: f64,
         hard_mutation_rate: f64,
+        soft_mutation_std_dev: f64,
         name: &str,
     ) -> anyhow::Result<f64> {
         match self {
@@ -115,21 +125,21 @@ pub struct ParamDescriptor {
 }
 
 impl ParamDescriptor {
-    pub fn rng_sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
+    pub fn rng_sample<R: Rng + ?Sized>(&self, rng: &mut R) -> anyhow::Result<f64> {
         self.bound.rng_sample(rng)
     }
     pub fn mutate<R: Rng + ?Sized>(
         &self,
         current_value: f64,
         rng: &mut R,
-        soft_mutation_std_dev: f64,
         hard_mutation_rate: f64,
+        soft_mutation_std_dev: f64,
     ) -> anyhow::Result<f64> {
         self.bound.mutate(
             current_value,
             rng,
-            soft_mutation_std_dev,
             hard_mutation_rate,
+            soft_mutation_std_dev,
             &self.name,
         )
     }

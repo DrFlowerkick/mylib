@@ -111,14 +111,15 @@ impl Population {
         }
     }
 
-    // if capacity is reached, remove worst candidate and return it
     pub fn insert(&mut self, candidate: Candidate) -> PopulationInsertResult {
+        // reject if candidate is worse than the worst candidate in the population
         if let Some(smallest) = self.members.first() {
             if self.members.len() == self.capacity && candidate <= *smallest {
                 return PopulationInsertResult::Rejected;
             }
         }
         self.members.insert(candidate);
+        // if capacity is reached, remove worst candidate and return it
         if self.members.len() > self.capacity {
             return PopulationInsertResult::Replaced(self.members.pop_first().unwrap());
         }
@@ -162,10 +163,19 @@ impl Population {
                 return;
             }
             let mut rng = rand::thread_rng();
-            let params: Vec<f64> = param_bounds
+            let params = match param_bounds
                 .iter()
                 .map(|pb| pb.rng_sample(&mut rng))
-                .collect();
+                .collect::<anyhow::Result<Vec<_>>>()
+            {
+                Ok(params) => params,
+                Err(err) => {
+                    error!(error = %err, "Failed to generate random parameters");
+                    shared_error.set_if_empty(err);
+                    return;
+                }
+            };
+
             debug!(?params, "Generated initial candidate parameters");
 
             if let Some(score) = evaluate_with_shared_error(objective, &params, &shared_error) {
@@ -406,6 +416,8 @@ pub fn save_population<P: AsRef<Path>>(
     }
 
     writeln!(writer, "{}", population.to_csv(precision))?;
+    // Flush the writer to ensure all data is written to the file
+    writer.flush()?;
 
     log_or_print(&format!("Population written to {}", path.display()));
     Ok(())

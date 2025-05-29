@@ -2,7 +2,7 @@
 
 use super::{
     evaluate_with_shared_error, Candidate, ObjectiveFunction, Optimizer, ParamDescriptor,
-    Population, PopulationSaver, ProgressReporter, SelectionSchedule, SharedError,
+    Population, PopulationSaver, ProgressReporter, Schedule, SharedError,
     SharedPopulation,
 };
 use anyhow::Context;
@@ -10,26 +10,32 @@ use rand::prelude::*;
 use rayon::prelude::*;
 use tracing::{debug, error, info, span, warn, Level};
 
-pub struct EvolutionaryOptimizer<S: SelectionSchedule> {
+pub struct EvolutionaryOptimizer<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> {
     pub generations: usize,
     pub population_size: usize,
-    pub mutation_rate: f64,
-    pub hard_mutation_rate: f64,
-    pub soft_mutation_std_dev: f64,
-    pub selection_schedule: S,
+    pub hard_mutation_rate: HardMutation,
+    pub soft_mutation_std_dev: SoftMutation,
+    pub selection_schedule: Selection,
     pub initial_population: Population,
     pub population_saver: Option<PopulationSaver>,
 }
 
-impl<S: SelectionSchedule + Sync> ProgressReporter for EvolutionaryOptimizer<S> {
+impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> ProgressReporter for EvolutionaryOptimizer<Selection, HardMutation, SoftMutation> {
     fn get_estimate_of_cycles(&self, _param_bounds: &[ParamDescriptor]) -> anyhow::Result<usize> {
-        Ok(self
-            .selection_schedule
-            .estimate_evaluations(self.generations, self.population_size))
+        let mut estimation = 0;
+        for seq in 0..self.generations {
+            let fraction = self
+                .selection_schedule
+                .value_at(seq, self.generations)
+                .clamp(0.0, 1.0);
+            let parents = (self.population_size as f64 * fraction).ceil() as usize;
+            estimation += parents;
+        }
+        Ok(estimation)
     }
 }
 
-impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
+impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> Optimizer for EvolutionaryOptimizer<Selection, HardMutation, SoftMutation> {
     fn optimize<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
@@ -69,7 +75,7 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
 
             let selection_fraction = self
                 .selection_schedule
-                .selection_fraction(gen, self.generations)
+                .value_at(gen, self.generations)
                 .clamp(0.0, 1.0);
 
             let parent_count = ((population_size as f64) * selection_fraction).ceil() as usize;
@@ -80,9 +86,11 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
             }
 
             let top_parents = shared_population.top_n(parent_count);
+            let hard_mutation_rate = self.hard_mutation_rate.value_at(gen, self.generations);
+            let soft_mutation_std_dev = self.soft_mutation_std_dev.value_at(gen, self.generations);
             info!(
-                "Starting offspring generation: Parent count = {}, Mutation rate = {:.2}",
-                parent_count, self.mutation_rate
+                "Starting offspring generation: Parent count = {}, hard mutation rate = {:.2}, soft mutation std dev = {:.2}",
+                parent_count, hard_mutation_rate, soft_mutation_std_dev
             );
 
             // offspring generation (parallel)
@@ -90,7 +98,12 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
                 if shared_error.is_set() {
                     return;
                 }
-                let offspring_span = span!(Level::DEBUG, "Offspring", id = offspring_id, generation = gen + 1);
+                let offspring_span = span!(
+                    Level::DEBUG,
+                    "Offspring",
+                    id = offspring_id,
+                    generation = gen + 1
+                );
                 let _offspring_enter = offspring_span.enter();
 
                 let mut rng = rand::thread_rng();
@@ -101,8 +114,8 @@ impl<S: SelectionSchedule + Sync> Optimizer for EvolutionaryOptimizer<S> {
                     match pb.mutate(
                         child_params[i],
                         &mut rng,
-                        self.soft_mutation_std_dev,
-                        self.hard_mutation_rate,
+                        hard_mutation_rate,
+                        soft_mutation_std_dev,
                     ) {
                         Ok(mutate_value) => {
                             child_params[i] = mutate_value;
