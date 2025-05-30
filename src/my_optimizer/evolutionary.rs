@@ -2,25 +2,33 @@
 
 use super::{
     evaluate_with_shared_error, Candidate, ObjectiveFunction, Optimizer, ParamDescriptor,
-    Population, PopulationSaver, ProgressReporter, Schedule, SharedError,
-    SharedPopulation,
+    Population, PopulationSaver, ProgressReporter, Schedule, SharedError, SharedPopulation,
 };
 use anyhow::Context;
 use rand::prelude::*;
 use rayon::prelude::*;
 use tracing::{debug, error, info, span, warn, Level};
 
-pub struct EvolutionaryOptimizer<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> {
+pub struct EvolutionaryOptimizer<
+    Selection: Schedule,
+    HardMutation: Schedule,
+    SoftMutation: Schedule,
+> {
     pub generations: usize,
     pub population_size: usize,
     pub hard_mutation_rate: HardMutation,
     pub soft_mutation_std_dev: SoftMutation,
+    pub max_attempts: usize, // Maximum attempts to generate a valid offspring
+    pub tolerance: f64,      // Tolerance for comparing offspring with existing candidates
+    pub precision: usize,    // Precision for floating-point hashing of candidates
     pub selection_schedule: Selection,
     pub initial_population: Population,
     pub population_saver: Option<PopulationSaver>,
 }
 
-impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> ProgressReporter for EvolutionaryOptimizer<Selection, HardMutation, SoftMutation> {
+impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> ProgressReporter
+    for EvolutionaryOptimizer<Selection, HardMutation, SoftMutation>
+{
     fn get_estimate_of_cycles(&self, _param_bounds: &[ParamDescriptor]) -> anyhow::Result<usize> {
         let mut estimation = 0;
         for seq in 0..self.generations {
@@ -35,7 +43,9 @@ impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> Progre
     }
 }
 
-impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> Optimizer for EvolutionaryOptimizer<Selection, HardMutation, SoftMutation> {
+impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> Optimizer
+    for EvolutionaryOptimizer<Selection, HardMutation, SoftMutation>
+{
     fn optimize<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
@@ -65,6 +75,7 @@ impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> Optimi
         let shared_population = SharedPopulation::new(
             self.initial_population.clone(),
             self.population_saver.clone(),
+            Some(self.precision),
         );
         let shared_error = SharedError::new();
 
@@ -108,30 +119,24 @@ impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> Optimi
 
                 let mut rng = rand::thread_rng();
                 let parent = top_parents.choose(&mut rng).unwrap();
-                let mut child_params = parent.params.clone();
-
-                for (i, pb) in param_bounds.iter().enumerate() {
-                    match pb.mutate(
-                        child_params[i],
-                        &mut rng,
-                        hard_mutation_rate,
-                        soft_mutation_std_dev,
-                    ) {
-                        Ok(mutate_value) => {
-                            child_params[i] = mutate_value;
-                        }
-                        Err(e) => {
-                            let param_name = &param_bounds[i].name;
-                            error!(
-                                ?param_name,
-                                error = %e,
-                                "Mutation failed, aborting..."
-                            );
-                            shared_error.set_if_empty(e);
-                            return;
-                        }
+                let child_params = match parent.generate_offspring_params(
+                    param_bounds,
+                    hard_mutation_rate,
+                    soft_mutation_std_dev,
+                    self.max_attempts,
+                    self.tolerance,
+                    &shared_population,
+                ) {
+                    Ok(child_params) => child_params,
+                    Err(e) => {
+                        error!(
+                            error = %e,
+                            "Mutation failed, aborting..."
+                        );
+                        shared_error.set_if_empty(e);
+                        return;
                     }
-                }
+                };
 
                 if let Some(score) =
                     evaluate_with_shared_error(objective, &child_params, &shared_error)

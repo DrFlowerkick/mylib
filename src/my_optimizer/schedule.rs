@@ -32,7 +32,6 @@ impl Schedule for ConstantSchedule {
     fn end_schedule(&self) -> f64 {
         self.fraction
     }
-    
 }
 
 // linear selection
@@ -74,9 +73,12 @@ pub struct ExponentialSchedule {
 
 impl Display for ExponentialSchedule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Exponential({:.3} → {:.3}, exponent: {:.3})", self.start, self.end, self.exponent)
+        write!(
+            f,
+            "Exponential({:.3} → {:.3}, exponent: {:.3})",
+            self.start, self.end, self.exponent
+        )
     }
-    
 }
 
 impl Schedule for ExponentialSchedule {
@@ -102,7 +104,11 @@ pub struct DecaySchedule {
 }
 impl Display for DecaySchedule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Decay({:.3} → {:.3}, decay: {:.3})", self.start, self.end, self.decay)
+        write!(
+            f,
+            "Decay({:.3} → {:.3}, decay: {:.3})",
+            self.start, self.end, self.decay
+        )
     }
 }
 impl Schedule for DecaySchedule {
@@ -128,7 +134,11 @@ pub struct SigmoidSchedule {
 
 impl Display for SigmoidSchedule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Sigmoid({:.3} → {:.3}, steepness: {:.3})", self.start, self.end, self.steepness)
+        write!(
+            f,
+            "Sigmoid({:.3} → {:.3}, steepness: {:.3})",
+            self.start, self.end, self.steepness
+        )
     }
 }
 

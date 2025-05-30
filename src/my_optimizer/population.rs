@@ -1,16 +1,19 @@
 // handling populations of candidates
 
-use super::{evaluate_with_shared_error, ObjectiveFunction, ParamDescriptor, SharedError};
+use super::{
+    evaluate_with_shared_error, generate_random_params, ObjectiveFunction, ParamDescriptor,
+    SharedError,
+};
 use anyhow::Context;
 use rayon::prelude::*;
 use std::cmp;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
-use tracing::{debug, error, info, span, Level};
+use tracing::{debug, error, info, span, warn, Level};
 
 // csv conversion trait
 pub trait CsvConversion {
@@ -38,6 +41,53 @@ impl Candidate {
             .enumerate()
             .map(|(i, &val)| (param_bounds[i].name.to_owned(), val))
             .collect()
+    }
+
+    pub fn is_similar_params(&self, params: &[f64], tolerance: f64) -> bool {
+        if self.params.len() != params.len() {
+            return false;
+        }
+        self.params.iter().zip(params.iter()).all(|(a, b)| {
+            let denom = a.abs().max(b.abs()).max(1e-8);
+            (a - b).abs() / denom < tolerance
+        })
+    }
+
+    pub fn generate_offspring_params(
+        &self,
+        param_bounds: &[ParamDescriptor],
+        hard_mutation_rate: f64,
+        soft_mutation_std_dev: f64,
+        max_attempts: usize,
+        tolerance: f64,
+        shared_population: &SharedPopulation,
+    ) -> anyhow::Result<Vec<f64>> {
+        let mut rng = rand::thread_rng();
+        for _ in 0..max_attempts {
+            let params = param_bounds
+                .iter()
+                .enumerate()
+                .map(|(i, pb)| {
+                    pb.mutate(
+                        self.params[i],
+                        &mut rng,
+                        hard_mutation_rate,
+                        soft_mutation_std_dev,
+                    )
+                })
+                .collect::<anyhow::Result<Vec<_>>>()?;
+            if !shared_population.is_similar_params(&params, tolerance) {
+                debug!(?params, "Generated offspring parameters");
+                return Ok(params);
+            }
+            debug!(
+                ?params,
+                "Generated offspring parameters are similar to existing ones, retrying..."
+            );
+        }
+        let random_params = generate_random_params(param_bounds)?;
+        warn!(?random_params, "Failed to generate unique offspring parameters after {} attempts, Generating random offspring.", max_attempts);
+        Ok(random_params)
     }
 }
 
@@ -131,6 +181,7 @@ impl Population {
         objective: &F,
         param_bounds: &[ParamDescriptor],
         population_saver: Option<PopulationSaver>,
+        memory_precision: Option<usize>,
     ) -> anyhow::Result<Population> {
         // since objective may be a costly objective, tracing is used to signal status of populate
         let init_span = span!(Level::INFO, "PopulatePopulation", size = self.capacity);
@@ -155,7 +206,7 @@ impl Population {
 
         info!("Populating population until {} candidates", self.capacity);
         let remaining_candidates = self.capacity - current_population_size;
-        let shared_population = SharedPopulation::new(self, population_saver);
+        let shared_population = SharedPopulation::new(self, population_saver, memory_precision);
         let shared_error = SharedError::new();
 
         (0..remaining_candidates).into_par_iter().for_each(|_| {
@@ -207,6 +258,7 @@ impl Population {
         new_capacity: usize,
         populate_with: Option<(&F, &[ParamDescriptor])>,
         population_saver: Option<PopulationSaver>,
+        memory_precision: Option<usize>,
     ) -> anyhow::Result<Population> {
         match self.capacity.cmp(&new_capacity) {
             cmp::Ordering::Equal => (),
@@ -218,7 +270,8 @@ impl Population {
             }
             cmp::Ordering::Less => {
                 if let Some((objective, param_bounds)) = populate_with {
-                    self = self.populate(objective, param_bounds, population_saver)?;
+                    self =
+                        self.populate(objective, param_bounds, population_saver, memory_precision)?;
                 }
             }
         }
@@ -295,18 +348,27 @@ pub struct SharedPopulation {
 }
 
 impl SharedPopulation {
-    pub fn new(population: Population, population_saver: Option<PopulationSaver>) -> Self {
+    pub fn new(
+        population: Population,
+        population_saver: Option<PopulationSaver>,
+        memory_precision: Option<usize>,
+    ) -> Self {
         SharedPopulation {
             inner: Arc::new(Mutex::new(InnerSharedPopulation {
                 population,
                 candidate_counter: 0,
                 count_candidate_inserted_last: 0,
                 population_saver,
+                memory: HashSet::new(),
+                memory_precision,
             })),
         }
     }
     pub fn lock(&self) -> MutexGuard<InnerSharedPopulation> {
         self.inner.lock().expect("Population lock poisoned.")
+    }
+    pub fn is_similar_params(&self, params: &[f64], tolerance: f64) -> bool {
+        self.lock().is_similar_params(params, tolerance)
     }
     pub fn insert(
         &self,
@@ -345,14 +407,37 @@ pub struct InnerSharedPopulation {
     candidate_counter: usize,
     count_candidate_inserted_last: usize,
     population_saver: Option<PopulationSaver>,
+    memory: HashSet<HashedVec>,
+    memory_precision: Option<usize>,
 }
 
 impl InnerSharedPopulation {
+    fn is_similar_params(&self, params: &[f64], tolerance: f64) -> bool {
+        if let Some(precision) = self.memory_precision {
+            let hashed = HashedVec::new(params, precision);
+            if self.memory.contains(&hashed) {
+                return true;
+            }
+        }
+        // check if any candidate in the population is similar
+        for candidate in self.population.iter() {
+            if candidate.is_similar_params(params, tolerance) {
+                return true;
+            }
+        }
+        false
+    }
     fn insert(
         &mut self,
         candidate: Candidate,
         param_bounds: &[ParamDescriptor],
     ) -> anyhow::Result<PopulationInsertResult> {
+        // hash parameters if memory precision is set
+        if let Some(precision) = self.memory_precision {
+            let hashed = HashedVec::new(&candidate.params, precision);
+            self.memory.insert(hashed);
+        }
+        // insert candidate into population and save if necessary
         self.candidate_counter += 1;
         let insert_result = self.population.insert(candidate);
         if let Some(ref ps) = self.population_saver {
@@ -455,5 +540,36 @@ fn log_or_print(message: &str) {
         tracing::info!("{}", message);
     } else {
         println!("{}", message);
+    }
+}
+
+// hasher for parameters
+use std::hash::{Hash, Hasher};
+
+fn quantize(value: f64, precision: usize) -> f64 {
+    let factor = 10f64.powi(precision as i32);
+    (value * factor).round() / factor
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct HashedVec(pub Vec<u64>);
+
+impl Eq for HashedVec {}
+
+impl Hash for HashedVec {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for val in &self.0 {
+            val.hash(state);
+        }
+    }
+}
+
+impl HashedVec {
+    pub fn new(params: &[f64], precision: usize) -> Self {
+        let hashed = params
+            .iter()
+            .map(|&p| quantize(p, precision).to_bits())
+            .collect();
+        HashedVec(hashed)
     }
 }

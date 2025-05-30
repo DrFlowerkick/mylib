@@ -59,6 +59,7 @@ impl Explorer for GridSearch {
         let shared_population = SharedPopulation::new(
             Population::new(population_size),
             self.population_saver.clone(),
+            None,
         );
         let shared_error = SharedError::new();
         let param_generator = GridSearchIterator::new(param_bounds, self.steps_per_param);

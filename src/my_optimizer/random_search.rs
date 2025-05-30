@@ -2,7 +2,7 @@
 
 use super::{
     evaluate_with_shared_error, Candidate, Explorer, ObjectiveFunction, ParamDescriptor,
-    Population, PopulationSaver, ProgressReporter, SharedError, SharedPopulation,
+    Population, PopulationSaver, ProgressReporter, SharedError, SharedPopulation, generate_random_params
 };
 use anyhow::Context;
 use rayon::prelude::*;
@@ -35,6 +35,7 @@ impl Explorer for RandomSearch {
         let shared_population = SharedPopulation::new(
             Population::new(population_size),
             self.population_saver.clone(),
+            None,
         );
         let shared_error = SharedError::new();
 
@@ -45,11 +46,7 @@ impl Explorer for RandomSearch {
             let iter_span = span!(Level::DEBUG, "Iteration");
             let _iter_enter = iter_span.enter();
 
-            let mut rng = rand::thread_rng();
-            let params = match param_bounds
-                .iter()
-                .map(|pb| pb.rng_sample(&mut rng))
-                .collect::<anyhow::Result<Vec<_>>>()
+            let params = match generate_random_params(param_bounds)
             {
                 Ok(params) => params,
                 Err(err) => {

@@ -50,7 +50,7 @@ impl ParamBound {
             ParamBound::Static(val) => Ok(*val), // mutation is not allowed
             ParamBound::MinMax(min, max) => {
                 if max <= min {
-                    return Err(anyhow::anyhow!("ParamBound::MinMax: Max <= Min"));
+                    return Err(anyhow::anyhow!("{} - ParamBound::MinMax: Max <= Min", name));
                 }
                 if rng.gen::<f64>() < hard_mutation_rate {
                     // hard mutation → new value in range
@@ -73,7 +73,7 @@ impl ParamBound {
                     values
                         .choose(rng)
                         .cloned()
-                        .context("Parameter list is empty!")
+                        .context(format!("{} - Parameter list is empty!", name))
                 } else {
                     // soft mutation → choose value nearest to current value plus noise
                     let noise = rng.sample(Normal::new(0.0, soft_mutation_std_dev)?);
@@ -87,12 +87,15 @@ impl ParamBound {
                                 .total_cmp(&(b - target_value).abs())
                         })
                         .cloned()
-                        .context("Parameter list is empty!")
+                        .context(format!("{} - Parameter list is empty!", name))
                 }
             }
             ParamBound::LogScale(min, max) => {
                 if max <= min {
-                    return Err(anyhow::anyhow!("ParamBound::LogScale: Max <= Min"));
+                    return Err(anyhow::anyhow!(
+                        "{} - ParamBound::LogScale: Max <= Min",
+                        name
+                    ));
                 }
                 let log_min = min.ln();
                 let log_max = max.ln();
@@ -143,4 +146,12 @@ impl ParamDescriptor {
             &self.name,
         )
     }
+}
+
+pub fn generate_random_params(param_bounds: &[ParamDescriptor]) -> anyhow::Result<Vec<f64>> {
+    let mut rng = rand::thread_rng();
+    param_bounds
+        .iter()
+        .map(|pb| pb.rng_sample(&mut rng))
+        .collect()
 }
