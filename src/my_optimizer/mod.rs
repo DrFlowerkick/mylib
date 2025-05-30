@@ -10,7 +10,9 @@ pub mod schedule;
 pub mod trace_analysis;
 pub mod utils;
 
-pub use self::core::{Explorer, ObjectiveFunction, Optimizer, ProgressReporter};
+pub use self::core::{
+    DefaultTolerance, Explorer, ObjectiveFunction, Optimizer, ProgressReporter, ToleranceSettings,
+};
 pub use evolutionary::EvolutionaryOptimizer;
 pub use grid_search::GridSearch;
 pub use parameters::{generate_random_params, ParamBound, ParamDescriptor};

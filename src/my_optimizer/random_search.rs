@@ -1,31 +1,33 @@
 // Random Search explorer
 
 use super::{
-    evaluate_with_shared_error, Candidate, Explorer, ObjectiveFunction, ParamDescriptor,
-    Population, PopulationSaver, ProgressReporter, SharedError, SharedPopulation, generate_random_params
+    evaluate_with_shared_error, generate_random_params, Candidate, Explorer, ObjectiveFunction,
+    ParamDescriptor, Population, PopulationSaver, ProgressReporter, SharedError, SharedPopulation,
+    ToleranceSettings,
 };
 use anyhow::Context;
 use rayon::prelude::*;
 use tracing::{debug, error, info, span, Level};
 
-pub struct RandomSearch {
+pub struct RandomSearch<TS: ToleranceSettings> {
     pub iterations: usize,
     pub population_saver: Option<PopulationSaver>,
+    pub phantom: std::marker::PhantomData<TS>,
 }
 
-impl ProgressReporter for RandomSearch {
+impl<TS: ToleranceSettings> ProgressReporter for RandomSearch<TS> {
     fn get_estimate_of_cycles(&self, _param_bounds: &[ParamDescriptor]) -> anyhow::Result<usize> {
         Ok(self.iterations)
     }
 }
 
-impl Explorer for RandomSearch {
+impl<TS: ToleranceSettings> Explorer<TS> for RandomSearch<TS> {
     fn explore<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
         param_bounds: &[ParamDescriptor],
         population_size: usize,
-    ) -> anyhow::Result<Population> {
+    ) -> anyhow::Result<Population<TS>> {
         let search_span = span!(Level::INFO, "RandomSearch", iterations = self.iterations);
         let _enter = search_span.enter();
 
@@ -35,7 +37,6 @@ impl Explorer for RandomSearch {
         let shared_population = SharedPopulation::new(
             Population::new(population_size),
             self.population_saver.clone(),
-            None,
         );
         let shared_error = SharedError::new();
 
@@ -46,8 +47,7 @@ impl Explorer for RandomSearch {
             let iter_span = span!(Level::DEBUG, "Iteration");
             let _iter_enter = iter_span.enter();
 
-            let params = match generate_random_params(param_bounds)
-            {
+            let params = match generate_random_params(param_bounds) {
                 Ok(params) => params,
                 Err(err) => {
                     error!(error = ?err, "Failed to sample parameters");
@@ -59,7 +59,11 @@ impl Explorer for RandomSearch {
             if let Some(score) = evaluate_with_shared_error(objective, &params, &shared_error) {
                 debug!(?params, score, "Evaluated random generated candidate");
 
-                shared_population.insert(Candidate { params, score }, param_bounds, &shared_error);
+                shared_population.insert(
+                    Candidate::new(params, score),
+                    param_bounds,
+                    &shared_error,
+                );
             }
         });
 
@@ -67,6 +71,7 @@ impl Explorer for RandomSearch {
             return Err(err);
         }
 
+        shared_population.lock().save_population(param_bounds)?;
         let population = shared_population.take();
 
         info!(

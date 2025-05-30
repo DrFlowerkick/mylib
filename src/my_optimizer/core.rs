@@ -15,21 +15,47 @@ pub trait ProgressReporter {
 }
 
 // common trait for all explorer
-pub trait Explorer: ProgressReporter {
+pub trait Explorer<TS>: ProgressReporter {
     fn explore<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
         param_bounds: &[ParamDescriptor],
         population_size: usize, // Top-N results
-    ) -> anyhow::Result<Population>;
+    ) -> anyhow::Result<Population<TS>>
+    where
+        TS: ToleranceSettings;
 }
 
 // common trait for all optimizer
-pub trait Optimizer: ProgressReporter {
+pub trait Optimizer<TS>: ProgressReporter {
     fn optimize<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
         param_bounds: &[ParamDescriptor],
         population_size: usize,
-    ) -> anyhow::Result<Population>;
+    ) -> anyhow::Result<Population<TS>>
+    where
+        TS: ToleranceSettings;
+}
+
+pub trait ToleranceSettings:
+    PartialEq + Eq + Clone + Default + Send + Sync + std::fmt::Debug
+{
+    // tolerance of numeric comparing and noise generation
+    fn epsilon() -> f64;
+
+    // decimal precision for discreet values or hashing
+    fn precision() -> usize;
+}
+
+#[derive(PartialEq, Eq, Clone, Default, Debug)]
+pub struct DefaultTolerance;
+
+impl ToleranceSettings for DefaultTolerance {
+    fn epsilon() -> f64 {
+        1e-8
+    }
+    fn precision() -> usize {
+        8
+    }
 }

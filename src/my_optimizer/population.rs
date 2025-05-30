@@ -2,9 +2,10 @@
 
 use super::{
     evaluate_with_shared_error, generate_random_params, ObjectiveFunction, ParamDescriptor,
-    SharedError,
+    SharedError, ToleranceSettings,
 };
 use anyhow::Context;
+use rand::Rng;
 use rayon::prelude::*;
 use std::cmp;
 use std::collections::{BTreeSet, HashSet};
@@ -25,14 +26,22 @@ pub trait CsvConversion {
 
 // struct to return optimization result
 #[derive(Clone, Debug, PartialEq)]
-pub struct Candidate {
+pub struct Candidate<TS: ToleranceSettings> {
     pub params: Vec<f64>,
     pub score: f64,
+    noise_score: f64,
+    phantom: std::marker::PhantomData<TS>,
 }
 
-impl Candidate {
+impl<TS: ToleranceSettings> Candidate<TS> {
     pub fn new(params: Vec<f64>, score: f64) -> Self {
-        Self { params, score }
+        let mut rng = rand::thread_rng();
+        Self {
+            params,
+            score,
+            noise_score: score + rng.gen_range(0.0..TS::epsilon()),
+            phantom: std::marker::PhantomData,
+        }
     }
 
     pub fn describe_candidate(&self, param_bounds: &[ParamDescriptor]) -> Vec<(String, f64)> {
@@ -59,8 +68,7 @@ impl Candidate {
         hard_mutation_rate: f64,
         soft_mutation_std_dev: f64,
         max_attempts: usize,
-        tolerance: f64,
-        shared_population: &SharedPopulation,
+        shared_population: &SharedPopulation<TS>,
     ) -> anyhow::Result<Vec<f64>> {
         let mut rng = rand::thread_rng();
         for _ in 0..max_attempts {
@@ -76,7 +84,7 @@ impl Candidate {
                     )
                 })
                 .collect::<anyhow::Result<Vec<_>>>()?;
-            if !shared_population.is_similar_params(&params, tolerance) {
+            if !shared_population.is_similar_params(&params) {
                 debug!(?params, "Generated offspring parameters");
                 return Ok(params);
             }
@@ -91,7 +99,7 @@ impl Candidate {
     }
 }
 
-impl CsvConversion for Candidate {
+impl<TS: ToleranceSettings> CsvConversion for Candidate<TS> {
     fn to_csv(&self, precision: usize) -> String {
         let mut csv_line = String::new();
 
@@ -119,41 +127,55 @@ impl CsvConversion for Candidate {
             .collect::<Result<Vec<_>, _>>()
         {
             let Some(score) = params.pop() else { return None };
-            return Some(Candidate { params, score });
+            return Some(Candidate::new(params, score));
         }
         None
     }
 }
 
-impl Eq for Candidate {}
+impl<TS: ToleranceSettings> Eq for Candidate<TS> {}
 
-impl Ord for Candidate {
+impl<TS: ToleranceSettings> Ord for Candidate<TS> {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.score.total_cmp(&other.score)
+        match self.score.total_cmp(&other.score) {
+            cmp::Ordering::Equal => {
+                if self
+                    .params
+                    .iter()
+                    .zip(other.params.iter())
+                    .map(|(a, b)| a.total_cmp(b))
+                    .all(|ord| ord == cmp::Ordering::Equal)
+                {
+                    return cmp::Ordering::Equal;
+                }
+                self.noise_score.total_cmp(&other.noise_score)
+            }
+            ord => ord,
+        }
     }
 }
 
-impl PartialOrd for Candidate {
+impl<TS: ToleranceSettings> PartialOrd for Candidate<TS> {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum PopulationInsertResult {
+pub enum PopulationInsertResult<TS: ToleranceSettings> {
     Accepted,
     Rejected,
-    Replaced(Candidate),
+    Replaced(Candidate<TS>),
 }
 
 // struct of population of candidates
 #[derive(Debug, Clone)]
-pub struct Population {
-    members: BTreeSet<Candidate>,
+pub struct Population<TS: ToleranceSettings> {
+    members: BTreeSet<Candidate<TS>>,
     capacity: usize,
 }
 
-impl Population {
+impl<TS: ToleranceSettings> Population<TS> {
     pub fn new(capacity: usize) -> Self {
         Self {
             members: BTreeSet::new(),
@@ -161,7 +183,7 @@ impl Population {
         }
     }
 
-    pub fn insert(&mut self, candidate: Candidate) -> PopulationInsertResult {
+    pub fn insert(&mut self, candidate: Candidate<TS>) -> PopulationInsertResult<TS> {
         // reject if candidate is worse than the worst candidate in the population
         if let Some(smallest) = self.members.first() {
             if self.members.len() == self.capacity && candidate <= *smallest {
@@ -181,8 +203,7 @@ impl Population {
         objective: &F,
         param_bounds: &[ParamDescriptor],
         population_saver: Option<PopulationSaver>,
-        memory_precision: Option<usize>,
-    ) -> anyhow::Result<Population> {
+    ) -> anyhow::Result<Population<TS>> {
         // since objective may be a costly objective, tracing is used to signal status of populate
         let init_span = span!(Level::INFO, "PopulatePopulation", size = self.capacity);
         let _enter = init_span.enter();
@@ -206,7 +227,7 @@ impl Population {
 
         info!("Populating population until {} candidates", self.capacity);
         let remaining_candidates = self.capacity - current_population_size;
-        let shared_population = SharedPopulation::new(self, population_saver, memory_precision);
+        let shared_population = SharedPopulation::new(self, population_saver);
         let shared_error = SharedError::new();
 
         (0..remaining_candidates).into_par_iter().for_each(|_| {
@@ -232,7 +253,11 @@ impl Population {
             if let Some(score) = evaluate_with_shared_error(objective, &params, &shared_error) {
                 debug!(score, "Initial candidate evaluated");
 
-                shared_population.insert(Candidate { params, score }, param_bounds, &shared_error);
+                shared_population.insert(
+                    Candidate::new(params, score),
+                    param_bounds,
+                    &shared_error,
+                );
             }
         });
 
@@ -240,6 +265,7 @@ impl Population {
             return Err(err);
         }
 
+        shared_population.lock().save_population(param_bounds)?;
         let population = shared_population.take();
 
         info!(
@@ -258,8 +284,7 @@ impl Population {
         new_capacity: usize,
         populate_with: Option<(&F, &[ParamDescriptor])>,
         population_saver: Option<PopulationSaver>,
-        memory_precision: Option<usize>,
-    ) -> anyhow::Result<Population> {
+    ) -> anyhow::Result<Population<TS>> {
         match self.capacity.cmp(&new_capacity) {
             cmp::Ordering::Equal => (),
             cmp::Ordering::Greater => {
@@ -270,19 +295,18 @@ impl Population {
             }
             cmp::Ordering::Less => {
                 if let Some((objective, param_bounds)) = populate_with {
-                    self =
-                        self.populate(objective, param_bounds, population_saver, memory_precision)?;
+                    self = self.populate(objective, param_bounds, population_saver)?;
                 }
             }
         }
         Ok(self)
     }
 
-    pub fn top_n(&self, n: usize) -> impl Iterator<Item = &Candidate> {
+    pub fn top_n(&self, n: usize) -> impl Iterator<Item = &Candidate<TS>> {
         self.members.iter().rev().take(n)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Candidate> {
+    pub fn iter(&self) -> impl Iterator<Item = &Candidate<TS>> {
         self.members.iter()
     }
 
@@ -295,22 +319,22 @@ impl Population {
     }
 
     // merge with other population considering capacity
-    pub fn merge(&mut self, other: Population) {
+    pub fn merge(&mut self, other: Population<TS>) {
         for candidate in other.members.into_iter() {
             self.insert(candidate);
         }
     }
 
-    pub fn best(&self) -> Option<&Candidate> {
+    pub fn best(&self) -> Option<&Candidate<TS>> {
         self.members.last()
     }
 
-    pub fn pop_best(&mut self) -> Option<Candidate> {
+    pub fn pop_best(&mut self) -> Option<Candidate<TS>> {
         self.members.pop_last()
     }
 }
 
-impl CsvConversion for Population {
+impl<TS: ToleranceSettings> CsvConversion for Population<TS> {
     fn to_csv(&self, precision: usize) -> String {
         let mut csv = String::new();
 
@@ -328,7 +352,7 @@ impl CsvConversion for Population {
     where
         Self: Sized,
     {
-        let candidates: Vec<Candidate> = csv.lines().filter_map(Candidate::from_csv).collect();
+        let candidates: Vec<Candidate<TS>> = csv.lines().filter_map(Candidate::from_csv).collect();
         let capacity = candidates.len();
         if capacity == 0 {
             return None;
@@ -343,16 +367,12 @@ impl CsvConversion for Population {
 
 // thread safe population handling
 #[derive(Clone)]
-pub struct SharedPopulation {
-    inner: Arc<Mutex<InnerSharedPopulation>>,
+pub struct SharedPopulation<TS: ToleranceSettings> {
+    inner: Arc<Mutex<InnerSharedPopulation<TS>>>,
 }
 
-impl SharedPopulation {
-    pub fn new(
-        population: Population,
-        population_saver: Option<PopulationSaver>,
-        memory_precision: Option<usize>,
-    ) -> Self {
+impl<TS: ToleranceSettings> SharedPopulation<TS> {
+    pub fn new(population: Population<TS>, population_saver: Option<PopulationSaver>) -> Self {
         SharedPopulation {
             inner: Arc::new(Mutex::new(InnerSharedPopulation {
                 population,
@@ -360,22 +380,21 @@ impl SharedPopulation {
                 count_candidate_inserted_last: 0,
                 population_saver,
                 memory: HashSet::new(),
-                memory_precision,
             })),
         }
     }
-    pub fn lock(&self) -> MutexGuard<InnerSharedPopulation> {
+    pub fn lock(&self) -> MutexGuard<InnerSharedPopulation<TS>> {
         self.inner.lock().expect("Population lock poisoned.")
     }
-    pub fn is_similar_params(&self, params: &[f64], tolerance: f64) -> bool {
-        self.lock().is_similar_params(params, tolerance)
+    pub fn is_similar_params(&self, params: &[f64]) -> bool {
+        self.lock().is_similar_params(params)
     }
     pub fn insert(
         &self,
-        candidate: Candidate,
+        candidate: Candidate<TS>,
         param_bounds: &[ParamDescriptor],
         shared_error: &SharedError,
-    ) -> Option<PopulationInsertResult> {
+    ) -> Option<PopulationInsertResult<TS>> {
         let insert_result = self.lock().insert(candidate, param_bounds);
         match insert_result {
             Ok(pir) => Some(pir),
@@ -389,10 +408,10 @@ impl SharedPopulation {
             }
         }
     }
-    pub fn top_n(&self, n: usize) -> Vec<Candidate> {
+    pub fn top_n(&self, n: usize) -> Vec<Candidate<TS>> {
         self.lock().population.top_n(n).cloned().collect()
     }
-    pub fn take(self) -> Population {
+    pub fn take(self) -> Population<TS> {
         Arc::try_unwrap(self.inner)
             .expect("Expected sole ownership of Arc")
             .into_inner()
@@ -402,26 +421,25 @@ impl SharedPopulation {
 }
 
 #[derive(Clone, Debug)]
-pub struct InnerSharedPopulation {
-    population: Population,
+pub struct InnerSharedPopulation<TS: ToleranceSettings> {
+    population: Population<TS>,
     candidate_counter: usize,
     count_candidate_inserted_last: usize,
     population_saver: Option<PopulationSaver>,
-    memory: HashSet<HashedVec>,
-    memory_precision: Option<usize>,
+    memory: HashSet<HashedVec<TS>>,
 }
 
-impl InnerSharedPopulation {
-    fn is_similar_params(&self, params: &[f64], tolerance: f64) -> bool {
-        if let Some(precision) = self.memory_precision {
-            let hashed = HashedVec::new(params, precision);
-            if self.memory.contains(&hashed) {
-                return true;
-            }
+impl<TS: ToleranceSettings> InnerSharedPopulation<TS> {
+    fn is_similar_params(&self, params: &[f64]) -> bool {
+        // check hash of params
+        let hashed = HashedVec::new(params);
+        if self.memory.contains(&hashed) {
+            return true;
         }
+
         // check if any candidate in the population is similar
         for candidate in self.population.iter() {
-            if candidate.is_similar_params(params, tolerance) {
+            if candidate.is_similar_params(params, TS::epsilon()) {
                 return true;
             }
         }
@@ -429,14 +447,13 @@ impl InnerSharedPopulation {
     }
     fn insert(
         &mut self,
-        candidate: Candidate,
+        candidate: Candidate<TS>,
         param_bounds: &[ParamDescriptor],
-    ) -> anyhow::Result<PopulationInsertResult> {
-        // hash parameters if memory precision is set
-        if let Some(precision) = self.memory_precision {
-            let hashed = HashedVec::new(&candidate.params, precision);
-            self.memory.insert(hashed);
-        }
+    ) -> anyhow::Result<PopulationInsertResult<TS>> {
+        // hash parameters
+        let hashed = HashedVec::new(&candidate.params);
+        self.memory.insert(hashed);
+
         // insert candidate into population and save if necessary
         self.candidate_counter += 1;
         let insert_result = self.population.insert(candidate);
@@ -453,7 +470,14 @@ impl InnerSharedPopulation {
         }
         Ok(insert_result)
     }
-    pub fn best(&self) -> Option<&Candidate> {
+    pub fn save_population(&self, param_bounds: &[ParamDescriptor]) -> anyhow::Result<()> {
+        if let Some(ref ps) = self.population_saver {
+            ps.save_population(&self.population, param_bounds)
+        } else {
+            Ok(())
+        }
+    }
+    pub fn best(&self) -> Option<&Candidate<TS>> {
         self.population.best()
     }
 }
@@ -467,9 +491,9 @@ pub struct PopulationSaver {
 }
 
 impl PopulationSaver {
-    pub fn save_population(
+    pub fn save_population<TS: ToleranceSettings>(
         &self,
-        population: &Population,
+        population: &Population<TS>,
         param_bounds: &[ParamDescriptor],
     ) -> anyhow::Result<()> {
         let param_names = param_bounds
@@ -480,8 +504,8 @@ impl PopulationSaver {
     }
 }
 
-pub fn save_population<P: AsRef<Path>>(
-    population: &Population,
+pub fn save_population<P: AsRef<Path>, TS: ToleranceSettings>(
+    population: &Population<TS>,
     param_names: &[impl Display],
     filename: P,
     precision: usize,
@@ -508,10 +532,10 @@ pub fn save_population<P: AsRef<Path>>(
     Ok(())
 }
 
-pub fn load_population<P: AsRef<Path>>(
+pub fn load_population<P: AsRef<Path>, TS: ToleranceSettings>(
     filename: P,
     has_headers: bool,
-) -> anyhow::Result<(Population, Vec<String>)> {
+) -> anyhow::Result<(Population<TS>, Vec<String>)> {
     let path = filename.as_ref();
     let csv = std::fs::read_to_string(path)?;
 
@@ -552,24 +576,30 @@ fn quantize(value: f64, precision: usize) -> f64 {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct HashedVec(pub Vec<u64>);
+pub struct HashedVec<TS: ToleranceSettings> {
+    pub hash_vec: Vec<u64>,
+    phantom: std::marker::PhantomData<TS>,
+}
 
-impl Eq for HashedVec {}
+impl<TS: ToleranceSettings> Eq for HashedVec<TS> {}
 
-impl Hash for HashedVec {
+impl<TS: ToleranceSettings> Hash for HashedVec<TS> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        for val in &self.0 {
+        for val in &self.hash_vec {
             val.hash(state);
         }
     }
 }
 
-impl HashedVec {
-    pub fn new(params: &[f64], precision: usize) -> Self {
+impl<TS: ToleranceSettings> HashedVec<TS> {
+    pub fn new(params: &[f64]) -> Self {
         let hashed = params
             .iter()
-            .map(|&p| quantize(p, precision).to_bits())
+            .map(|&p| quantize(p, TS::precision()).to_bits())
             .collect();
-        HashedVec(hashed)
+        HashedVec {
+            hash_vec: hashed,
+            phantom: std::marker::PhantomData,
+        }
     }
 }

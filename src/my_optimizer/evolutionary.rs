@@ -3,6 +3,7 @@
 use super::{
     evaluate_with_shared_error, Candidate, ObjectiveFunction, Optimizer, ParamDescriptor,
     Population, PopulationSaver, ProgressReporter, Schedule, SharedError, SharedPopulation,
+    ToleranceSettings,
 };
 use anyhow::Context;
 use rand::prelude::*;
@@ -13,21 +14,24 @@ pub struct EvolutionaryOptimizer<
     Selection: Schedule,
     HardMutation: Schedule,
     SoftMutation: Schedule,
+    TS: ToleranceSettings,
 > {
     pub generations: usize,
     pub population_size: usize,
     pub hard_mutation_rate: HardMutation,
     pub soft_mutation_std_dev: SoftMutation,
     pub max_attempts: usize, // Maximum attempts to generate a valid offspring
-    pub tolerance: f64,      // Tolerance for comparing offspring with existing candidates
-    pub precision: usize,    // Precision for floating-point hashing of candidates
     pub selection_schedule: Selection,
-    pub initial_population: Population,
+    pub initial_population: Population<TS>,
     pub population_saver: Option<PopulationSaver>,
 }
 
-impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> ProgressReporter
-    for EvolutionaryOptimizer<Selection, HardMutation, SoftMutation>
+impl<
+        Selection: Schedule,
+        HardMutation: Schedule,
+        SoftMutation: Schedule,
+        TS: ToleranceSettings,
+    > ProgressReporter for EvolutionaryOptimizer<Selection, HardMutation, SoftMutation, TS>
 {
     fn get_estimate_of_cycles(&self, _param_bounds: &[ParamDescriptor]) -> anyhow::Result<usize> {
         let mut estimation = 0;
@@ -43,15 +47,19 @@ impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> Progre
     }
 }
 
-impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> Optimizer
-    for EvolutionaryOptimizer<Selection, HardMutation, SoftMutation>
+impl<
+        Selection: Schedule,
+        HardMutation: Schedule,
+        SoftMutation: Schedule,
+        TS: ToleranceSettings,
+    > Optimizer<TS> for EvolutionaryOptimizer<Selection, HardMutation, SoftMutation, TS>
 {
     fn optimize<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
         param_bounds: &[ParamDescriptor],
         population_size: usize,
-    ) -> anyhow::Result<Population> {
+    ) -> anyhow::Result<Population<TS>> {
         let evo_span = span!(
             Level::INFO,
             "EvolutionaryOptimizer",
@@ -75,7 +83,6 @@ impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> Optimi
         let shared_population = SharedPopulation::new(
             self.initial_population.clone(),
             self.population_saver.clone(),
-            Some(self.precision),
         );
         let shared_error = SharedError::new();
 
@@ -124,7 +131,6 @@ impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> Optimi
                     hard_mutation_rate,
                     soft_mutation_std_dev,
                     self.max_attempts,
-                    self.tolerance,
                     &shared_population,
                 ) {
                     Ok(child_params) => child_params,
@@ -144,10 +150,7 @@ impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> Optimi
                     debug!(?child_params, score, "Generated offspring candidate");
 
                     shared_population.insert(
-                        Candidate {
-                            params: child_params,
-                            score,
-                        },
+                        Candidate::new(child_params, score),
                         param_bounds,
                         &shared_error,
                     );
@@ -171,6 +174,7 @@ impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule> Optimi
         }
 
         // final population
+        shared_population.lock().save_population(param_bounds)?;
         let population = shared_population.take();
 
         info!(

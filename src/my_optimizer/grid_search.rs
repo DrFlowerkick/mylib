@@ -3,19 +3,21 @@
 use super::{
     evaluate_with_shared_error, Candidate, Explorer, ObjectiveFunction, ParamBound,
     ParamDescriptor, Population, PopulationSaver, ProgressReporter, SharedError, SharedPopulation,
+    ToleranceSettings,
 };
 use anyhow::Context;
 use itertools::Itertools;
 use rayon::prelude::*;
 use tracing::{debug, info, span, Level};
 
-pub struct GridSearch {
+pub struct GridSearch<TS: ToleranceSettings> {
     pub steps_per_param: usize,
     pub chunk_size: usize,
     pub population_saver: Option<PopulationSaver>,
+    pub phantom: std::marker::PhantomData<TS>,
 }
 
-impl ProgressReporter for GridSearch {
+impl<TS: ToleranceSettings> ProgressReporter for GridSearch<TS> {
     fn get_estimate_of_cycles(&self, param_bounds: &[ParamDescriptor]) -> anyhow::Result<usize> {
         let mut num_cycles = 1;
         for bound in param_bounds.iter() {
@@ -40,13 +42,13 @@ impl ProgressReporter for GridSearch {
     }
 }
 
-impl Explorer for GridSearch {
+impl<TS: ToleranceSettings> Explorer<TS> for GridSearch<TS> {
     fn explore<F: ObjectiveFunction + Sync>(
         &self,
         objective: &F,
         param_bounds: &[ParamDescriptor],
         population_size: usize,
-    ) -> anyhow::Result<Population> {
+    ) -> anyhow::Result<Population<TS>> {
         let span_search = span!(Level::INFO, "GridSearch");
         let _enter = span_search.enter();
 
@@ -59,7 +61,6 @@ impl Explorer for GridSearch {
         let shared_population = SharedPopulation::new(
             Population::new(population_size),
             self.population_saver.clone(),
-            None,
         );
         let shared_error = SharedError::new();
         let param_generator = GridSearchIterator::new(param_bounds, self.steps_per_param);
@@ -81,7 +82,7 @@ impl Explorer for GridSearch {
                     debug!(?params, score, "Evaluated candidate");
 
                     shared_population.insert(
-                        Candidate { params, score },
+                        Candidate::new(params, score),
                         param_bounds,
                         &shared_error,
                     );
@@ -93,6 +94,7 @@ impl Explorer for GridSearch {
             }
         }
 
+        shared_population.lock().save_population(param_bounds)?;
         let population = shared_population.take();
 
         info!(
