@@ -19,7 +19,7 @@ pub struct EvolutionaryOptimizer<
     pub generations: usize,
     pub population_size: usize,
     pub hard_mutation_rate: HardMutation,
-    pub soft_mutation_std_dev: SoftMutation,
+    pub soft_mutation_relative_std_dev: SoftMutation,
     pub max_attempts: usize, // Maximum attempts to generate a valid offspring
     pub selection_schedule: Selection,
     pub initial_population: Population<TS>,
@@ -105,10 +105,10 @@ impl<
 
             let top_parents = shared_population.top_n(parent_count);
             let hard_mutation_rate = self.hard_mutation_rate.value_at(gen, self.generations);
-            let soft_mutation_std_dev = self.soft_mutation_std_dev.value_at(gen, self.generations);
+            let soft_mutation_relative_std_dev = self.soft_mutation_relative_std_dev.value_at(gen, self.generations);
             info!(
                 "Starting offspring generation: Parent count = {}, hard mutation rate = {:.2}, soft mutation std dev = {:.2}",
-                parent_count, hard_mutation_rate, soft_mutation_std_dev
+                parent_count, hard_mutation_rate, soft_mutation_relative_std_dev
             );
 
             // offspring generation (parallel)
@@ -129,7 +129,7 @@ impl<
                 let child_params = match parent.generate_offspring_params(
                     param_bounds,
                     hard_mutation_rate,
-                    soft_mutation_std_dev,
+                    soft_mutation_relative_std_dev,
                     self.max_attempts,
                     &shared_population,
                 ) {

@@ -43,7 +43,7 @@ impl ParamBound {
         current_value: f64,
         rng: &mut R,
         hard_mutation_rate: f64,
-        soft_mutation_std_dev: f64,
+        soft_mutation_relative_std_dev: f64,
         name: &str,
     ) -> anyhow::Result<f64> {
         match self {
@@ -57,7 +57,9 @@ impl ParamBound {
                     Ok(rng.gen_range(*min..=*max))
                 } else {
                     // soft mutation → Gaussian Noise
-                    let noise = rng.sample(Normal::new(0.0, soft_mutation_std_dev)?);
+                    let value_range = max - min;
+                    let relative_std_dev = soft_mutation_relative_std_dev * value_range;
+                    let noise = rng.sample(Normal::new(0.0, relative_std_dev)?);
                     let value = current_value + noise;
                     let clamped = value.clamp(*min, *max);
                     if value != clamped {
@@ -76,7 +78,11 @@ impl ParamBound {
                         .context(format!("{} - Parameter list is empty!", name))
                 } else {
                     // soft mutation → choose value nearest to current value plus noise
-                    let noise = rng.sample(Normal::new(0.0, soft_mutation_std_dev)?);
+                    let min = values.iter().cloned().reduce(f64::min).unwrap();
+                    let max = values.iter().cloned().reduce(f64::max).unwrap();
+                    let value_range = max - min;
+                    let relative_std_dev = soft_mutation_relative_std_dev * value_range;
+                    let noise = rng.sample(Normal::new(0.0, relative_std_dev)?);
                     let target_value = current_value + noise;
 
                     values
@@ -107,7 +113,9 @@ impl ParamBound {
                     Ok(new_log.exp())
                 } else {
                     // soft mutation → Gaussian Noise in log range
-                    let noise = rng.sample(Normal::new(0.0, soft_mutation_std_dev)?);
+                    let log_range = max - min;
+                    let relative_std_dev = soft_mutation_relative_std_dev * log_range;
+                    let noise = rng.sample(Normal::new(0.0, relative_std_dev)?);
                     let value = (current_log + noise).exp();
                     let clamped = value.clamp(*min, *max);
                     if value != clamped {
@@ -136,13 +144,13 @@ impl ParamDescriptor {
         current_value: f64,
         rng: &mut R,
         hard_mutation_rate: f64,
-        soft_mutation_std_dev: f64,
+        soft_mutation_relative_std_dev: f64,
     ) -> anyhow::Result<f64> {
         self.bound.mutate(
             current_value,
             rng,
             hard_mutation_rate,
-            soft_mutation_std_dev,
+            soft_mutation_relative_std_dev,
             &self.name,
         )
     }

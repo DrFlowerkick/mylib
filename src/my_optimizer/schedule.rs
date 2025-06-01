@@ -12,25 +12,25 @@ pub trait Schedule: Sync + Send + Debug + Display {
 // constant schedule
 #[derive(Clone, Debug)]
 pub struct ConstantSchedule {
-    pub fraction: f64,
+    pub value: f64,
 }
 
 impl Display for ConstantSchedule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Constant({:.3})", self.fraction)
+        write!(f, "Constant({:.3})", self.value)
     }
 }
 
 impl Schedule for ConstantSchedule {
     fn value_at(&self, _current_sequence: usize, _total_sequences: usize) -> f64 {
-        self.fraction.clamp(0.0, 1.0)
+        self.value.clamp(0.0, 1.0)
     }
 
     fn start_schedule(&self) -> f64 {
-        self.fraction
+        self.value
     }
     fn end_schedule(&self) -> f64 {
-        self.fraction
+        self.value
     }
 }
 

@@ -66,7 +66,7 @@ impl<TS: ToleranceSettings> Candidate<TS> {
         &self,
         param_bounds: &[ParamDescriptor],
         hard_mutation_rate: f64,
-        soft_mutation_std_dev: f64,
+        soft_mutation_relative_std_dev: f64,
         max_attempts: usize,
         shared_population: &SharedPopulation<TS>,
     ) -> anyhow::Result<Vec<f64>> {
@@ -80,7 +80,7 @@ impl<TS: ToleranceSettings> Candidate<TS> {
                         self.params[i],
                         &mut rng,
                         hard_mutation_rate,
-                        soft_mutation_std_dev,
+                        soft_mutation_relative_std_dev,
                     )
                 })
                 .collect::<anyhow::Result<Vec<_>>>()?;
