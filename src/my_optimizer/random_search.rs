@@ -1,13 +1,13 @@
 // Random Search explorer
 
 use super::{
-    evaluate_with_shared_error, generate_random_params, Candidate, Explorer, ObjectiveFunction,
+    evaluate_with_shared_error, generate_random_params, Explorer, ObjectiveFunction,
     ParamDescriptor, Population, PopulationSaver, ProgressReporter, SharedError, SharedPopulation,
     ToleranceSettings,
 };
 use anyhow::Context;
 use rayon::prelude::*;
-use tracing::{debug, error, info, span, Level};
+use tracing::{error, info, span, Level};
 
 pub struct RandomSearch<TS: ToleranceSettings> {
     pub iterations: usize,
@@ -56,14 +56,8 @@ impl<TS: ToleranceSettings> Explorer<TS> for RandomSearch<TS> {
                 }
             };
 
-            if let Some(score) = evaluate_with_shared_error(objective, &params, &shared_error) {
-                debug!(?params, score, "Evaluated random generated candidate");
-
-                shared_population.insert(
-                    Candidate::new(params, score),
-                    param_bounds,
-                    &shared_error,
-                );
+            if let Some(candidate) = evaluate_with_shared_error(objective, &params, &shared_error) {
+                shared_population.insert(candidate, param_bounds, &shared_error);
             }
         });
 

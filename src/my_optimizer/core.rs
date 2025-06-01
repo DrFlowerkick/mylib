@@ -4,7 +4,10 @@ use super::{ParamDescriptor, Population};
 
 // trait of target function
 pub trait ObjectiveFunction {
-    type Config: for<'a> TryFrom<&'a [f64], Error = anyhow::Error>;
+    type Config: for<'a> TryFrom<&'a [f64], Error = anyhow::Error>
+        + serde::Serialize
+        + serde::de::DeserializeOwned
+        + std::fmt::Debug;
 
     fn evaluate(&self, config: Self::Config) -> anyhow::Result<f64>;
 }

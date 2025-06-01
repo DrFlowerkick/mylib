@@ -1,14 +1,13 @@
 // evolutionary algorithm
 
 use super::{
-    evaluate_with_shared_error, Candidate, ObjectiveFunction, Optimizer, ParamDescriptor,
-    Population, PopulationSaver, ProgressReporter, Schedule, SharedError, SharedPopulation,
-    ToleranceSettings,
+    evaluate_with_shared_error, ObjectiveFunction, Optimizer, ParamDescriptor, Population,
+    PopulationSaver, ProgressReporter, Schedule, SharedError, SharedPopulation, ToleranceSettings,
 };
 use anyhow::Context;
 use rand::prelude::*;
 use rayon::prelude::*;
-use tracing::{debug, error, info, span, warn, Level};
+use tracing::{error, info, span, warn, Level};
 
 pub struct EvolutionaryOptimizer<
     Selection: Schedule,
@@ -105,7 +104,9 @@ impl<
 
             let top_parents = shared_population.top_n(parent_count);
             let hard_mutation_rate = self.hard_mutation_rate.value_at(gen, self.generations);
-            let soft_mutation_relative_std_dev = self.soft_mutation_relative_std_dev.value_at(gen, self.generations);
+            let soft_mutation_relative_std_dev = self
+                .soft_mutation_relative_std_dev
+                .value_at(gen, self.generations);
             info!(
                 "Starting offspring generation: Parent count = {}, hard mutation rate = {:.2}, soft mutation std dev = {:.2}",
                 parent_count, hard_mutation_rate, soft_mutation_relative_std_dev
@@ -126,6 +127,14 @@ impl<
 
                 let mut rng = rand::thread_rng();
                 let parent = top_parents.choose(&mut rng).unwrap();
+                match parent.log::<F>(Level::DEBUG, "Selected Parent") {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!(error = ?e, "Failed to log selected parent");
+                        shared_error.set_if_empty(e);
+                        return;
+                    }
+                };
                 let child_params = match parent.generate_offspring_params(
                     param_bounds,
                     hard_mutation_rate,
@@ -144,16 +153,10 @@ impl<
                     }
                 };
 
-                if let Some(score) =
+                if let Some(candidate) =
                     evaluate_with_shared_error(objective, &child_params, &shared_error)
                 {
-                    debug!(?child_params, score, "Generated offspring candidate");
-
-                    shared_population.insert(
-                        Candidate::new(child_params, score),
-                        param_bounds,
-                        &shared_error,
-                    );
+                    shared_population.insert(candidate, param_bounds, &shared_error);
                 }
             });
 

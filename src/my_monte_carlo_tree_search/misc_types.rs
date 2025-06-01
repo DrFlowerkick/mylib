@@ -5,6 +5,7 @@ use super::{
     MCTSPlayer, RecursiveHeuristicConfig, SimulationPolicy, UCTPolicy, UTCCache,
 };
 use rand::prelude::SliceRandom;
+use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub enum TwoPlayer {
@@ -34,7 +35,7 @@ impl MCTSPlayer for TwoPlayer {
 // default progressive widening with C = 2, alpha = 1/2
 // fast progressive widening with C = 4, alpha = 1/3
 // slow progressive widening with C = 1, alpha = 2/3
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BaseConfig {
     pub exploration_constant: f32,
     pub progressive_widening_constant: f32,
@@ -392,7 +393,7 @@ impl<State, Move> HeuristicCache<State, Move> for NoHeuristicCache<State, Move> 
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BaseHeuristicConfig {
     pub progressive_widening_initial_threshold: f32,
     pub progressive_widening_decay_rate: f32,

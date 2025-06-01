@@ -1,8 +1,8 @@
 // handling populations of candidates
 
 use super::{
-    evaluate_with_shared_error, generate_random_params, ObjectiveFunction, ParamDescriptor,
-    SharedError, ToleranceSettings,
+    evaluate_with_shared_error, generate_random_params, LogFormat, ObjectiveFunction,
+    ParamDescriptor, SharedError, ToleranceSettings,
 };
 use anyhow::Context;
 use rand::Rng;
@@ -14,7 +14,7 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
-use tracing::{debug, error, info, span, warn, Level};
+use tracing::{debug, error, info, span, trace, warn, Level};
 
 // csv conversion trait
 pub trait CsvConversion {
@@ -96,6 +96,33 @@ impl<TS: ToleranceSettings> Candidate<TS> {
         let random_params = generate_random_params(param_bounds)?;
         warn!(?random_params, "Failed to generate unique offspring parameters after {} attempts, Generating random offspring.", max_attempts);
         Ok(random_params)
+    }
+    pub fn log<F: ObjectiveFunction>(&self, level: Level, message: &str) -> anyhow::Result<()> {
+        let config = F::Config::try_from(&self.params)?;
+        match LogFormat::get_global() {
+            Some(LogFormat::Json) => {
+                let json = serde_json::to_string(&config)
+                    .context("Failed to serialize candidate to JSON")?;
+                match level {
+                    Level::ERROR => error!(config = %json, score = self.score, message),
+                    Level::WARN => warn!(config = %json, score = self.score, message),
+                    Level::INFO => info!(config = %json, score = self.score, message),
+                    Level::DEBUG => debug!(config = %json, score = self.score, message),
+                    Level::TRACE => trace!(config = %json, score = self.score, message),
+                }
+            }
+            Some(LogFormat::PlainText) => match level {
+                Level::ERROR => error!(config = ?config, score = self.score, message),
+                Level::WARN => warn!(config = ?config, score = self.score, message),
+                Level::INFO => info!(config = ?config, score = self.score, message),
+                Level::DEBUG => debug!(config = ?config, score = self.score, message),
+                Level::TRACE => trace!(config = ?config, score = self.score, message),
+            },
+            None => {
+                println!("{}: {config:?}, Score: {:.3}", message, self.score);
+            }
+        }
+        Ok(())
     }
 }
 
@@ -248,16 +275,8 @@ impl<TS: ToleranceSettings> Population<TS> {
                 }
             };
 
-            debug!(?params, "Generated initial candidate parameters");
-
-            if let Some(score) = evaluate_with_shared_error(objective, &params, &shared_error) {
-                debug!(score, "Initial candidate evaluated");
-
-                shared_population.insert(
-                    Candidate::new(params, score),
-                    param_bounds,
-                    &shared_error,
-                );
+            if let Some(candidate) = evaluate_with_shared_error(objective, &params, &shared_error) {
+                shared_population.insert(candidate, param_bounds, &shared_error);
             }
         });
 
@@ -294,6 +313,7 @@ impl<TS: ToleranceSettings> Population<TS> {
                 });
             }
             cmp::Ordering::Less => {
+                self.capacity = new_capacity;
                 if let Some((objective, param_bounds)) = populate_with {
                     self = self.populate(objective, param_bounds, population_saver)?;
                 }

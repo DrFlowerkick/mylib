@@ -1,21 +1,32 @@
 // utilities of optimization
 
-use super::ObjectiveFunction;
+use super::{Candidate, ObjectiveFunction, ToleranceSettings};
 use anyhow::Error;
-use once_cell::sync::Lazy;
+use once_cell::sync::{Lazy, OnceCell};
 use std::io;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use tracing::{error, info};
+use tracing::{error, info, Level};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
 use tracing_subscriber::{filter::EnvFilter, fmt, prelude::*, Registry};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum LogFormat {
     PlainText,
     Json,
+}
+
+impl LogFormat {
+    pub fn set_global(&self) {
+        LOG_FORMAT
+            .set(*self)
+            .expect("LogFormat already set, cannot overwrite");
+    }
+    pub fn get_global() -> Option<Self> {
+        LOG_FORMAT.get().cloned()
+    }
 }
 
 pub struct FileLogConfig<P: AsRef<Path>> {
@@ -30,6 +41,8 @@ impl<P: AsRef<Path>> FileLogConfig<P> {
         tracing_appender::non_blocking(file_appender)
     }
 }
+
+static LOG_FORMAT: OnceCell<LogFormat> = OnceCell::new();
 
 pub struct TracingConfig<'a, P: AsRef<Path>> {
     pub default_level: &'a str,
@@ -48,6 +61,7 @@ impl<'a, P: AsRef<Path>> TracingConfig<'a, P> {
         match self.file_log {
             None => {
                 // console only
+                self.console_format.set_global();
                 match self.console_format {
                     LogFormat::PlainText => {
                         base_registry
@@ -64,6 +78,8 @@ impl<'a, P: AsRef<Path>> TracingConfig<'a, P> {
             }
             Some(file_cfg) => {
                 let (non_blocking, guard) = file_cfg.prepare_writer();
+                // use file log format for global setting
+                file_cfg.format.set_global();
 
                 match (self.console_format, file_cfg.format) {
                     (LogFormat::PlainText, LogFormat::PlainText) => {
@@ -183,12 +199,12 @@ impl SharedError {
 }
 
 // execute evaluate and config conversion with shared error
-pub fn evaluate_with_shared_error<F: ObjectiveFunction>(
+pub fn evaluate_with_shared_error<F: ObjectiveFunction, TS: ToleranceSettings>(
     objective: &F,
     params: &[f64],
-    error_slot: &SharedError,
-) -> Option<f64> {
-    if error_slot.is_set() {
+    shared_error: &SharedError,
+) -> Option<Candidate<TS>> {
+    if shared_error.is_set() {
         return None;
     }
 
@@ -200,20 +216,32 @@ pub fn evaluate_with_shared_error<F: ObjectiveFunction>(
                 error = %e,
                 "Parameter conversion failed, aborting..."
             );
-            error_slot.set_if_empty(e);
+            shared_error.set_if_empty(e);
             return None;
         }
     };
 
     match objective.evaluate(config) {
-        Ok(score) => Some(score),
+        Ok(score) => {
+            let candidate = Candidate::new(params.to_vec(), score);
+            match candidate.log::<F>(Level::DEBUG, "Evaluated candidate") {
+                Ok(_) => Some(candidate),
+                Err(e) => {
+                    error!(
+                        error = %e,
+                        "Failed to log candidate, aborting..."
+                    );
+                    shared_error.set_if_empty(e);
+                    None
+                }
+            }
+        }
         Err(e) => {
             error!(
-                ?params,
                 error = %e,
                 "Evaluation failed, aborting..."
             );
-            error_slot.set_if_empty(e);
+            shared_error.set_if_empty(e);
             None
         }
     }

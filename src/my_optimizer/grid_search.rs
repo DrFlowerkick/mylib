@@ -1,14 +1,14 @@
 // grid search for significant parameter sets
 
 use super::{
-    evaluate_with_shared_error, Candidate, Explorer, ObjectiveFunction, ParamBound,
-    ParamDescriptor, Population, PopulationSaver, ProgressReporter, SharedError, SharedPopulation,
+    evaluate_with_shared_error, Explorer, ObjectiveFunction, ParamBound, ParamDescriptor,
+    Population, PopulationSaver, ProgressReporter, SharedError, SharedPopulation,
     ToleranceSettings,
 };
 use anyhow::Context;
 use itertools::Itertools;
 use rayon::prelude::*;
-use tracing::{debug, info, span, Level};
+use tracing::{info, span, Level};
 
 pub struct GridSearch<TS: ToleranceSettings> {
     pub steps_per_param: usize,
@@ -78,14 +78,10 @@ impl<TS: ToleranceSettings> Explorer<TS> for GridSearch<TS> {
             let batch: Vec<_> = chunks.collect();
 
             batch.into_par_iter().for_each(|params| {
-                if let Some(score) = evaluate_with_shared_error(objective, &params, &shared_error) {
-                    debug!(?params, score, "Evaluated candidate");
-
-                    shared_population.insert(
-                        Candidate::new(params, score),
-                        param_bounds,
-                        &shared_error,
-                    );
+                if let Some(candidate) =
+                    evaluate_with_shared_error(objective, &params, &shared_error)
+                {
+                    shared_population.insert(candidate, param_bounds, &shared_error);
                 }
             });
 
