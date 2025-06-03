@@ -101,8 +101,7 @@ impl<TS: ToleranceSettings> Candidate<TS> {
         let config = F::Config::try_from(&self.params)?;
         match LogFormat::get_global() {
             Some(LogFormat::Json) => {
-                let json = serde_json::to_string(&config)
-                    .context("Failed to serialize candidate to JSON")?;
+                let json = serde_json::to_string(&config)?;
                 match level {
                     Level::ERROR => error!(config = %json, score = self.score, message),
                     Level::WARN => warn!(config = %json, score = self.score, message),
@@ -274,6 +273,54 @@ impl<TS: ToleranceSettings> Population<TS> {
                     return;
                 }
             };
+
+            if let Some(candidate) = evaluate_with_shared_error(objective, &params, &shared_error) {
+                shared_population.insert(candidate, param_bounds, &shared_error);
+            }
+        });
+
+        if let Some(err) = shared_error.take() {
+            return Err(err);
+        }
+
+        shared_population.lock().save_population(param_bounds)?;
+        let population = shared_population.take();
+
+        info!(
+            "Population fully populated. Best Score: {:.3}",
+            population
+                .best()
+                .map(|c| c.score)
+                .context("Empty population")?
+        );
+
+        Ok(population)
+    }
+
+    pub fn reevaluate_population<F: ObjectiveFunction + Sync>(
+        self,
+        objective: &F,
+        param_bounds: &[ParamDescriptor],
+        population_saver: Option<PopulationSaver>,
+    ) -> anyhow::Result<Population<TS>> {
+        // since objective may be a costly objective, tracing is used to signal status of populate
+        let init_span = span!(Level::INFO, "PopulatePopulation", size = self.capacity);
+        let _enter = init_span.enter();
+
+        let current_population_size = self.members.len();
+
+        info!("Reevaluation of population with {} members", current_population_size);
+
+        let candidates = self.iter().cloned().collect::<Vec<_>>();
+
+        let shared_population = SharedPopulation::new(Population::new(self.capacity), population_saver);
+        let shared_error = SharedError::new();
+
+        (0..current_population_size).into_par_iter().for_each(|index| {
+            if shared_error.is_set() {
+                return;
+            }
+            let params = candidates[index].params.clone();
 
             if let Some(candidate) = evaluate_with_shared_error(objective, &params, &shared_error) {
                 shared_population.insert(candidate, param_bounds, &shared_error);

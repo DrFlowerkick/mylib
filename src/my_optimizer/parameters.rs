@@ -64,7 +64,7 @@ impl ParamBound {
                     let clamped = value.clamp(*min, *max);
                     if value != clamped {
                         let delta_clamp = value - clamped;
-                        debug!(%name, %delta_clamp, "Value clamped to bounds.");
+                        debug!(%name, delta_clamp, "Value clamped to bounds.");
                     }
                     Ok(clamped)
                 }
@@ -120,7 +120,7 @@ impl ParamBound {
                     let clamped = value.clamp(*min, *max);
                     if value != clamped {
                         let delta_clamp = value - clamped;
-                        debug!(%name, %delta_clamp, "Value clamped to bounds.");
+                        debug!(%name, delta_clamp, "Value clamped to bounds.");
                     }
                     Ok(clamped)
                 }

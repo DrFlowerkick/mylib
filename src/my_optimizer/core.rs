@@ -7,7 +7,8 @@ pub trait ObjectiveFunction {
     type Config: for<'a> TryFrom<&'a [f64], Error = anyhow::Error>
         + serde::Serialize
         + serde::de::DeserializeOwned
-        + std::fmt::Debug;
+        + std::fmt::Debug
+        + Clone;
 
     fn evaluate(&self, config: Self::Config) -> anyhow::Result<f64>;
 }

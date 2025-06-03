@@ -24,7 +24,11 @@ pub use random_search::RandomSearch;
 pub use schedule::{
     ConstantSchedule, DecaySchedule, ExponentialSchedule, LinearSchedule, Schedule, SigmoidSchedule,
 };
-pub use trace_analysis::{analyze_clamps_from_dir, ClampStats};
+pub use trace_analysis::{
+    analyze_clamp_events, analyze_evo_log_entries, read_log_file, read_logs_from_dir, ClampStats,
+    ClampedLogEntry, DefaultLogEntry, EvoFields, EvoSpan, LogEntryParser, MutationKey,
+    MutationParentAndOffspring, MutationStats,
+};
 pub use utils::{
     evaluate_with_shared_error, increment_progress_counter_by, reset_progress_counter,
     update_progress, FileLogConfig, LogFormat, SharedError, TracingConfig,

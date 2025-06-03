@@ -108,15 +108,19 @@ impl<
                 .soft_mutation_relative_std_dev
                 .value_at(gen, self.generations);
             info!(
-                "Starting offspring generation: Parent count = {}, hard mutation rate = {:.2}, soft mutation std dev = {:.2}",
-                parent_count, hard_mutation_rate, soft_mutation_relative_std_dev
+                parent_count,
+                hard_mutation_rate, soft_mutation_relative_std_dev, "Starting offspring generation",
             );
 
             // offspring generation (parallel)
+            let evo_span_clone = evo_span.clone();
+            let gen_span_clone = gen_span.clone();
             (0..parent_count).into_par_iter().for_each(|offspring_id| {
                 if shared_error.is_set() {
                     return;
                 }
+                let _evo_enter = evo_span_clone.enter();
+                let _gen_enter = gen_span_clone.enter();
                 let offspring_span = span!(
                     Level::DEBUG,
                     "Offspring",
@@ -130,7 +134,7 @@ impl<
                 match parent.log::<F>(Level::DEBUG, "Selected Parent") {
                     Ok(_) => {}
                     Err(e) => {
-                        error!(error = ?e, "Failed to log selected parent");
+                        error!(error = %e, "Failed to log selected parent");
                         shared_error.set_if_empty(e);
                         return;
                     }

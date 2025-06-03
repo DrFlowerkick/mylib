@@ -50,7 +50,7 @@ impl<TS: ToleranceSettings> Explorer<TS> for RandomSearch<TS> {
             let params = match generate_random_params(param_bounds) {
                 Ok(params) => params,
                 Err(err) => {
-                    error!(error = ?err, "Failed to sample parameters");
+                    error!(error = %err, "Failed to sample parameters");
                     shared_error.set_if_empty(err);
                     return;
                 }
