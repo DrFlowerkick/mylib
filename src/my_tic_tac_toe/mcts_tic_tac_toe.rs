@@ -171,12 +171,12 @@ mod tests {
                 match ttt_game_data.current_player {
                     TicTacToeStatus::Me => {
                         let start = Instant::now();
-                        mcts_tic_tac_toe.set_root(&ttt_game_data).unwrap();
+                        mcts_tic_tac_toe.set_root(&ttt_game_data);
                         while start.elapsed() < time_out {
-                            mcts_tic_tac_toe.iterate().unwrap();
+                            mcts_tic_tac_toe.iterate();
                         }
                         time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                        let selected_move = *mcts_tic_tac_toe.select_move().unwrap();
+                        let selected_move = *mcts_tic_tac_toe.select_move();
                         eprintln!("me : {}", selected_move.cell);
                         ttt_game_data = TicTacToeMCTSGame::apply_move(
                             &ttt_game_data,
@@ -246,12 +246,12 @@ mod tests {
                 match ttt_game_data.current_player {
                     TicTacToeStatus::Me => {
                         let start = Instant::now();
-                        mcts_tic_tac_toe.set_root(&ttt_game_data).unwrap();
+                        mcts_tic_tac_toe.set_root(&ttt_game_data);
                         while start.elapsed() < time_out {
-                            mcts_tic_tac_toe.iterate().unwrap();
+                            mcts_tic_tac_toe.iterate();
                         }
                         time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                        let selected_move = *mcts_tic_tac_toe.select_move().unwrap();
+                        let selected_move = *mcts_tic_tac_toe.select_move();
                         eprintln!("me : {}", selected_move.cell);
                         ttt_game_data = TicTacToeMCTSGame::apply_move(
                             &ttt_game_data,
@@ -337,14 +337,13 @@ mod tests {
                 if first {
                     let start = Instant::now();
                     first_mcts_tic_tac_toe
-                        .set_root(&first_ttt_game_data)
-                        .unwrap();
+                        .set_root(&first_ttt_game_data);
                     while start.elapsed() < first_time_out {
-                        first_mcts_tic_tac_toe.iterate().unwrap();
+                        first_mcts_tic_tac_toe.iterate();
                         iteration_counter += 1;
                     }
                     first_time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                    let selected_move = *first_mcts_tic_tac_toe.select_move().unwrap();
+                    let selected_move = *first_mcts_tic_tac_toe.select_move();
                     eprintln!(
                         "first : {} (Iterations: {})",
                         selected_move.cell, iteration_counter
@@ -363,14 +362,13 @@ mod tests {
                 } else {
                     let start = Instant::now();
                     second_mcts_tic_tac_toe
-                        .set_root(&second_ttt_game_data)
-                        .unwrap();
+                        .set_root(&second_ttt_game_data);
                     while start.elapsed() < second_time_out {
-                        second_mcts_tic_tac_toe.iterate().unwrap();
+                        second_mcts_tic_tac_toe.iterate();
                         iteration_counter += 1;
                     }
                     second_time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                    let selected_move = *second_mcts_tic_tac_toe.select_move().unwrap();
+                    let selected_move = *second_mcts_tic_tac_toe.select_move();
                     eprintln!(
                         "second: {} (Iterations: {}",
                         selected_move.cell, iteration_counter

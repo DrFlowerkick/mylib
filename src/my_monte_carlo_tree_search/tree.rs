@@ -3,7 +3,6 @@
 use super::{
     ExpansionPolicy, Heuristic, MCTSGame, MCTSNode, MCTSTree, PlainNode, UCTPolicy, UTCCache,
 };
-use anyhow::Context;
 
 pub struct PlainTree<G, UP, UC, EP, H>
 where
@@ -56,26 +55,22 @@ where
         }
     }
 
-    fn get_node(&self, id: usize) -> anyhow::Result<&PlainNode<G, UP, UC, EP, H>> {
-        self.nodes
-            .get(id)
-            .context(format!("Node with given ID {:?} does not exist", id))
+    fn get_node(&self, id: usize) -> &PlainNode<G, UP, UC, EP, H> {
+        &self.nodes[id]
     }
 
-    fn get_node_mut(&mut self, id: usize) -> anyhow::Result<&mut PlainNode<G, UP, UC, EP, H>> {
-        self.nodes
-            .get_mut(id)
-            .context(format!("Node with given ID {:?} does not exist", id))
+    fn get_node_mut(&mut self, id: usize) -> &mut PlainNode<G, UP, UC, EP, H> {
+        &mut self.nodes[id]
     }
 
     fn add_child(
         &mut self,
         parent_id: usize,
         child_value: PlainNode<G, UP, UC, EP, H>,
-    ) -> anyhow::Result<usize> {
+    ) -> usize {
         let child_id = self.nodes.len();
-        self.get_node_mut(parent_id)?.add_child(child_id);
+        self.get_node_mut(parent_id).add_child(child_id);
         self.nodes.push(child_value);
-        Ok(child_id)
+        child_id
     }
 }

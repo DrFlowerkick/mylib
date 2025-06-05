@@ -44,9 +44,9 @@ where
     fn init_root(&mut self, root_value: N);
     fn set_root(&mut self, new_root_id: N::ID);
     fn root_id(&self) -> Option<N::ID>;
-    fn get_node(&self, id: N::ID) -> anyhow::Result<&N>;
-    fn get_node_mut(&mut self, id: N::ID) -> anyhow::Result<&mut N>;
-    fn add_child(&mut self, parent_id: N::ID, child_value: N) -> anyhow::Result<N::ID>;
+    fn get_node(&self, id: N::ID) -> &N;
+    fn get_node_mut(&mut self, id: N::ID) -> &mut N;
+    fn add_child(&mut self, parent_id: N::ID, child_value: N) -> N::ID;
 }
 
 pub trait MCTSNode<G: MCTSGame, EP: ExpansionPolicy<G, H>, H: Heuristic<G>>
@@ -85,9 +85,9 @@ where
 }
 
 pub trait MCTSAlgo<G: MCTSGame> {
-    fn set_root(&mut self, state: &G::State) -> anyhow::Result<bool>;
-    fn iterate(&mut self) -> anyhow::Result<()>;
-    fn select_move(&self) -> anyhow::Result<&G::Move>;
+    fn set_root(&mut self, state: &G::State) -> bool;
+    fn iterate(&mut self);
+    fn select_move(&self) -> &G::Move;
 }
 
 pub trait UCTPolicy<G: MCTSGame> {
