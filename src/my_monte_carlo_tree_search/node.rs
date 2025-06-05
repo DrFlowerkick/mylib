@@ -23,7 +23,7 @@ where
     phantom: std::marker::PhantomData<(UP, H)>,
 }
 
-impl<G, UP, UC, EP, H> PlainNode<G, UP, UC, EP, H>
+impl<G, UP, UC, EP, H> MCTSNode<G, EP, H> for PlainNode<G, UP, UC, EP, H>
 where
     G: MCTSGame,
     UP: UCTPolicy<G>,
@@ -31,7 +31,12 @@ where
     EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
 {
-    pub fn root_node(state: G::State, expansion_policy: EP) -> Self {
+    type ID = usize;
+
+    fn init_root_id() -> Self::ID {
+        0 // The root node is always at index 0
+    }
+    fn root_node(state: G::State, expansion_policy: EP) -> Self {
         PlainNode {
             expansion_policy,
             state,
@@ -43,7 +48,7 @@ where
             phantom: std::marker::PhantomData,
         }
     }
-    pub fn new(state: G::State, mv: G::Move, expansion_policy: EP) -> Self {
+    fn new(state: G::State, mv: G::Move, expansion_policy: EP) -> Self {
         PlainNode {
             expansion_policy,
             state,
@@ -55,40 +60,12 @@ where
             phantom: std::marker::PhantomData,
         }
     }
-    pub fn add_child(&mut self, child_index: usize) {
-        self.children.push(child_index);
+    fn add_child(&mut self, child_id: Self::ID) {
+        self.children.push(child_id);
     }
-    pub fn get_children(&self) -> &Vec<usize> {
-        &self.children
+    fn get_children(&self) -> &[Self::ID] {
+        &self.children[..]
     }
-    pub fn expandable_moves(
-        &mut self,
-        mcts_config: &G::Config,
-        heuristic_config: &H::Config,
-    ) -> Vec<G::Move> {
-        let mut expandable_moves = self
-            .expansion_policy
-            .expandable_moves(
-                self.visits,
-                self.children.len(),
-                &self.state,
-                mcts_config,
-                heuristic_config,
-            )
-            .collect::<Vec<_>>();
-        expandable_moves.shuffle(&mut rand::thread_rng());
-        expandable_moves
-    }
-}
-
-impl<G, UP, UC, EP, H> MCTSNode<G> for PlainNode<G, UP, UC, EP, H>
-where
-    G: MCTSGame,
-    UP: UCTPolicy<G>,
-    UC: UTCCache<G, UP>,
-    EP: ExpansionPolicy<G, H>,
-    H: Heuristic<G>,
-{
     fn get_state(&self) -> &G::State {
         &self.state
     }
@@ -132,5 +109,29 @@ where
             .utc_cache
             .get_exploration(self.visits, parent_visits, mcts_config);
         exploitation + exploration
+    }
+    fn expansion_policy(&self) -> &EP {
+        &self.expansion_policy
+    }
+    fn expansion_policy_mut(&mut self) -> &mut EP {
+        &mut self.expansion_policy
+    }
+    fn expandable_moves(
+        &mut self,
+        mcts_config: &G::Config,
+        heuristic_config: &H::Config,
+    ) -> Vec<G::Move> {
+        let mut expandable_moves = self
+            .expansion_policy
+            .expandable_moves(
+                self.visits,
+                self.children.len(),
+                &self.state,
+                mcts_config,
+                heuristic_config,
+            )
+            .collect::<Vec<_>>();
+        expandable_moves.shuffle(&mut rand::thread_rng());
+        expandable_moves
     }
 }

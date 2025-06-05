@@ -33,7 +33,35 @@ pub trait MCTSGame: Sized {
     fn perspective_player() -> Self::Player;
 }
 
-pub trait MCTSNode<G: MCTSGame> {
+pub trait MCTSTree<G, N, EP, H>: Sized
+where
+    G: MCTSGame,
+    N: MCTSNode<G, EP, H>,
+    EP: ExpansionPolicy<G, H>,
+    H: Heuristic<G>,
+{
+    fn new() -> Self;
+    fn init_root(&mut self, root_value: N);
+    fn set_root(&mut self, new_root_id: N::ID);
+    fn root_id(&self) -> Option<N::ID>;
+    fn get_node(&self, id: N::ID) -> anyhow::Result<&N>;
+    fn get_node_mut(&mut self, id: N::ID) -> anyhow::Result<&mut N>;
+    fn add_child(&mut self, parent_id: N::ID, child_value: N) -> anyhow::Result<N::ID>;
+}
+
+pub trait MCTSNode<G: MCTSGame, EP: ExpansionPolicy<G, H>, H: Heuristic<G>>
+where
+    G: MCTSGame,
+    EP: ExpansionPolicy<G, H>,
+    H: Heuristic<G>,
+{
+    type ID: Copy + Eq + std::fmt::Debug;
+
+    fn init_root_id() -> Self::ID;
+    fn root_node(state: G::State, expansion_policy: EP) -> Self;
+    fn new(state: G::State, mv: G::Move, expansion_policy: EP) -> Self;
+    fn add_child(&mut self, child_id: Self::ID);
+    fn get_children(&self) -> &[Self::ID];
     fn get_state(&self) -> &G::State;
     fn get_move(&self) -> Option<&G::Move> {
         None
@@ -47,12 +75,19 @@ pub trait MCTSNode<G: MCTSGame> {
         perspective_player: G::Player,
         mcts_config: &G::Config,
     ) -> f32;
+    fn expansion_policy(&self) -> &EP;
+    fn expansion_policy_mut(&mut self) -> &mut EP;
+    fn expandable_moves(
+        &mut self,
+        mcts_config: &G::Config,
+        heuristic_config: &H::Config,
+    ) -> Vec<G::Move>;
 }
 
 pub trait MCTSAlgo<G: MCTSGame> {
-    fn set_root(&mut self, state: &G::State) -> bool;
-    fn iterate(&mut self);
-    fn select_move(&self) -> &G::Move;
+    fn set_root(&mut self, state: &G::State) -> anyhow::Result<bool>;
+    fn iterate(&mut self) -> anyhow::Result<()>;
+    fn select_move(&self) -> anyhow::Result<&G::Move>;
 }
 
 pub trait UCTPolicy<G: MCTSGame> {

@@ -309,23 +309,31 @@ impl<TS: ToleranceSettings> Population<TS> {
 
         let current_population_size = self.members.len();
 
-        info!("Reevaluation of population with {} members", current_population_size);
+        info!(
+            "Reevaluation of population with {} members",
+            current_population_size
+        );
 
         let candidates = self.iter().cloned().collect::<Vec<_>>();
 
-        let shared_population = SharedPopulation::new(Population::new(self.capacity), population_saver);
+        let shared_population =
+            SharedPopulation::new(Population::new(self.capacity), population_saver);
         let shared_error = SharedError::new();
 
-        (0..current_population_size).into_par_iter().for_each(|index| {
-            if shared_error.is_set() {
-                return;
-            }
-            let params = candidates[index].params.clone();
+        (0..current_population_size)
+            .into_par_iter()
+            .for_each(|index| {
+                if shared_error.is_set() {
+                    return;
+                }
+                let params = candidates[index].params.clone();
 
-            if let Some(candidate) = evaluate_with_shared_error(objective, &params, &shared_error) {
-                shared_population.insert(candidate, param_bounds, &shared_error);
-            }
-        });
+                if let Some(candidate) =
+                    evaluate_with_shared_error(objective, &params, &shared_error)
+                {
+                    shared_population.insert(candidate, param_bounds, &shared_error);
+                }
+            });
 
         if let Some(err) = shared_error.take() {
             return Err(err);
