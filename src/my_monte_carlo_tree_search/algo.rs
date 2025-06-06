@@ -30,7 +30,7 @@ pub type PlainMCTSWithTT<G, UP, UC, EP, H, SP> = BaseMCTS<
     EP,
     H,
     SP,
-    TranspositionHashMap<G, PlainNode<G, UP, UC, EP, H>, EP, H>,
+    TranspositionHashMap<G, PlainNode<G, UP, UC, EP, H>, PlainTree<G, UP, UC, EP, H>, EP, H>,
 >;
 
 // Use BaseMCTS with your specific implementations of the MCTS traits.
@@ -45,7 +45,7 @@ where
     EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
     SP: SimulationPolicy<G, H>,
-    TT: TranspositionTable<G, N, EP, H>,
+    TT: TranspositionTable<G, N, T, EP, H>,
 {
     pub tree: T,
     pub mcts_config: G::Config,
@@ -67,7 +67,7 @@ where
     EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
     SP: SimulationPolicy<G, H>,
-    TT: TranspositionTable<G, N, EP, H>,
+    TT: TranspositionTable<G, N, T, EP, H>,
 {
     pub fn new(mcts_config: G::Config, heuristic_config: H::Config) -> Self {
         Self {
@@ -79,14 +79,6 @@ where
             transposition_table: TT::new(),
             phantom: std::marker::PhantomData,
         }
-    }
-
-    pub fn set_mcts_config(&mut self, mcts_config: G::Config) {
-        self.mcts_config = mcts_config;
-    }
-
-    pub fn set_heuristic_config(&mut self, heuristic_config: H::Config) {
-        self.heuristic_config = heuristic_config;
     }
 }
 
@@ -101,7 +93,7 @@ where
     EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
     SP: SimulationPolicy<G, H>,
-    TT: TranspositionTable<G, N, EP, H>,
+    TT: TranspositionTable<G, N, T, EP, H>,
 {
     fn set_root(&mut self, state: &G::State) -> bool {
         // tree is empty, if BaseMCTS was just created
@@ -118,20 +110,17 @@ where
             // unwrap() is safe here because we just checked that root_id exists
             if let Some((new_root_id, _)) = self
                 .tree
-                .get_node(root_id)
-                .get_children()
+                .get_children(root_id)
                 .iter()
-                .map(|&my_move_node_id| self.tree.get_node(my_move_node_id))
-                .flat_map(|my_move_node| {
-                    my_move_node
-                        .get_children()
-                        .iter()
-                        .map(|&opponent_move_node_id| {
+                .flat_map(|&(my_move_node_id, _)| {
+                    self.tree.get_children(my_move_node_id).iter().map(
+                        |&(opponent_move_node_id, _)| {
                             (
                                 opponent_move_node_id,
                                 self.tree.get_node(opponent_move_node_id).get_state(),
                             )
-                        })
+                        },
+                    )
                 })
                 .find(|(_, opponent_move_node_state)| *opponent_move_node_state == state)
             {
@@ -146,7 +135,7 @@ where
             &mut self.heuristic_cache,
             &self.heuristic_config,
         );
-        let new_root = N::root_node(state.clone(), expansion_policy);
+        let new_root = N::new(state.clone(), expansion_policy);
         let root_id = self.tree.init_root(new_root);
         self.transposition_table = TT::new();
         self.transposition_table.insert(state.clone(), root_id);
@@ -169,16 +158,16 @@ where
             .expect("Tree root must be initialized before iterate.");
         let mut path = vec![root_id];
         let mut current_id = root_id;
-        let mut new_children: Vec<N::ID> = Vec::new();
+        let mut new_children: Vec<T::ID> = Vec::new();
 
         // select and expand until at least one new child is created or a leaf without children is found
         loop {
             // Selection
-            while !tree.get_node(current_id).get_children().is_empty() {
+            while !tree.get_children(current_id).is_empty() {
                 let parent_visits = tree.get_node(current_id).get_visits();
-                let num_parent_children = tree.get_node(current_id).get_children().len();
+                let num_parent_children = tree.get_children(current_id).len();
                 // check expansion policy
-                if tree.get_node(current_id).expansion_policy().should_expand(
+                if tree.get_node(current_id).should_expand(
                     parent_visits,
                     num_parent_children,
                     mcts_config,
@@ -191,7 +180,7 @@ where
                 let mut best_utc = f32::NEG_INFINITY;
 
                 for vec_index in 0..num_parent_children {
-                    let child_index = tree.get_node(current_id).get_children()[vec_index];
+                    let (child_index, _) = tree.get_children(current_id)[vec_index];
                     let utc = tree.get_node_mut(child_index).calc_utc(
                         parent_visits,
                         G::perspective_player(),
@@ -215,16 +204,19 @@ where
                 break;
             } else {
                 // If the node has been visited, we need to expand it.
-                let expandable_moves = tree
-                    .get_node_mut(current_id)
-                    .expandable_moves(mcts_config, heuristic_config);
+                let num_parent_children = tree.get_children(current_id).len();
+                let expandable_moves = tree.get_node_mut(current_id).expandable_moves(
+                    num_parent_children,
+                    mcts_config,
+                    heuristic_config,
+                );
 
                 // generate new children nodes from expandable moves
                 for mv in expandable_moves {
                     let new_state =
                         G::apply_move(tree.get_node(current_id).get_state(), &mv, game_cache);
                     if let Some(&cached_node_id) = transposition_table.get(&new_state) {
-                        tree.get_node_mut(current_id).add_child(cached_node_id);
+                        tree.link_child(current_id, mv, cached_node_id);
                         let visits = tree.get_node(cached_node_id).get_visits();
                         if visits == 0 {
                             new_children.push(cached_node_id);
@@ -237,8 +229,8 @@ where
                     }
                     let expansion_policy =
                         EP::new(&new_state, game_cache, heuristic_cache, heuristic_config);
-                    let new_node = N::new(new_state.clone(), mv, expansion_policy);
-                    let new_child_id = tree.add_child(current_id, new_node);
+                    let new_node = N::new(new_state.clone(), expansion_policy);
+                    let new_child_id = tree.add_child(current_id, mv, new_node);
                     transposition_table.insert(new_state, new_child_id);
                     new_children.push(new_child_id);
                 }
@@ -294,21 +286,17 @@ where
             .tree
             .root_id()
             .expect("Root node must be initialized before selecting a move");
-        let move_id = self
+        let (_, mv) = self
             .tree
-            .get_node(root_id)
-            .get_children()
+            .get_children(root_id)
             .iter()
-            .max_by_key(|&&child_id| self.tree.get_node(child_id).get_visits())
+            .max_by_key(|&&(child_id, _)| self.tree.get_node(child_id).get_visits())
             .expect("could not find move id");
-        self.tree
-            .get_node(*move_id)
-            .get_move()
-            .expect("node did not contain move")
+        mv
     }
 }
 
-fn back_propagation<G, N, T, EP, H>(tree: &mut T, path: &[N::ID], result: f32)
+fn back_propagation<G, N, T, EP, H>(tree: &mut T, path: &[T::ID], result: f32)
 where
     G: MCTSGame,
     N: MCTSNode<G, EP, H>,

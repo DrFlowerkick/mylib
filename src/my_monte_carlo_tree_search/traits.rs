@@ -40,28 +40,33 @@ where
     EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
 {
+    type ID: Copy + Eq + std::fmt::Debug;
+
     fn new() -> Self;
-    fn init_root(&mut self, root_value: N) -> N::ID;
-    fn set_root(&mut self, new_root_id: N::ID);
-    fn root_id(&self) -> Option<N::ID>;
-    fn get_node(&self, id: N::ID) -> &N;
-    fn get_node_mut(&mut self, id: N::ID) -> &mut N;
-    fn add_child(&mut self, parent_id: N::ID, child_value: N) -> N::ID;
+    fn init_root(&mut self, root_value: N) -> Self::ID;
+    fn set_root(&mut self, new_root_id: Self::ID);
+    fn root_id(&self) -> Option<Self::ID>;
+    fn get_node(&self, id: Self::ID) -> &N;
+    fn get_node_mut(&mut self, id: Self::ID) -> &mut N;
+    fn add_child(&mut self, parent_id: Self::ID, mv: G::Move, child_value: N) -> Self::ID;
+    fn link_child(&mut self, parent_id: Self::ID, mv: G::Move, child_id: Self::ID);
+    fn get_children(&self, id: Self::ID) -> &[(Self::ID, G::Move)];
 }
 
-pub trait TranspositionTable<G, N, EP, H>
+pub trait TranspositionTable<G, N, T, EP, H>
 where
     G: MCTSGame,
     G::State: Eq + std::hash::Hash,
     N: MCTSNode<G, EP, H>,
+    T: MCTSTree<G, N, EP, H>,
     EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
 {
     fn new() -> Self;
-    fn get(&self, _state: &G::State) -> Option<&N::ID> {
+    fn get(&self, _state: &G::State) -> Option<&T::ID> {
         None
     }
-    fn insert(&mut self, _state: G::State, _value: N::ID) {}
+    fn insert(&mut self, _state: G::State, _value: T::ID) {}
 }
 
 pub trait MCTSNode<G: MCTSGame, EP: ExpansionPolicy<G, H>, H: Heuristic<G>>
@@ -70,17 +75,8 @@ where
     EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
 {
-    type ID: Copy + Eq + std::fmt::Debug;
-
-    fn init_root_id() -> Self::ID;
-    fn root_node(state: G::State, expansion_policy: EP) -> Self;
-    fn new(state: G::State, mv: G::Move, expansion_policy: EP) -> Self;
-    fn add_child(&mut self, child_id: Self::ID);
-    fn get_children(&self) -> &[Self::ID];
+    fn new(state: G::State, expansion_policy: EP) -> Self;
     fn get_state(&self) -> &G::State;
-    fn get_move(&self) -> Option<&G::Move> {
-        None
-    }
     fn get_visits(&self) -> usize;
     fn get_accumulated_value(&self) -> f32;
     fn update_stats(&mut self, result: f32);
@@ -90,10 +86,16 @@ where
         perspective_player: G::Player,
         mcts_config: &G::Config,
     ) -> f32;
-    fn expansion_policy(&self) -> &EP;
-    fn expansion_policy_mut(&mut self) -> &mut EP;
+    fn should_expand(
+        &self,
+        visits: usize,
+        num_parent_children: usize,
+        mcts_config: &G::Config,
+        heuristic_config: &H::Config,
+    ) -> bool;
     fn expandable_moves(
         &mut self,
+        num_parent_children: usize,
         mcts_config: &G::Config,
         heuristic_config: &H::Config,
     ) -> Vec<G::Move>;

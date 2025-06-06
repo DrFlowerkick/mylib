@@ -2,7 +2,7 @@
 
 use super::{
     ExpansionPolicy, GameCache, Heuristic, HeuristicCache, HeuristicConfig, MCTSConfig, MCTSGame,
-    MCTSNode, MCTSPlayer, RecursiveHeuristicConfig, SimulationPolicy, TranspositionTable,
+    MCTSNode, MCTSPlayer, MCTSTree, RecursiveHeuristicConfig, SimulationPolicy, TranspositionTable,
     UCTPolicy, UTCCache,
 };
 use rand::prelude::SliceRandom;
@@ -513,11 +513,12 @@ impl RecursiveHeuristicConfig for BaseRecursiveConfig {
 
 pub struct NoTranspositionTable {}
 
-impl<G, N, EP, H> TranspositionTable<G, N, EP, H> for NoTranspositionTable
+impl<G, N, T, EP, H> TranspositionTable<G, N, T, EP, H> for NoTranspositionTable
 where
     G: MCTSGame,
     G::State: Eq + std::hash::Hash,
     N: MCTSNode<G, EP, H>,
+    T: MCTSTree<G, N, EP, H>,
     EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
 {
@@ -526,22 +527,24 @@ where
     }
 }
 
-pub struct TranspositionHashMap<G, N, EP, H>
+pub struct TranspositionHashMap<G, N, T, EP, H>
 where
     G: MCTSGame,
     G::State: Eq + std::hash::Hash,
     N: MCTSNode<G, EP, H>,
+    T: MCTSTree<G, N, EP, H>,
     EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
 {
-    pub table: HashMap<G::State, N::ID>,
+    pub table: HashMap<G::State, T::ID>,
 }
 
-impl<G, N, EP, H> TranspositionTable<G, N, EP, H> for TranspositionHashMap<G, N, EP, H>
+impl<G, N, T, EP, H> TranspositionTable<G, N, T, EP, H> for TranspositionHashMap<G, N, T, EP, H>
 where
     G: MCTSGame,
     G::State: Eq + std::hash::Hash,
     N: MCTSNode<G, EP, H>,
+    T: MCTSTree<G, N, EP, H>,
     EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
 {
@@ -551,11 +554,11 @@ where
         }
     }
 
-    fn get(&self, state: &<G as MCTSGame>::State) -> Option<&N::ID> {
+    fn get(&self, state: &<G as MCTSGame>::State) -> Option<&T::ID> {
         self.table.get(state)
     }
 
-    fn insert(&mut self, state: <G as MCTSGame>::State, value: N::ID) {
+    fn insert(&mut self, state: <G as MCTSGame>::State, value: T::ID) {
         self.table.insert(state, value);
     }
 }
