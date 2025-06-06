@@ -15,6 +15,7 @@
         "nesw",
         "PWTTT",
         "repr",
+        "rustc",
         "serde"
     ],
     // windows

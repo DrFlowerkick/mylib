@@ -33,7 +33,7 @@ pub trait MCTSGame: Sized {
     fn perspective_player() -> Self::Player;
 }
 
-pub trait MCTSTree<G, N, EP, H>: Sized
+pub trait MCTSTree<G, N, EP, H>
 where
     G: MCTSGame,
     N: MCTSNode<G, EP, H>,
@@ -41,12 +41,27 @@ where
     H: Heuristic<G>,
 {
     fn new() -> Self;
-    fn init_root(&mut self, root_value: N);
+    fn init_root(&mut self, root_value: N) -> N::ID;
     fn set_root(&mut self, new_root_id: N::ID);
     fn root_id(&self) -> Option<N::ID>;
     fn get_node(&self, id: N::ID) -> &N;
     fn get_node_mut(&mut self, id: N::ID) -> &mut N;
     fn add_child(&mut self, parent_id: N::ID, child_value: N) -> N::ID;
+}
+
+pub trait TranspositionTable<G, N, EP, H>
+where
+    G: MCTSGame,
+    G::State: Eq + std::hash::Hash,
+    N: MCTSNode<G, EP, H>,
+    EP: ExpansionPolicy<G, H>,
+    H: Heuristic<G>,
+{
+    fn new() -> Self;
+    fn get(&self, _state: &G::State) -> Option<&N::ID> {
+        None
+    }
+    fn insert(&mut self, _state: G::State, _value: N::ID) {}
 }
 
 pub trait MCTSNode<G: MCTSGame, EP: ExpansionPolicy<G, H>, H: Heuristic<G>>

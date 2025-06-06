@@ -1,11 +1,9 @@
 mod algo;
 mod misc_types;
-mod node;
 mod traits;
-mod tree;
+mod tree_node;
 
 pub use algo::*;
 pub use misc_types::*;
-pub use node::*;
 pub use traits::*;
-pub use tree::*;
+pub use tree_node::*;

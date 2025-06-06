@@ -1,9 +1,11 @@
-// type definition and functions of mcts node
+// type definition and functions of MCTSNode and MCTSTree
+// since these traits are coupled by MCTSNode::ID, they always have to be implemented together
 
 use rand::seq::SliceRandom;
 
-use super::{ExpansionPolicy, Heuristic, MCTSGame, MCTSNode, UCTPolicy, UTCCache};
+use super::{ExpansionPolicy, Heuristic, MCTSGame, MCTSNode, MCTSTree, UCTPolicy, UTCCache};
 
+// plain implementation of MCTSNode
 pub struct PlainNode<G, UP, UC, EP, H>
 where
     G: MCTSGame,
@@ -133,5 +135,74 @@ where
             .collect::<Vec<_>>();
         expandable_moves.shuffle(&mut rand::thread_rng());
         expandable_moves
+    }
+}
+
+// plain implementation of MCTSTree
+pub struct PlainTree<G, UP, UC, EP, H>
+where
+    G: MCTSGame,
+    UP: UCTPolicy<G>,
+    UC: UTCCache<G, UP>,
+    EP: ExpansionPolicy<G, H>,
+    H: Heuristic<G>,
+{
+    pub nodes: Vec<PlainNode<G, UP, UC, EP, H>>,
+    pub root_id: usize,
+
+    phantom: std::marker::PhantomData<(G, EP, H)>,
+}
+
+impl<G, UP, UC, EP, H> MCTSTree<G, PlainNode<G, UP, UC, EP, H>, EP, H>
+    for PlainTree<G, UP, UC, EP, H>
+where
+    G: MCTSGame,
+    UP: UCTPolicy<G>,
+    UC: UTCCache<G, UP>,
+    EP: ExpansionPolicy<G, H>,
+    H: Heuristic<G>,
+{
+    fn new() -> Self {
+        let root_id = PlainNode::<G, UP, UC, EP, H>::init_root_id();
+        let nodes = vec![];
+        PlainTree {
+            nodes,
+            root_id,
+            phantom: std::marker::PhantomData,
+        }
+    }
+
+    fn init_root(&mut self, root_value: PlainNode<G, UP, UC, EP, H>) -> usize {
+        self.nodes.clear(); // Clear any existing nodes
+        self.nodes.push(root_value);
+        self.root_id = PlainNode::<G, UP, UC, EP, H>::init_root_id();
+        self.root_id
+    }
+
+    fn set_root(&mut self, new_root_id: usize) {
+        self.root_id = new_root_id;
+    }
+
+    fn root_id(&self) -> Option<usize> {
+        if self.nodes.is_empty() {
+            None // No nodes in the tree
+        } else {
+            Some(self.root_id)
+        }
+    }
+
+    fn get_node(&self, id: usize) -> &PlainNode<G, UP, UC, EP, H> {
+        &self.nodes[id]
+    }
+
+    fn get_node_mut(&mut self, id: usize) -> &mut PlainNode<G, UP, UC, EP, H> {
+        &mut self.nodes[id]
+    }
+
+    fn add_child(&mut self, parent_id: usize, child_value: PlainNode<G, UP, UC, EP, H>) -> usize {
+        let child_id = self.nodes.len();
+        self.get_node_mut(parent_id).add_child(child_id);
+        self.nodes.push(child_value);
+        child_id
     }
 }

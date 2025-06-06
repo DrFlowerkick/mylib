@@ -2,9 +2,11 @@
 
 use super::{
     ExpansionPolicy, GameCache, Heuristic, HeuristicCache, HeuristicConfig, MCTSConfig, MCTSGame,
-    MCTSPlayer, RecursiveHeuristicConfig, SimulationPolicy, UCTPolicy, UTCCache,
+    MCTSNode, MCTSPlayer, RecursiveHeuristicConfig, SimulationPolicy, TranspositionTable,
+    UCTPolicy, UTCCache,
 };
 use rand::prelude::SliceRandom;
+use std::collections::HashMap;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub enum TwoPlayer {
@@ -504,5 +506,56 @@ impl RecursiveHeuristicConfig for BaseRecursiveConfig {
     }
     fn early_exit_threshold(&self) -> f32 {
         self.early_exit_threshold
+    }
+}
+
+// implementation of TranspositionTable
+
+pub struct NoTranspositionTable {}
+
+impl<G, N, EP, H> TranspositionTable<G, N, EP, H> for NoTranspositionTable
+where
+    G: MCTSGame,
+    G::State: Eq + std::hash::Hash,
+    N: MCTSNode<G, EP, H>,
+    EP: ExpansionPolicy<G, H>,
+    H: Heuristic<G>,
+{
+    fn new() -> Self {
+        NoTranspositionTable {}
+    }
+}
+
+pub struct TranspositionHashMap<G, N, EP, H>
+where
+    G: MCTSGame,
+    G::State: Eq + std::hash::Hash,
+    N: MCTSNode<G, EP, H>,
+    EP: ExpansionPolicy<G, H>,
+    H: Heuristic<G>,
+{
+    pub table: HashMap<G::State, N::ID>,
+}
+
+impl<G, N, EP, H> TranspositionTable<G, N, EP, H> for TranspositionHashMap<G, N, EP, H>
+where
+    G: MCTSGame,
+    G::State: Eq + std::hash::Hash,
+    N: MCTSNode<G, EP, H>,
+    EP: ExpansionPolicy<G, H>,
+    H: Heuristic<G>,
+{
+    fn new() -> Self {
+        Self {
+            table: HashMap::new(),
+        }
+    }
+
+    fn get(&self, state: &<G as MCTSGame>::State) -> Option<&N::ID> {
+        self.table.get(state)
+    }
+
+    fn insert(&mut self, state: <G as MCTSGame>::State, value: N::ID) {
+        self.table.insert(state, value);
     }
 }

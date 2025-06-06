@@ -129,7 +129,7 @@ mod tests {
 
     use crate::my_monte_carlo_tree_search::{
         BaseHeuristicConfig, CachedUTC, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo,
-        NoHeuristic, NoUTCCache, PlainMCTS, ProgressiveWidening, StaticC,
+        NoHeuristic, NoUTCCache, PlainMCTS, PlainMCTSWithTT, ProgressiveWidening, StaticC,
     };
 
     type PWTTT = ProgressiveWidening<TicTacToeMCTSGame>;
@@ -314,14 +314,14 @@ mod tests {
             let mut first_ttt_game_data = TicTacToeGame::new();
             first_ttt_game_data.set_current_player(TicTacToeStatus::Me);
             let mut first_time_out = TIME_OUT_FIRST_TURN;
-            let mut second_mcts_tic_tac_toe: PlainMCTS<
+            let mut second_mcts_tic_tac_toe: PlainMCTSWithTT<
                 TicTacToeMCTSGame,
                 DynamicC,
                 CachedUTC,
                 PWTTT,
                 NoHeuristic,
                 DefaultSimulationPolicy,
-            > = PlainMCTS::new(BaseConfig::default(), BaseHeuristicConfig::default());
+            > = PlainMCTSWithTT::new(BaseConfig::default(), BaseHeuristicConfig::default());
             let mut second_ttt_game_data = TicTacToeGame::new();
             second_ttt_game_data.set_current_player(TicTacToeStatus::Opp);
             let mut second_time_out = TIME_OUT_FIRST_TURN;
@@ -336,8 +336,7 @@ mod tests {
                 let mut iteration_counter: usize = 0;
                 if first {
                     let start = Instant::now();
-                    first_mcts_tic_tac_toe
-                        .set_root(&first_ttt_game_data);
+                    first_mcts_tic_tac_toe.set_root(&first_ttt_game_data);
                     while start.elapsed() < first_time_out {
                         first_mcts_tic_tac_toe.iterate();
                         iteration_counter += 1;
@@ -361,8 +360,7 @@ mod tests {
                     first = false;
                 } else {
                     let start = Instant::now();
-                    second_mcts_tic_tac_toe
-                        .set_root(&second_ttt_game_data);
+                    second_mcts_tic_tac_toe.set_root(&second_ttt_game_data);
                     while start.elapsed() < second_time_out {
                         second_mcts_tic_tac_toe.iterate();
                         iteration_counter += 1;
