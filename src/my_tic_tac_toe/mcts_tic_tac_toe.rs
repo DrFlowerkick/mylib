@@ -1,5 +1,5 @@
 use super::*;
-use crate::my_monte_carlo_tree_search::{BaseConfig, GameCache, MCTSGame, MCTSPlayer};
+use crate::my_mcts::{BaseConfig, GameCache, MCTSGame, MCTSPlayer};
 use std::collections::HashMap;
 
 #[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
@@ -127,7 +127,7 @@ mod tests {
     use super::*;
     use rand::prelude::*;
 
-    use crate::my_monte_carlo_tree_search::{
+    use crate::my_mcts::{
         BaseHeuristicConfig, CachedUTC, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo,
         NoHeuristic, NoUTCCache, PlainMCTS, PlainMCTSWithTT, ProgressiveWidening, StaticC,
     };

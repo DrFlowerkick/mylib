@@ -1,9 +1,6 @@
 // plain implementation of MCTSTree
 
-use super::{ExpansionPolicy, Heuristic, MCTSGame, MCTSNode, MCTSTree, PlainNode};
-
-// plain implementation of MCTSTree using PlainNode
-pub type PlainTree<G, UP, UC, EP, H> = BaseTree<G, PlainNode<G, UP, UC, EP, H>, EP, H>;
+use super::super::{ExpansionPolicy, Heuristic, MCTSGame, MCTSNode, MCTSTree};
 
 // base implementation of MCTSTree
 pub struct BaseTree<G, N, EP, H>
@@ -77,15 +74,14 @@ where
         child_id
     }
 
-    fn link_child(&mut self, parent_id: Self::ID, mv: <G as MCTSGame>::Move, child_id: Self::ID) {
-        let edge = self
-            .edges
+    fn link_child(&mut self, parent_id: Self::ID, mv: G::Move, child_id: Self::ID) {
+        self.edges
             .get_mut(parent_id)
-            .expect("Expected edges of parent.");
-        edge.push((child_id, mv));
+            .expect("Expected edges of parent.")
+            .push((child_id, mv));
     }
 
-    fn get_children(&self, id: Self::ID) -> &[(Self::ID, <G as MCTSGame>::Move)] {
+    fn get_children(&self, id: Self::ID) -> &[(Self::ID, G::Move)] {
         &self.edges[id][..]
     }
 }

@@ -1,37 +1,35 @@
 // Plain implementation of MCTS
 
-use super::{
-    ExpansionPolicy, GameCache, Heuristic, HeuristicCache, MCTSAlgo, MCTSGame, MCTSNode, MCTSTree,
-    NoTranspositionTable, PlainNode, PlainTree, SimulationPolicy, TranspositionHashMap,
-    TranspositionTable, UCTPolicy, UTCCache,
+use super::super::{
+    ExpansionPolicy, GameCache, Heuristic, HeuristicCache, MCTSAlgo, MCTSGame, MCTSNode,
+    MCTSPlayer, MCTSTree, SimulationPolicy, TranspositionTable, UCTPolicy, UTCCache,
 };
 use rand::prelude::IteratorRandom;
 
-// PlainMCTS: BaseMCTS + PlainNode + PlainTree
-pub type PlainMCTS<G, UP, UC, EP, H, SP> = BaseMCTS<
-    G,
-    PlainNode<G, UP, UC, EP, H>,
-    PlainTree<G, UP, UC, EP, H>,
-    UP,
-    UC,
-    EP,
-    H,
-    SP,
-    NoTranspositionTable,
->;
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
+pub enum TwoPlayer {
+    #[default]
+    Me,
+    Opp,
+}
 
-// PlainMCTSWithTT: BaseMCTS + PlainNode + PlainTree + TranspositionHashMap
-pub type PlainMCTSWithTT<G, UP, UC, EP, H, SP> = BaseMCTS<
-    G,
-    PlainNode<G, UP, UC, EP, H>,
-    PlainTree<G, UP, UC, EP, H>,
-    UP,
-    UC,
-    EP,
-    H,
-    SP,
-    TranspositionHashMap<G, PlainNode<G, UP, UC, EP, H>, PlainTree<G, UP, UC, EP, H>, EP, H>,
->;
+impl TwoPlayer {
+    pub fn next_player(&self) -> Self {
+        match self {
+            TwoPlayer::Me => TwoPlayer::Opp,
+            TwoPlayer::Opp => TwoPlayer::Me,
+        }
+    }
+}
+
+impl MCTSPlayer for TwoPlayer {
+    fn next(&self) -> Self {
+        match self {
+            TwoPlayer::Me => TwoPlayer::Opp,
+            TwoPlayer::Opp => TwoPlayer::Me,
+        }
+    }
+}
 
 // Use BaseMCTS with your specific implementations of the MCTS traits.
 pub struct BaseMCTS<G, N, T, UP, UC, EP, H, SP, TT>

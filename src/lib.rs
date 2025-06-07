@@ -10,7 +10,7 @@ pub mod my_map_3x3;
 pub mod my_map_one_dim;
 pub mod my_map_point;
 pub mod my_map_two_dim;
-pub mod my_monte_carlo_tree_search;
+pub mod my_mcts;
 pub mod my_open_map;
 pub mod my_optimizer;
 pub mod my_simple_binary_tree;

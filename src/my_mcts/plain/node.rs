@@ -1,8 +1,6 @@
 // plain implementation of MCTSNode
 
-use rand::seq::SliceRandom;
-
-use super::{ExpansionPolicy, Heuristic, MCTSGame, MCTSNode, UCTPolicy, UTCCache};
+use super::super::{ExpansionPolicy, Heuristic, MCTSGame, MCTSNode, UCTPolicy, UTCCache};
 
 pub struct PlainNode<G, UP, UC, EP, H>
 where
@@ -100,17 +98,12 @@ where
         mcts_config: &G::Config,
         heuristic_config: &H::Config,
     ) -> Vec<G::Move> {
-        let mut expandable_moves = self
-            .expansion_policy
-            .expandable_moves(
-                self.visits,
-                num_parent_children,
-                &self.state,
-                mcts_config,
-                heuristic_config,
-            )
-            .collect::<Vec<_>>();
-        expandable_moves.shuffle(&mut rand::thread_rng());
-        expandable_moves
+        self.expansion_policy.expandable_moves(
+            self.visits,
+            num_parent_children,
+            &self.state,
+            mcts_config,
+            heuristic_config,
+        )
     }
 }
