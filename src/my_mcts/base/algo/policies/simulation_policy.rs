@@ -1,6 +1,6 @@
 // Implementations of SimulationPolicy
 
-use super::super::super::{Heuristic, HeuristicConfig, MCTSConfig, MCTSGame, SimulationPolicy};
+use super::{Heuristic, HeuristicConfig, MCTSConfig, MCTSGame, SimulationPolicy};
 
 pub struct DefaultSimulationPolicy {}
 

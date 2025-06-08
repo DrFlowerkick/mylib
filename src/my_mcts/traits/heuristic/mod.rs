@@ -12,4 +12,4 @@ pub use caching::*;
 pub use config::*;
 pub use recursive::*;
 
-use super::MCTSGame;
+use super::*;

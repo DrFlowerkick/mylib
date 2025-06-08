@@ -1,6 +1,6 @@
 // Base configuration for Heuristic and RecursiveHeuristic
 
-use super::*;
+use super::{HeuristicConfig, RecursiveHeuristicConfig};
 
 // Base configuration of heuristic, which supports HeuristicProgressiveWidening and HeuristicCutoff
 #[derive(Debug, Clone, Copy, PartialEq)]

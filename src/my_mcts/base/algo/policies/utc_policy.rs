@@ -1,6 +1,6 @@
 // base implementation of UTCPolicy
 
-use super::super::super::{MCTSConfig, MCTSGame, UCTPolicy};
+use super::{MCTSConfig, MCTSGame, UCTPolicy};
 
 pub struct StaticC {}
 

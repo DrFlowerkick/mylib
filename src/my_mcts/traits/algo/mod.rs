@@ -11,4 +11,4 @@ pub use config::*;
 pub use policies::*;
 pub use tree::*;
 
-use super::{Heuristic, MCTSGame};
+use super::*;

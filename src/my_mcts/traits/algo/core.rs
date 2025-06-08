@@ -8,9 +8,10 @@
 // While MCTSAlgo policies ExpansionPolicy and SimulationsPolicy depend upon Heuristic,
 // NoHeuristic can be used if ho heuristic is required or feasible.
 
-use crate::my_mcts::{MCTSTree, TranspositionTable};
-
-use super::{ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, SimulationPolicy, UCTPolicy};
+use super::{
+    ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, MCTSTree, SimulationPolicy,
+    TranspositionTable, UCTPolicy,
+};
 
 pub trait MCTSAlgo<G: MCTSGame, H: Heuristic<G>>: Sized {
     type Tree: MCTSTree<G, H, Self>;

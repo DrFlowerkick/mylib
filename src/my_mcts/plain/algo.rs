@@ -2,10 +2,13 @@
 
 use super::{
     ExpansionPolicy, GameCache, Heuristic, HeuristicCache, MCTSAlgo, MCTSConfig, MCTSGame,
-    MCTSNode, MCTSTree, PlainNode, PlainTree, SimulationPolicy, TranspositionTable, UCTPolicy,
-    UTCCache,
+    MCTSNode, MCTSTree, PlainNode, PlainTree, SimulationPolicy, TranspositionHashMap,
+    TranspositionTable, UCTPolicy, UTCCache,
 };
 use rand::prelude::IteratorRandom;
+
+// plain type of TranspositionHashMap, which works with PlainTree
+pub type PlainTTHashMap<State> = TranspositionHashMap<State, usize>;
 
 // Use PlainMCTS with your specific implementations of the MCTS traits.
 pub struct PlainMCTS<G, H, MC, UC, TT, UP, EP, SP>

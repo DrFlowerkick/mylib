@@ -1,8 +1,6 @@
 // implementations of ExpansionPolicy
 
-use super::super::super::{
-    ExpansionPolicy, GameCache, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame,
-};
+use super::{ExpansionPolicy, GameCache, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame};
 use rand::prelude::SliceRandom;
 
 pub struct ExpandAll {}
