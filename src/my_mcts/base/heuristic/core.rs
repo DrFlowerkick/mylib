@@ -1,12 +1,14 @@
-// implementation and configuration of Heuristic
+// NoHeuristic can be used, if no Heuristic is feasible for your game.
 
-use super::super::{BaseHeuristicConfig, Heuristic, MCTSGame, NoHeuristicCache};
+use super::super::{Heuristic, HeuristicConfig, MCTSGame, NoHeuristicCache};
 
 pub struct NoHeuristic {}
 
+impl HeuristicConfig for NoHeuristic {}
+
 impl<G: MCTSGame> Heuristic<G> for NoHeuristic {
     type Cache = NoHeuristicCache<G::State, G::Move>;
-    type Config = BaseHeuristicConfig;
+    type Config = Self;
 
     fn evaluate_state(
         state: &G::State,

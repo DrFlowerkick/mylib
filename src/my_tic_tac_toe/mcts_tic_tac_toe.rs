@@ -1,5 +1,5 @@
 use super::*;
-use crate::my_mcts::{BaseConfig, GameCache, MCTSGame, MCTSPlayer};
+use crate::my_mcts::{GameCache, GamePlayer, MCTSGame};
 use std::collections::HashMap;
 
 #[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
@@ -7,7 +7,7 @@ pub struct TicTacToePlayerAction {
     pub cell: CellIndex3x3,
 }
 
-impl MCTSPlayer for TicTacToeStatus {
+impl GamePlayer for TicTacToeStatus {
     fn next(&self) -> Self {
         match self {
             TicTacToeStatus::Me => TicTacToeStatus::Opp,
@@ -53,7 +53,6 @@ impl MCTSGame for TicTacToeMCTSGame {
     type Move = TicTacToePlayerAction;
     type Player = TicTacToeStatus;
     type Cache = TicTacToeGameCache;
-    type Config = BaseConfig;
 
     fn available_moves<'a>(state: &'a Self::State) -> Box<dyn Iterator<Item = Self::Move> + 'a> {
         Box::new(state.ttt.map.iterate().filter_map(|(cell, v)| {
@@ -128,12 +127,31 @@ mod tests {
     use rand::prelude::*;
 
     use crate::my_mcts::{
-        BaseHeuristicConfig, CachedUTC, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo,
-        NoHeuristic, NoUTCCache, PlainMCTS, PlainMCTSWithTT, ProgressiveWidening, StaticC,
+        BaseConfig, CachedUTC, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo, NoHeuristic,
+        NoTranspositionTable, NoUTCCache, PlainMCTS, ProgressiveWidening, StaticC,
+        TranspositionHashMap,
     };
 
-    type PWTTT = ProgressiveWidening<TicTacToeMCTSGame>;
-    type ExpandAllTTT = ExpandAll<TicTacToeMCTSGame>;
+    type TTTBasicMCTS = PlainMCTS<
+        TicTacToeMCTSGame,
+        NoHeuristic,
+        BaseConfig,
+        NoUTCCache,
+        NoTranspositionTable,
+        StaticC,
+        ExpandAll,
+        DefaultSimulationPolicy,
+    >;
+    type TTTFullMCTS = PlainMCTS<
+        TicTacToeMCTSGame,
+        NoHeuristic,
+        BaseConfig,
+        CachedUTC,
+        TranspositionHashMap<TicTacToeGame, usize>,
+        DynamicC,
+        ProgressiveWidening<TicTacToeMCTSGame, BaseConfig>,
+        DefaultSimulationPolicy,
+    >;
 
     use std::time::{Duration, Instant};
     const TIME_OUT_FIRST_TURN: Duration = Duration::from_millis(200);
@@ -153,14 +171,8 @@ mod tests {
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: PlainMCTS<
-                TicTacToeMCTSGame,
-                StaticC,
-                NoUTCCache,
-                ExpandAllTTT,
-                NoHeuristic,
-                DefaultSimulationPolicy,
-            > = PlainMCTS::new(BaseConfig::default(), BaseHeuristicConfig::default());
+            let mut mcts_tic_tac_toe: TTTBasicMCTS =
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
             let mut ttt_game_data = TicTacToeGame::new();
             ttt_game_data.set_current_player(TicTacToeStatus::Me);
             let mut time_out = TIME_OUT_FIRST_TURN;
@@ -228,14 +240,8 @@ mod tests {
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: PlainMCTS<
-                TicTacToeMCTSGame,
-                StaticC,
-                NoUTCCache,
-                ExpandAllTTT,
-                NoHeuristic,
-                DefaultSimulationPolicy,
-            > = PlainMCTS::new(BaseConfig::default(), BaseHeuristicConfig::default());
+            let mut mcts_tic_tac_toe: TTTBasicMCTS =
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
             let mut ttt_game_data = TicTacToeGame::new();
             ttt_game_data.set_current_player(TicTacToeStatus::Me);
             let mut time_out = TIME_OUT_FIRST_TURN;
@@ -303,25 +309,13 @@ mod tests {
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut first_mcts_tic_tac_toe: PlainMCTS<
-                TicTacToeMCTSGame,
-                StaticC,
-                NoUTCCache,
-                ExpandAllTTT,
-                NoHeuristic,
-                DefaultSimulationPolicy,
-            > = PlainMCTS::new(BaseConfig::default(), BaseHeuristicConfig::default());
+            let mut first_mcts_tic_tac_toe: TTTBasicMCTS =
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
             let mut first_ttt_game_data = TicTacToeGame::new();
             first_ttt_game_data.set_current_player(TicTacToeStatus::Me);
             let mut first_time_out = TIME_OUT_FIRST_TURN;
-            let mut second_mcts_tic_tac_toe: PlainMCTSWithTT<
-                TicTacToeMCTSGame,
-                DynamicC,
-                CachedUTC,
-                PWTTT,
-                NoHeuristic,
-                DefaultSimulationPolicy,
-            > = PlainMCTSWithTT::new(BaseConfig::default(), BaseHeuristicConfig::default());
+            let mut second_mcts_tic_tac_toe: TTTFullMCTS =
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
             let mut second_ttt_game_data = TicTacToeGame::new();
             second_ttt_game_data.set_current_player(TicTacToeStatus::Opp);
             let mut second_time_out = TIME_OUT_FIRST_TURN;

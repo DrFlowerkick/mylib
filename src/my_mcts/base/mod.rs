@@ -1,15 +1,17 @@
-// base implementations of mcts traits
+// base implementations of mcts traits, which provide the following features
+// - no caching structs for types of cache
+// - NoHeuristic, if no heuristic is required or feasible
+// - TranspositionHashMap, a HashMap based implementation of TranspositionTable and
+//   TranspositionTable, of no TranspositionTable is required or feasible
+// - several general purpose implementations of algo policies
+// - config implementations, which support these general purpose implementations of algo policies
 
-mod caching;
-mod config;
-mod core;
+mod algo;
+mod game;
 mod heuristic;
-mod policies;
-mod tree;
 
-pub use self::core::*;
-pub use caching::*;
-pub use config::*;
+pub use algo::*;
+pub use game::*;
 pub use heuristic::*;
-pub use policies::*;
-pub use tree::*;
+
+use super::*;

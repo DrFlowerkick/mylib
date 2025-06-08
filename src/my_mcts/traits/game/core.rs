@@ -1,17 +1,12 @@
-// core traits of mcts
+// MCTSGame: core game trait and core trait of MCTS, since it defines State and Move
 
-use super::*;
-
-pub trait MCTSPlayer: PartialEq {
-    fn next(&self) -> Self;
-}
+use super::{GameCache, GamePlayer};
 
 pub trait MCTSGame: Sized {
     type State: Clone + PartialEq;
     type Move;
-    type Player: MCTSPlayer;
+    type Player: GamePlayer;
     type Cache: GameCache<Self::State, Self::Move>;
-    type Config: MCTSConfig;
 
     fn available_moves<'a>(state: &'a Self::State) -> Box<dyn Iterator<Item = Self::Move> + 'a>;
     fn apply_move(
@@ -23,10 +18,4 @@ pub trait MCTSGame: Sized {
     fn current_player(state: &Self::State) -> Self::Player;
     fn last_player(state: &Self::State) -> Self::Player;
     fn perspective_player() -> Self::Player;
-}
-
-pub trait MCTSAlgo<G: MCTSGame> {
-    fn set_root(&mut self, state: &G::State) -> bool;
-    fn iterate(&mut self);
-    fn select_move(&self) -> &G::Move;
 }

@@ -1,33 +1,42 @@
 // plain implementation of MCTSTree
 
-use super::super::{ExpansionPolicy, Heuristic, MCTSGame, MCTSNode, MCTSTree};
+use super::{Heuristic, MCTSAlgo, MCTSGame, MCTSTree, PlainNode, UTCCache};
+
+// use type definition to keep clippy happy :)
+type Node<G, H, A, UC> = PlainNode<
+    G,
+    H,
+    <A as MCTSAlgo<G, H>>::Config,
+    UC,
+    <A as MCTSAlgo<G, H>>::UTC,
+    <A as MCTSAlgo<G, H>>::Expansion,
+>;
 
 // base implementation of MCTSTree
-pub struct BaseTree<G, N, EP, H>
+pub struct PlainTree<G, H, A, UC>
 where
     G: MCTSGame,
-    N: MCTSNode<G, EP, H>,
-    EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
+    A: MCTSAlgo<G, H>,
+    UC: UTCCache<G, A::UTC, A::Config>,
 {
-    pub nodes: Vec<N>,
+    pub nodes: Vec<Node<G, H, A, UC>>,
     pub edges: Vec<Vec<(usize, G::Move)>>,
     pub root_id: usize,
-
-    phantom: std::marker::PhantomData<(G, N, EP, H)>,
+    phantom: std::marker::PhantomData<(G, H, UC)>,
 }
 
-impl<G, N, EP, H> MCTSTree<G, N, EP, H> for BaseTree<G, N, EP, H>
+impl<G, H, A, UC> MCTSTree<G, H, A> for PlainTree<G, H, A, UC>
 where
     G: MCTSGame,
-    N: MCTSNode<G, EP, H>,
-    EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
+    A: MCTSAlgo<G, H, NodeID = usize>,
+    UC: UTCCache<G, A::UTC, A::Config>,
 {
-    type ID = usize;
+    type Node = Node<G, H, A, UC>;
 
     fn new() -> Self {
-        BaseTree {
+        PlainTree {
             nodes: vec![],
             edges: vec![],
             root_id: 0,
@@ -35,7 +44,7 @@ where
         }
     }
 
-    fn init_root(&mut self, root_value: N) -> Self::ID {
+    fn init_root(&mut self, root_value: Self::Node) -> A::NodeID {
         // Clear any existing nodes and edges
         self.nodes.clear();
         self.edges.clear();
@@ -45,11 +54,11 @@ where
         self.root_id
     }
 
-    fn set_root(&mut self, new_root_id: Self::ID) {
+    fn set_root(&mut self, new_root_id: A::NodeID) {
         self.root_id = new_root_id;
     }
 
-    fn root_id(&self) -> Option<Self::ID> {
+    fn root_id(&self) -> Option<A::NodeID> {
         if self.nodes.is_empty() {
             // No nodes in the tree
             None
@@ -58,15 +67,15 @@ where
         }
     }
 
-    fn get_node(&self, id: Self::ID) -> &N {
+    fn get_node(&self, id: A::NodeID) -> &Self::Node {
         &self.nodes[id]
     }
 
-    fn get_node_mut(&mut self, id: Self::ID) -> &mut N {
+    fn get_node_mut(&mut self, id: A::NodeID) -> &mut Self::Node {
         &mut self.nodes[id]
     }
 
-    fn add_child(&mut self, parent_id: Self::ID, mv: G::Move, child_value: N) -> usize {
+    fn add_child(&mut self, parent_id: A::NodeID, mv: G::Move, child_value: Self::Node) -> usize {
         let child_id = self.nodes.len();
         self.nodes.push(child_value);
         self.edges.push(vec![]);
@@ -74,14 +83,14 @@ where
         child_id
     }
 
-    fn link_child(&mut self, parent_id: Self::ID, mv: G::Move, child_id: Self::ID) {
+    fn link_child(&mut self, parent_id: A::NodeID, mv: G::Move, child_id: A::NodeID) {
         self.edges
             .get_mut(parent_id)
             .expect("Expected edges of parent.")
             .push((child_id, mv));
     }
 
-    fn get_children(&self, id: Self::ID) -> &[(Self::ID, G::Move)] {
+    fn get_children(&self, id: A::NodeID) -> &[(A::NodeID, G::Move)] {
         &self.edges[id][..]
     }
 }

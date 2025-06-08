@@ -1,36 +1,16 @@
 // plain implementation of mcts traits
+// - a plain implementation of MCTSNode
+// - a base implementation of MCTSTree, using Vec to store nodes of type MCTSNode
+//   and edges. An edge contains the ID of a child of a node and the corresponding
+//   move, which creates this child.
+// - a base implementation of MCTSAlgo, using all defined traits of MCTS
 
+mod algo;
 mod node;
+mod tree;
 
+pub use algo::*;
 pub use node::*;
+pub use tree::*;
 
-use super::{BaseTree, BaseMCTS, NoTranspositionTable, TranspositionHashMap};
-
-// plain implementation of MCTSTree using PlainNode
-pub type PlainTree<G, UP, UC, EP, H> = BaseTree<G, PlainNode<G, UP, UC, EP, H>, EP, H>;
-
-// PlainMCTS: BaseMCTS + PlainNode + PlainTree
-pub type PlainMCTS<G, UP, UC, EP, H, SP> = BaseMCTS<
-    G,
-    PlainNode<G, UP, UC, EP, H>,
-    PlainTree<G, UP, UC, EP, H>,
-    UP,
-    UC,
-    EP,
-    H,
-    SP,
-    NoTranspositionTable,
->;
-
-// PlainMCTSWithTT: BaseMCTS + PlainNode + PlainTree + TranspositionHashMap
-pub type PlainMCTSWithTT<G, UP, UC, EP, H, SP> = BaseMCTS<
-    G,
-    PlainNode<G, UP, UC, EP, H>,
-    PlainTree<G, UP, UC, EP, H>,
-    UP,
-    UC,
-    EP,
-    H,
-    SP,
-    TranspositionHashMap<G, PlainNode<G, UP, UC, EP, H>, PlainTree<G, UP, UC, EP, H>, EP, H>,
->;
+use super::*;

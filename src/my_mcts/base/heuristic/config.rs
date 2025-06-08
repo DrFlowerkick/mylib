@@ -1,44 +1,8 @@
-// base implementation of MCTSConfig
+// Base configuration for Heuristic and RecursiveHeuristic
 
-use super::super::{HeuristicConfig, MCTSConfig, RecursiveHeuristicConfig};
+use super::*;
 
-// default progressive widening with C = 2, alpha = 1/2
-// fast progressive widening with C = 4, alpha = 1/3
-// slow progressive widening with C = 1, alpha = 2/3
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct BaseConfig {
-    pub exploration_constant: f32,
-    pub progressive_widening_constant: f32,
-    pub progressive_widening_exponent: f32,
-    pub early_cut_off_depth: usize,
-}
-
-impl Default for BaseConfig {
-    fn default() -> Self {
-        BaseConfig {
-            exploration_constant: 1.40,
-            progressive_widening_constant: 2.0,
-            progressive_widening_exponent: 0.5,
-            early_cut_off_depth: 20,
-        }
-    }
-}
-
-impl MCTSConfig for BaseConfig {
-    fn exploration_constant(&self) -> f32 {
-        self.exploration_constant
-    }
-    fn progressive_widening_constant(&self) -> f32 {
-        self.progressive_widening_constant
-    }
-    fn progressive_widening_exponent(&self) -> f32 {
-        self.progressive_widening_exponent
-    }
-    fn early_cut_off_depth(&self) -> usize {
-        self.early_cut_off_depth
-    }
-}
-
+// Base configuration of heuristic, which supports HeuristicProgressiveWidening and HeuristicCutoff
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BaseHeuristicConfig {
     pub progressive_widening_initial_threshold: f32,
@@ -73,6 +37,8 @@ impl HeuristicConfig for BaseHeuristicConfig {
     }
 }
 
+// BaseRecursiveConfig provides parameters for RecursiveHeuristic and
+// extends BaseHeuristicConfig for usage with RecursiveHeuristic
 pub struct BaseRecursiveConfig {
     pub base_config: BaseHeuristicConfig,
     pub max_depth: usize,

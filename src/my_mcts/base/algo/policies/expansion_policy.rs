@@ -1,29 +1,32 @@
 // implementations of ExpansionPolicy
 
-use super::super::super::{ExpansionPolicy, GameCache, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame};
+use super::super::super::{
+    ExpansionPolicy, GameCache, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame,
+};
 use rand::prelude::SliceRandom;
 
-pub struct ExpandAll<G: MCTSGame> {
-    phantom: std::marker::PhantomData<G>,
-}
+pub struct ExpandAll {}
 
-impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for ExpandAll<G> {
+impl<G, H, Config> ExpansionPolicy<G, H, Config> for ExpandAll
+where
+    G: MCTSGame,
+    H: Heuristic<G>,
+    Config: MCTSConfig,
+{
     fn new(
         _state: &G::State,
         _game_cache: &mut G::Cache,
         _heuristic_cache: &mut H::Cache,
         _heuristic_config: &H::Config,
     ) -> Self {
-        ExpandAll {
-            phantom: std::marker::PhantomData,
-        }
+        ExpandAll {}
     }
     fn expandable_moves(
         &mut self,
         _visits: usize,
         _num_parent_children: usize,
         state: &G::State,
-        _mcts_config: &G::Config,
+        _mcts_config: &Config,
         _heuristic_config: &H::Config,
     ) -> Vec<G::Move> {
         let mut moves: Vec<_> = G::available_moves(state).collect();
@@ -32,12 +35,21 @@ impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for ExpandAll<G> {
     }
 }
 
-pub struct ProgressiveWidening<G: MCTSGame> {
+pub struct ProgressiveWidening<G, Config>
+where
+    G: MCTSGame,
+    Config: MCTSConfig,
+{
     pub unexpanded_moves: Vec<G::Move>,
+    phantom: std::marker::PhantomData<Config>,
 }
 
-impl<G: MCTSGame> ProgressiveWidening<G> {
-    fn allowed_children(visits: usize, mcts_config: &G::Config) -> usize {
+impl<G, Config> ProgressiveWidening<G, Config>
+where
+    G: MCTSGame,
+    Config: MCTSConfig,
+{
+    fn allowed_children(visits: usize, mcts_config: &Config) -> usize {
         if visits == 0 {
             1
         } else {
@@ -48,7 +60,12 @@ impl<G: MCTSGame> ProgressiveWidening<G> {
     }
 }
 
-impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for ProgressiveWidening<G> {
+impl<G, H, Config> ExpansionPolicy<G, H, Config> for ProgressiveWidening<G, Config>
+where
+    G: MCTSGame,
+    H: Heuristic<G>,
+    Config: MCTSConfig,
+{
     fn new(
         state: &G::State,
         game_cache: &mut G::Cache,
@@ -62,17 +79,21 @@ impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for ProgressiveWidening
         if is_terminal {
             return ProgressiveWidening {
                 unexpanded_moves: vec![],
+                phantom: std::marker::PhantomData,
             };
         }
         let mut unexpanded_moves = G::available_moves(state).collect::<Vec<_>>();
         unexpanded_moves.shuffle(&mut rand::thread_rng());
-        ProgressiveWidening { unexpanded_moves }
+        ProgressiveWidening {
+            unexpanded_moves,
+            phantom: std::marker::PhantomData,
+        }
     }
     fn should_expand(
         &self,
         visits: usize,
         num_parent_children: usize,
-        mcts_config: &G::Config,
+        mcts_config: &Config,
         _heuristic_config: &H::Config,
     ) -> bool {
         num_parent_children < Self::allowed_children(visits, mcts_config)
@@ -83,7 +104,7 @@ impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for ProgressiveWidening
         visits: usize,
         num_parent_children: usize,
         _state: &G::State,
-        mcts_config: &G::Config,
+        mcts_config: &Config,
         _heuristic_config: &H::Config,
     ) -> Vec<G::Move> {
         let allowed_children = Self::allowed_children(visits, mcts_config);
@@ -101,13 +122,23 @@ impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for ProgressiveWidening
     }
 }
 
-pub struct HeuristicProgressiveWidening<G: MCTSGame, H: Heuristic<G>> {
+pub struct HeuristicProgressiveWidening<G, H, Config>
+where
+    G: MCTSGame,
+    H: Heuristic<G>,
+    Config: MCTSConfig,
+{
     pub unexpanded_moves: Vec<(f32, G::Move)>,
-    phantom: std::marker::PhantomData<H>,
+    phantom: std::marker::PhantomData<(H, Config)>,
 }
 
-impl<G: MCTSGame, H: Heuristic<G>> HeuristicProgressiveWidening<G, H> {
-    fn allowed_children(visits: usize, mcts_config: &G::Config) -> usize {
+impl<G, H, Config> HeuristicProgressiveWidening<G, H, Config>
+where
+    G: MCTSGame,
+    H: Heuristic<G>,
+    Config: MCTSConfig,
+{
+    fn allowed_children(visits: usize, mcts_config: &Config) -> usize {
         if visits == 0 {
             1
         } else {
@@ -124,7 +155,12 @@ impl<G: MCTSGame, H: Heuristic<G>> HeuristicProgressiveWidening<G, H> {
     }
 }
 
-impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for HeuristicProgressiveWidening<G, H> {
+impl<G, H, Config> ExpansionPolicy<G, H, Config> for HeuristicProgressiveWidening<G, H, Config>
+where
+    G: MCTSGame,
+    H: Heuristic<G>,
+    Config: MCTSConfig,
+{
     fn new(
         state: &G::State,
         game_cache: &mut G::Cache,
@@ -158,7 +194,7 @@ impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for HeuristicProgressiv
         &self,
         visits: usize,
         num_parent_children: usize,
-        mcts_config: &G::Config,
+        mcts_config: &Config,
         heuristic_config: &H::Config,
     ) -> bool {
         let threshold = Self::threshold(visits, heuristic_config);
@@ -173,7 +209,7 @@ impl<G: MCTSGame, H: Heuristic<G>> ExpansionPolicy<G, H> for HeuristicProgressiv
         visits: usize,
         num_parent_children: usize,
         _state: &G::State,
-        mcts_config: &G::Config,
+        mcts_config: &Config,
         heuristic_config: &H::Config,
     ) -> Vec<G::Move> {
         let allowed_children = Self::allowed_children(visits, mcts_config);

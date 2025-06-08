@@ -1,39 +1,42 @@
 // plain implementation of MCTSNode
 
-use super::super::{ExpansionPolicy, Heuristic, MCTSGame, MCTSNode, UCTPolicy, UTCCache};
+use super::{ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, MCTSNode, UCTPolicy, UTCCache};
 
-pub struct PlainNode<G, UP, UC, EP, H>
+pub struct PlainNode<G, H, MC, UC, UP, EP>
 where
     G: MCTSGame,
-    UP: UCTPolicy<G>,
-    UC: UTCCache<G, UP>,
-    EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
+    MC: MCTSConfig,
+    UC: UTCCache<G, UP, MC>,
+    UP: UCTPolicy<G, MC>,
+    EP: ExpansionPolicy<G, H, MC>,
 {
     pub state: G::State,
     pub visits: usize,
     pub accumulated_value: f32,
     pub utc_cache: UC,
     pub expansion_policy: EP,
-
-    phantom: std::marker::PhantomData<(UP, H)>,
+    phantom: std::marker::PhantomData<(H, MC, UP)>,
 }
 
-impl<G, UP, UC, EP, H> MCTSNode<G, EP, H> for PlainNode<G, UP, UC, EP, H>
+impl<G, H, MC, UC, UP, EP> MCTSNode<G, H, MC, UP, EP> for PlainNode<G, H, MC, UC, UP, EP>
 where
     G: MCTSGame,
-    UP: UCTPolicy<G>,
-    UC: UTCCache<G, UP>,
-    EP: ExpansionPolicy<G, H>,
     H: Heuristic<G>,
+    MC: MCTSConfig,
+    UC: UTCCache<G, UP, MC>,
+    UP: UCTPolicy<G, MC>,
+    EP: ExpansionPolicy<G, H, MC>,
 {
+    type Cache = UC;
+
     fn new(state: G::State, expansion_policy: EP) -> Self {
         PlainNode {
-            expansion_policy,
             state,
             visits: 0,
             accumulated_value: 0.0,
             utc_cache: UC::new(),
+            expansion_policy,
             phantom: std::marker::PhantomData,
         }
     }
@@ -60,7 +63,7 @@ where
         &mut self,
         parent_visits: usize,
         perspective_player: G::Player,
-        mcts_config: &G::Config,
+        mcts_config: &MC,
     ) -> f32 {
         if self.visits == 0 {
             return f32::INFINITY;
@@ -82,7 +85,7 @@ where
         &self,
         visits: usize,
         num_parent_children: usize,
-        mcts_config: &G::Config,
+        mcts_config: &MC,
         heuristic_config: &H::Config,
     ) -> bool {
         self.expansion_policy.should_expand(
@@ -95,7 +98,7 @@ where
     fn expandable_moves(
         &mut self,
         num_parent_children: usize,
-        mcts_config: &G::Config,
+        mcts_config: &MC,
         heuristic_config: &H::Config,
     ) -> Vec<G::Move> {
         self.expansion_policy.expandable_moves(
