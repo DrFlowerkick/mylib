@@ -36,6 +36,7 @@ where
     }
 
     fn insert(&mut self, state: State, value: ID) {
-        self.table.insert(state, value);
+        // make sure that always a state is given to insert.
+        assert!(self.table.insert(state, value).is_none());
     }
 }

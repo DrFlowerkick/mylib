@@ -7,9 +7,9 @@ mod config;
 mod core_heuristic;
 mod recursive;
 
-pub use core_heuristic::*;
 pub use caching::*;
 pub use config::*;
+pub use core_heuristic::*;
 pub use recursive::*;
 
 use super::MCTSGame;

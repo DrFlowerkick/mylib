@@ -83,31 +83,40 @@ where
                 return true;
             }
 
-            // search for node with state in tree. node must be a grand child of root:
-            // children of root: result of my moves
-            // grand children of root: result of opponent moves
+            // search for node with state in tree. node must be a either child or grand child of root:
+            // children of root: result of my or opponent moves
+            // grand children of root: result of opponent or my moves
             // unwrap() is safe here because we just checked that root_id exists
-            if let Some((new_root_id, _)) = self
-                .tree
-                .get_children(root_id)
-                .iter()
-                .flat_map(|&(my_move_node_id, _)| {
-                    self.tree.get_children(my_move_node_id).iter().map(
-                        |&(opponent_move_node_id, _)| {
-                            (
-                                opponent_move_node_id,
-                                self.tree.get_node(opponent_move_node_id).get_state(),
+            // ToDo: this is only true for two player games. transposition table is better for multiplayer
+            if let Some((new_root_id, _)) =
+                self.tree
+                    .get_children(root_id)
+                    .iter()
+                    .map(|&(my_move_node_id, _)| {
+                        (
+                            my_move_node_id,
+                            self.tree.get_node(my_move_node_id).get_state(),
+                        )
+                    })
+                    .chain(self.tree.get_children(root_id).iter().flat_map(
+                        |&(my_move_node_id, _)| {
+                            self.tree.get_children(my_move_node_id).iter().map(
+                                |&(opponent_move_node_id, _)| {
+                                    (
+                                        opponent_move_node_id,
+                                        self.tree.get_node(opponent_move_node_id).get_state(),
+                                    )
+                                },
                             )
                         },
-                    )
-                })
-                .find(|(_, opponent_move_node_state)| *opponent_move_node_state == state)
+                    ))
+                    .find(|(_, move_node_state)| *move_node_state == state)
             {
                 self.tree.set_root(new_root_id);
                 return true;
             }
         }
-
+        // state not found -> reset root
         let expansion_policy = EP::new(
             state,
             &mut self.game_cache,
