@@ -10,4 +10,7 @@ pub use config::*;
 pub use policies::*;
 pub use utc_caching::*;
 
-use super::*;
+use super::{
+    ExpansionPolicy, GameCache, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame, SimulationPolicy,
+    TranspositionTable, UCTPolicy, UTCCache,
+};

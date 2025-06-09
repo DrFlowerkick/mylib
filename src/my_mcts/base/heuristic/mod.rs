@@ -2,10 +2,10 @@
 
 mod caching;
 mod config;
-mod core;
+mod core_heuristic;
 
-pub use self::core::*;
+pub use core_heuristic::*;
 pub use caching::*;
 pub use config::*;
 
-pub use super::*;
+use super::{Heuristic, HeuristicCache, HeuristicConfig, MCTSGame, RecursiveHeuristicConfig};

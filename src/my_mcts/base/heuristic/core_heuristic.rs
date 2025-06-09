@@ -1,6 +1,6 @@
 // NoHeuristic can be used, if no Heuristic is feasible for your game.
 
-use super::super::{Heuristic, HeuristicConfig, MCTSGame, NoHeuristicCache};
+use super::{Heuristic, HeuristicConfig, MCTSGame, NoHeuristicCache};
 
 pub struct NoHeuristic {}
 

@@ -1,9 +1,9 @@
 // node trait of mcts
 
 mod caching;
-mod core;
+mod core_node;
 
-pub use self::core::*;
+pub use core_node::*;
 pub use caching::*;
 
-use super::*;
+use super::{ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, UCTPolicy};

@@ -1,14 +1,14 @@
 // all traits, which define the behavior of the MCTS algorithm
 mod caching;
 mod config;
-mod core;
+mod core_algo;
 mod policies;
 mod tree;
 
-pub use self::core::*;
+pub use core_algo::*;
 pub use caching::*;
 pub use config::*;
 pub use policies::*;
 pub use tree::*;
 
-use super::*;
+use super::{Heuristic, MCTSGame};

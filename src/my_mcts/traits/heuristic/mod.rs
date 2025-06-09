@@ -4,12 +4,12 @@
 
 mod caching;
 mod config;
-mod core;
+mod core_heuristic;
 mod recursive;
 
-pub use self::core::*;
+pub use core_heuristic::*;
 pub use caching::*;
 pub use config::*;
 pub use recursive::*;
 
-use super::*;
+use super::MCTSGame;

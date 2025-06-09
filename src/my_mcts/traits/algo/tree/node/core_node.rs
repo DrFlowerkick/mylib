@@ -1,6 +1,6 @@
 // MCTSNode defines the node structure of a tree node of the MCTS tree
 
-use super::{MCTSGame, Heuristic, MCTSConfig, UCTPolicy, UTCCache, ExpansionPolicy};
+use super::{ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, UCTPolicy, UTCCache};
 
 pub trait MCTSNode<G, H, MC, UP, EP>
 where

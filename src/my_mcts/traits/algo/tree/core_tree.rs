@@ -1,6 +1,6 @@
 // tree trait of mcts
 
-use super::{MCTSGame, Heuristic, MCTSAlgo, MCTSNode};
+use super::{Heuristic, MCTSAlgo, MCTSGame, MCTSNode};
 
 pub trait MCTSTree<G, H, A>
 where
