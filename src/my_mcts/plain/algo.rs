@@ -117,6 +117,11 @@ where
             }
         }
         // state not found -> reset root
+        self.reset_root(state);
+        false
+    }
+
+    fn reset_root(&mut self, state: &<G as MCTSGame>::State) {
         let expansion_policy = EP::new(
             state,
             &mut self.game_cache,
@@ -127,7 +132,6 @@ where
         let root_id = self.tree.init_root(new_root);
         self.transposition_table = TT::new();
         self.transposition_table.insert(state.clone(), root_id);
-        false
     }
 
     fn iterate(&mut self) {

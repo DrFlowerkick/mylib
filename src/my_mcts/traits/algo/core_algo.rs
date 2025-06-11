@@ -23,6 +23,7 @@ pub trait MCTSAlgo<G: MCTSGame, H: Heuristic<G>>: Sized {
     type Simulation: SimulationPolicy<G, H, Self::Config>;
 
     fn set_root(&mut self, state: &G::State) -> bool;
+    fn reset_root(&mut self, state: &G::State);
     fn iterate(&mut self);
     fn select_move(&self) -> &G::Move;
 }

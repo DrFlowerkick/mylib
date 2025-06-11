@@ -6,4 +6,5 @@ pub trait TranspositionTable<State, ID> {
         None
     }
     fn insert(&mut self, _state: State, _value: ID) {}
+    fn clear(&mut self) {}
 }
