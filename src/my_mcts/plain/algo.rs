@@ -173,11 +173,9 @@ where
 
                 for vec_index in 0..num_parent_children {
                     let (child_index, _) = tree.get_children(current_id)[vec_index];
-                    let utc = tree.get_node_mut(child_index).calc_utc(
-                        parent_visits,
-                        G::perspective_player(),
-                        mcts_config,
-                    );
+                    let utc = tree
+                        .get_node_mut(child_index)
+                        .calc_utc(parent_visits, mcts_config);
                     if utc > best_utc {
                         best_utc = utc;
                         best_child_index = Some(child_index);

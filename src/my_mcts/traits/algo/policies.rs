@@ -19,7 +19,13 @@ pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig> {
         }
     }
 
-    fn exploration_score(visits: usize, parent_visits: usize, mcts_config: &Config) -> f32 {
+    fn exploration_score(
+        visits: usize,
+        parent_visits: usize,
+        mcts_config: &Config,
+        _last_player: G::Player,
+        _perspective_player: G::Player,
+    ) -> f32 {
         mcts_config.exploration_constant() * ((parent_visits as f32).ln() / visits as f32).sqrt()
     }
 }

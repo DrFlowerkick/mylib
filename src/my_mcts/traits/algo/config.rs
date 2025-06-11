@@ -5,6 +5,9 @@ pub trait MCTSConfig {
     fn exploration_constant(&self) -> f32 {
         1.4
     }
+    fn non_perspective_player_exploration_boost(&self) -> f32 {
+        1.0
+    }
     fn progressive_widening_constant(&self) -> f32 {
         2.0
     }

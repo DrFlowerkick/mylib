@@ -17,12 +17,7 @@ where
     fn get_visits(&self) -> usize;
     fn get_accumulated_value(&self) -> f32;
     fn update_stats(&mut self, result: f32);
-    fn calc_utc(
-        &mut self,
-        parent_visits: usize,
-        perspective_player: G::Player,
-        mcts_config: &MC,
-    ) -> f32;
+    fn calc_utc(&mut self, parent_visits: usize, mcts_config: &MC) -> f32;
     fn should_expand(
         &self,
         visits: usize,

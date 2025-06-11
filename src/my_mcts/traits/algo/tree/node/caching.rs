@@ -13,7 +13,7 @@ where
     fn update_exploitation(
         &mut self,
         visits: usize,
-        acc_value: f32,
+        accumulated_value: f32,
         last_player: G::Player,
         perspective_player: G::Player,
     );
@@ -21,12 +21,26 @@ where
     fn get_exploitation(
         &self,
         visits: usize,
-        acc_value: f32,
+        accumulated_value: f32,
         last_player: G::Player,
         perspective_player: G::Player,
     ) -> f32;
 
-    fn update_exploration(&mut self, visits: usize, parent_visits: usize, mcts_config: &Config);
+    fn update_exploration(
+        &mut self,
+        visits: usize,
+        parent_visits: usize,
+        mcts_config: &Config,
+        last_player: G::Player,
+        perspective_player: G::Player,
+    );
 
-    fn get_exploration(&self, visits: usize, parent_visits: usize, mcts_config: &Config) -> f32;
+    fn get_exploration(
+        &self,
+        visits: usize,
+        parent_visits: usize,
+        mcts_config: &Config,
+        last_player: G::Player,
+        perspective_player: G::Player,
+    ) -> f32;
 }

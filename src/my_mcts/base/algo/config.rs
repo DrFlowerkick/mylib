@@ -8,6 +8,7 @@ use super::MCTSConfig;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BaseConfig {
     pub exploration_constant: f32,
+    pub non_perspective_player_exploration_boost: f32,
     pub progressive_widening_constant: f32,
     pub progressive_widening_exponent: f32,
     pub early_cut_off_depth: usize,
@@ -17,6 +18,7 @@ impl Default for BaseConfig {
     fn default() -> Self {
         BaseConfig {
             exploration_constant: 1.40,
+            non_perspective_player_exploration_boost: 1.0,
             progressive_widening_constant: 2.0,
             progressive_widening_exponent: 0.5,
             early_cut_off_depth: 20,
@@ -27,6 +29,9 @@ impl Default for BaseConfig {
 impl MCTSConfig for BaseConfig {
     fn exploration_constant(&self) -> f32 {
         self.exploration_constant
+    }
+    fn non_perspective_player_exploration_boost(&self) -> f32 {
+        self.non_perspective_player_exploration_boost
     }
     fn progressive_widening_constant(&self) -> f32 {
         self.progressive_widening_constant

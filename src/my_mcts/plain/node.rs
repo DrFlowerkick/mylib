@@ -59,12 +59,7 @@ where
             G::perspective_player(),
         );
     }
-    fn calc_utc(
-        &mut self,
-        parent_visits: usize,
-        perspective_player: G::Player,
-        mcts_config: &MC,
-    ) -> f32 {
+    fn calc_utc(&mut self, parent_visits: usize, mcts_config: &MC) -> f32 {
         if self.visits == 0 {
             return f32::INFINITY;
         }
@@ -72,13 +67,22 @@ where
             self.visits,
             self.accumulated_value,
             G::last_player(&self.state),
-            perspective_player,
+            G::perspective_player(),
         );
-        self.utc_cache
-            .update_exploration(self.visits, parent_visits, mcts_config);
-        let exploration = self
-            .utc_cache
-            .get_exploration(self.visits, parent_visits, mcts_config);
+        self.utc_cache.update_exploration(
+            self.visits,
+            parent_visits,
+            mcts_config,
+            G::last_player(&self.state),
+            G::perspective_player(),
+        );
+        let exploration = self.utc_cache.get_exploration(
+            self.visits,
+            parent_visits,
+            mcts_config,
+            G::last_player(&self.state),
+            G::perspective_player(),
+        );
         exploitation + exploration
     }
     fn should_expand(

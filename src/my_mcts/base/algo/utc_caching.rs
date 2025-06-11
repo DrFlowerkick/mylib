@@ -18,16 +18,37 @@ where
     fn get_exploitation(
         &self,
         visits: usize,
-        acc_value: f32,
+        accumulated_value: f32,
         last_player: G::Player,
         perspective_player: G::Player,
     ) -> f32 {
-        UTC::exploitation_score(acc_value, visits, last_player, perspective_player)
+        UTC::exploitation_score(accumulated_value, visits, last_player, perspective_player)
     }
 
-    fn update_exploration(&mut self, _v: usize, _p: usize, _mc: &Config) {}
-    fn get_exploration(&self, visits: usize, parent_visits: usize, mcts_config: &Config) -> f32 {
-        UTC::exploration_score(visits, parent_visits, mcts_config)
+    fn update_exploration(
+        &mut self,
+        _visits: usize,
+        _parent_visits: usize,
+        _mcts_config: &Config,
+        _last_player: G::Player,
+        _perspective_player: G::Player,
+    ) {
+    }
+    fn get_exploration(
+        &self,
+        visits: usize,
+        parent_visits: usize,
+        mcts_config: &Config,
+        last_player: G::Player,
+        perspective_player: G::Player,
+    ) -> f32 {
+        UTC::exploration_score(
+            visits,
+            parent_visits,
+            mcts_config,
+            last_player,
+            perspective_player,
+        )
     }
 }
 
@@ -54,26 +75,52 @@ where
     fn update_exploitation(
         &mut self,
         visits: usize,
-        acc_value: f32,
+        accumulated_value: f32,
         last_player: G::Player,
         perspective_player: G::Player,
     ) {
         self.exploitation =
-            UTC::exploitation_score(acc_value, visits, last_player, perspective_player);
+            UTC::exploitation_score(accumulated_value, visits, last_player, perspective_player);
     }
 
-    fn get_exploitation(&self, _v: usize, _a: f32, _c: G::Player, _p: G::Player) -> f32 {
+    fn get_exploitation(
+        &self,
+        _visits: usize,
+        _accumulated_value: f32,
+        _last_player: G::Player,
+        _perspective_player: G::Player,
+    ) -> f32 {
         self.exploitation
     }
 
-    fn update_exploration(&mut self, visits: usize, parent_visits: usize, mcts_config: &Config) {
+    fn update_exploration(
+        &mut self,
+        visits: usize,
+        parent_visits: usize,
+        mcts_config: &Config,
+        last_player: G::Player,
+        perspective_player: G::Player,
+    ) {
         if self.last_parent_visits != parent_visits {
-            self.exploration = UTC::exploration_score(visits, parent_visits, mcts_config);
+            self.exploration = UTC::exploration_score(
+                visits,
+                parent_visits,
+                mcts_config,
+                last_player,
+                perspective_player,
+            );
             self.last_parent_visits = parent_visits;
         }
     }
 
-    fn get_exploration(&self, _v: usize, _p: usize, _mc: &Config) -> f32 {
+    fn get_exploration(
+        &self,
+        _visits: usize,
+        _parent_visits: usize,
+        _mcts_config: &Config,
+        _last_player: G::Player,
+        _perspective_player: G::Player,
+    ) -> f32 {
         self.exploration
     }
 }
