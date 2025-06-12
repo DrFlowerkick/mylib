@@ -42,14 +42,14 @@ where
     EP: ExpansionPolicy<G, H, MC>,
     SP: SimulationPolicy<G, H, MC>,
 {
-    pub fn new(mcts_config: MC, heuristic_config: H::Config) -> Self {
+    pub fn new(mcts_config: MC, heuristic_config: H::Config, expected_num_nodes: usize) -> Self {
         Self {
-            tree: PlainTree::new(),
+            tree: PlainTree::new(expected_num_nodes),
             mcts_config,
             heuristic_config,
             game_cache: G::Cache::new(),
             heuristic_cache: H::Cache::new(),
-            transposition_table: TT::new(),
+            transposition_table: TT::new(expected_num_nodes),
             phantom: std::marker::PhantomData,
         }
     }
@@ -130,7 +130,7 @@ where
         );
         let new_root = PlainNode::new(state.clone(), expansion_policy);
         let root_id = self.tree.init_root(new_root);
-        self.transposition_table = TT::new();
+        self.transposition_table.clear();
         self.transposition_table.insert(state.clone(), root_id);
     }
 
@@ -199,6 +199,10 @@ where
                     num_parent_children,
                     mcts_config,
                     heuristic_config,
+                );
+                assert!(
+                    !expandable_moves.is_empty(),
+                    "expandable moves should never be empty."
                 );
 
                 // generate new children nodes from expandable moves

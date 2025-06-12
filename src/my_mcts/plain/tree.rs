@@ -35,10 +35,10 @@ where
 {
     type Node = Node<G, H, A, UC>;
 
-    fn new() -> Self {
+    fn new(expected_num_nodes: usize) -> Self {
         PlainTree {
-            nodes: vec![],
-            edges: vec![],
+            nodes: Vec::with_capacity(expected_num_nodes),
+            edges: Vec::with_capacity(expected_num_nodes),
             root_id: 0,
             phantom: std::marker::PhantomData,
         }

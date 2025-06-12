@@ -9,7 +9,7 @@ use std::collections::HashMap;
 pub struct NoTranspositionTable {}
 
 impl<State, ID> TranspositionTable<State, ID> for NoTranspositionTable {
-    fn new() -> Self {
+    fn new(_expected_num_nodes: usize) -> Self {
         NoTranspositionTable {}
     }
 }
@@ -25,9 +25,9 @@ impl<State, ID> TranspositionTable<State, ID> for TranspositionHashMap<State, ID
 where
     State: Eq + std::hash::Hash,
 {
-    fn new() -> Self {
+    fn new(expected_num_nodes: usize) -> Self {
         Self {
-            table: HashMap::new(),
+            table: HashMap::with_capacity(expected_num_nodes),
         }
     }
 

@@ -10,7 +10,7 @@ where
 {
     type Node: MCTSNode<G, H, A::Config, A::UTC, A::Expansion>;
 
-    fn new() -> Self;
+    fn new(expected_num_nodes: usize) -> Self;
     fn init_root(&mut self, root_value: Self::Node) -> A::NodeID;
     fn set_root(&mut self, new_root_id: A::NodeID);
     fn root_id(&self) -> Option<A::NodeID>;

@@ -156,6 +156,7 @@ mod tests {
     use std::time::{Duration, Instant};
     const TIME_OUT_FIRST_TURN: Duration = Duration::from_millis(200);
     const TIME_OUT_SUCCESSIVE_TURNS: Duration = Duration::from_millis(50);
+    const EXPECTED_NUM_NODES: usize = 100_000;
 
     #[test]
     fn calc_max_number_of_possible_nodes() {
@@ -172,7 +173,7 @@ mod tests {
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
             let mut mcts_tic_tac_toe: TTTBasicMCTS =
-                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
             let mut ttt_game_data = TicTacToeGame::new();
             ttt_game_data.set_current_player(TicTacToeStatus::Me);
             let mut time_out = TIME_OUT_FIRST_TURN;
@@ -241,7 +242,7 @@ mod tests {
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
             let mut mcts_tic_tac_toe: TTTBasicMCTS =
-                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
             let mut ttt_game_data = TicTacToeGame::new();
             ttt_game_data.set_current_player(TicTacToeStatus::Me);
             let mut time_out = TIME_OUT_FIRST_TURN;
@@ -310,12 +311,12 @@ mod tests {
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
             let mut first_mcts_tic_tac_toe: TTTBasicMCTS =
-                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
             let mut first_ttt_game_data = TicTacToeGame::new();
             first_ttt_game_data.set_current_player(TicTacToeStatus::Me);
             let mut first_time_out = TIME_OUT_FIRST_TURN;
             let mut second_mcts_tic_tac_toe: TTTFullMCTS =
-                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
             let mut second_ttt_game_data = TicTacToeGame::new();
             second_ttt_game_data.set_current_player(TicTacToeStatus::Opp);
             let mut second_time_out = TIME_OUT_FIRST_TURN;
