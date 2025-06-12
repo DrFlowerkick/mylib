@@ -11,4 +11,4 @@ pub use core_algo::*;
 pub use policies::*;
 pub use tree::*;
 
-use super::{Heuristic, MCTSGame};
+use super::{Heuristic, MCTSGame, GamePlayer};

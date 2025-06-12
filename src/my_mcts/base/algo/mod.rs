@@ -12,5 +12,5 @@ pub use utc_caching::*;
 
 use super::{
     ExpansionPolicy, GameCache, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame, SimulationPolicy,
-    TranspositionTable, UCTPolicy, UTCCache,
+    TranspositionTable, UCTPolicy, UTCCache, GamePlayer
 };

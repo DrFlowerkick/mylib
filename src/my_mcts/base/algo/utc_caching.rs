@@ -8,7 +8,7 @@ impl<G, UTC, Config> UTCCache<G, UTC, Config> for NoUTCCache
 where
     G: MCTSGame,
     UTC: UCTPolicy<G, Config>,
-    Config: MCTSConfig,
+    Config: MCTSConfig<G::Player>,
 {
     fn new() -> Self {
         NoUTCCache
@@ -31,7 +31,6 @@ where
         _parent_visits: usize,
         _mcts_config: &Config,
         _last_player: G::Player,
-        _perspective_player: G::Player,
     ) {
     }
     fn get_exploration(
@@ -40,14 +39,12 @@ where
         parent_visits: usize,
         mcts_config: &Config,
         last_player: G::Player,
-        perspective_player: G::Player,
     ) -> f32 {
         UTC::exploration_score(
             visits,
             parent_visits,
             mcts_config,
             last_player,
-            perspective_player,
         )
     }
 }
@@ -62,7 +59,7 @@ impl<G, UTC, Config> UTCCache<G, UTC, Config> for CachedUTC
 where
     G: MCTSGame,
     UTC: UCTPolicy<G, Config>,
-    Config: MCTSConfig,
+    Config: MCTSConfig<G::Player>,
 {
     fn new() -> Self {
         CachedUTC {
@@ -99,7 +96,6 @@ where
         parent_visits: usize,
         mcts_config: &Config,
         last_player: G::Player,
-        perspective_player: G::Player,
     ) {
         if self.last_parent_visits != parent_visits {
             self.exploration = UTC::exploration_score(
@@ -107,7 +103,6 @@ where
                 parent_visits,
                 mcts_config,
                 last_player,
-                perspective_player,
             );
             self.last_parent_visits = parent_visits;
         }
@@ -119,7 +114,6 @@ where
         _parent_visits: usize,
         _mcts_config: &Config,
         _last_player: G::Player,
-        _perspective_player: G::Player,
     ) -> f32 {
         self.exploration
     }

@@ -6,7 +6,7 @@ pub trait UTCCache<G, UTC, Config>
 where
     G: MCTSGame,
     UTC: UCTPolicy<G, Config>,
-    Config: MCTSConfig,
+    Config: MCTSConfig<G::Player>,
 {
     fn new() -> Self;
 
@@ -32,7 +32,6 @@ where
         parent_visits: usize,
         mcts_config: &Config,
         last_player: G::Player,
-        perspective_player: G::Player,
     );
 
     fn get_exploration(
@@ -41,6 +40,5 @@ where
         parent_visits: usize,
         mcts_config: &Config,
         last_player: G::Player,
-        perspective_player: G::Player,
     ) -> f32;
 }

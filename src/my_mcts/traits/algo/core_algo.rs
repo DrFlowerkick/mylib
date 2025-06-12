@@ -16,7 +16,7 @@ use super::{
 pub trait MCTSAlgo<G: MCTSGame, H: Heuristic<G>>: Sized {
     type Tree: MCTSTree<G, H, Self>;
     type NodeID: Copy + Eq + std::fmt::Debug;
-    type Config: MCTSConfig;
+    type Config: MCTSConfig<G::Player>;
     type TranspositionTable: TranspositionTable<G::State, Self::NodeID>;
     type UTC: UCTPolicy<G, Self::Config>;
     type Expansion: ExpansionPolicy<G, H, Self::Config>;

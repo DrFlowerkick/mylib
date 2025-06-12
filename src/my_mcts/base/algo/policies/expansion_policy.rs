@@ -9,7 +9,7 @@ impl<G, H, Config> ExpansionPolicy<G, H, Config> for ExpandAll
 where
     G: MCTSGame,
     H: Heuristic<G>,
-    Config: MCTSConfig,
+    Config: MCTSConfig<G::Player>,
 {
     fn new(
         _state: &G::State,
@@ -36,7 +36,7 @@ where
 pub struct ProgressiveWidening<G, Config>
 where
     G: MCTSGame,
-    Config: MCTSConfig,
+    Config: MCTSConfig<G::Player>,
 {
     pub unexpanded_moves: Vec<G::Move>,
     phantom: std::marker::PhantomData<Config>,
@@ -45,7 +45,7 @@ where
 impl<G, Config> ProgressiveWidening<G, Config>
 where
     G: MCTSGame,
-    Config: MCTSConfig,
+    Config: MCTSConfig<G::Player>,
 {
     fn allowed_children(visits: usize, mcts_config: &Config) -> usize {
         if visits == 0 {
@@ -62,7 +62,7 @@ impl<G, H, Config> ExpansionPolicy<G, H, Config> for ProgressiveWidening<G, Conf
 where
     G: MCTSGame,
     H: Heuristic<G>,
-    Config: MCTSConfig,
+    Config: MCTSConfig<G::Player>,
 {
     fn new(
         state: &G::State,
@@ -124,7 +124,7 @@ pub struct HeuristicProgressiveWidening<G, H, Config>
 where
     G: MCTSGame,
     H: Heuristic<G>,
-    Config: MCTSConfig,
+    Config: MCTSConfig<G::Player>,
 {
     pub unexpanded_moves: Vec<(f32, G::Move)>,
     phantom: std::marker::PhantomData<(H, Config)>,
@@ -134,7 +134,7 @@ impl<G, H, Config> HeuristicProgressiveWidening<G, H, Config>
 where
     G: MCTSGame,
     H: Heuristic<G>,
-    Config: MCTSConfig,
+    Config: MCTSConfig<G::Player>,
 {
     fn allowed_children(visits: usize, mcts_config: &Config) -> usize {
         if visits == 0 {
@@ -157,7 +157,7 @@ impl<G, H, Config> ExpansionPolicy<G, H, Config> for HeuristicProgressiveWidenin
 where
     G: MCTSGame,
     H: Heuristic<G>,
-    Config: MCTSConfig,
+    Config: MCTSConfig<G::Player>,
 {
     fn new(
         state: &G::State,

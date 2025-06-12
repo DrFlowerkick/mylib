@@ -5,15 +5,15 @@ use super::GamePlayer;
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub enum TwoPlayer {
     #[default]
-    Me,
-    Opp,
+    First,
+    Second,
 }
 
 impl TwoPlayer {
     pub fn next_player(&self) -> Self {
         match self {
-            TwoPlayer::Me => TwoPlayer::Opp,
-            TwoPlayer::Opp => TwoPlayer::Me,
+            TwoPlayer::First => TwoPlayer::Second,
+            TwoPlayer::Second => TwoPlayer::First,
         }
     }
 }
@@ -21,8 +21,8 @@ impl TwoPlayer {
 impl GamePlayer for TwoPlayer {
     fn next(&self) -> Self {
         match self {
-            TwoPlayer::Me => TwoPlayer::Opp,
-            TwoPlayer::Opp => TwoPlayer::Me,
+            TwoPlayer::First => TwoPlayer::Second,
+            TwoPlayer::Second => TwoPlayer::First,
         }
     }
 }

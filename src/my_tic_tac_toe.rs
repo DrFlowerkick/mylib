@@ -11,8 +11,8 @@ use crate::my_map_3x3::{CellIndex3x3, MyMap3x3};
 pub enum TicTacToeStatus {
     #[default]
     Vacant = 0,
-    Me = 1,
-    Opp = -1,
+    First = 1,
+    Second = -1,
     Tie = 20,
 }
 impl std::fmt::Display for TicTacToeStatus {
@@ -20,8 +20,8 @@ impl std::fmt::Display for TicTacToeStatus {
         match self {
             TicTacToeStatus::Vacant => write!(f, " "),
             TicTacToeStatus::Tie => write!(f, "T"),
-            TicTacToeStatus::Me => write!(f, "X"),
-            TicTacToeStatus::Opp => write!(f, "O"),
+            TicTacToeStatus::First => write!(f, "X"),
+            TicTacToeStatus::Second => write!(f, "O"),
         }
     }
 }
@@ -34,12 +34,12 @@ impl TicTacToeStatus {
         *self != Self::Vacant
     }
     pub fn is_player(&self) -> bool {
-        matches!(self, Self::Me | Self::Opp)
+        matches!(self, Self::First | Self::Second)
     }
     pub fn evaluate(&self) -> Option<f32> {
         match self {
-            TicTacToeStatus::Me => Some(1.0),
-            TicTacToeStatus::Opp => Some(0.0),
+            TicTacToeStatus::First => Some(1.0),
+            TicTacToeStatus::Second => Some(0.0),
             TicTacToeStatus::Tie => Some(0.5),
             TicTacToeStatus::Vacant => None,
         }
@@ -105,8 +105,8 @@ impl TicTacToeGameData {
                 .map(|cell| *self.map.get_cell(*cell) as i8)
                 .sum()
             {
-                3 => return TicTacToeStatus::Me,
-                -3 => return TicTacToeStatus::Opp,
+                3 => return TicTacToeStatus::First,
+                -3 => return TicTacToeStatus::Second,
                 _ => (),
             }
         }
@@ -135,8 +135,8 @@ impl TicTacToeGameData {
                 .map(|cell| *self.map.get_cell(*cell) as i8)
                 .sum()
             {
-                3 => return TicTacToeStatus::Me,
-                -3 => return TicTacToeStatus::Opp,
+                3 => return TicTacToeStatus::First,
+                -3 => return TicTacToeStatus::Second,
                 _ => (),
             }
         }
@@ -164,13 +164,13 @@ impl TicTacToeGameData {
     pub fn count_me_cells(&self) -> usize {
         self.map
             .iterate()
-            .filter(|(_, v)| matches!(**v, TicTacToeStatus::Me))
+            .filter(|(_, v)| matches!(**v, TicTacToeStatus::First))
             .count()
     }
     pub fn count_opp_cells(&self) -> usize {
         self.map
             .iterate()
-            .filter(|(_, v)| matches!(**v, TicTacToeStatus::Opp))
+            .filter(|(_, v)| matches!(**v, TicTacToeStatus::Second))
             .count()
     }
     pub fn iter_map(&self) -> impl Iterator<Item = (CellIndex3x3, &TicTacToeStatus)> {
@@ -251,10 +251,10 @@ impl TicTacToeGameData {
             (0.0, 0.0),
             |(mut my_control, mut opp_control), (cell, status)| {
                 match status {
-                    TicTacToeStatus::Me => {
+                    TicTacToeStatus::First => {
                         my_control += cell.cell_weight();
                     }
-                    TicTacToeStatus::Opp => {
+                    TicTacToeStatus::Second => {
                         opp_control += cell.cell_weight();
                     }
                     TicTacToeStatus::Vacant | TicTacToeStatus::Tie => {

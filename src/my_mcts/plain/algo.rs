@@ -15,7 +15,7 @@ pub struct PlainMCTS<G, H, MC, UC, TT, UP, EP, SP>
 where
     G: MCTSGame,
     H: Heuristic<G>,
-    MC: MCTSConfig,
+    MC: MCTSConfig<G::Player>,
     UC: UTCCache<G, UP, MC>,
     TT: TranspositionTable<G::State, usize>,
     UP: UCTPolicy<G, MC>,
@@ -35,7 +35,7 @@ impl<G, H, MC, UC, TT, UP, EP, SP> PlainMCTS<G, H, MC, UC, TT, UP, EP, SP>
 where
     G: MCTSGame,
     H: Heuristic<G>,
-    MC: MCTSConfig,
+    MC: MCTSConfig<G::Player>,
     UC: UTCCache<G, UP, MC>,
     TT: TranspositionTable<G::State, usize>,
     UP: UCTPolicy<G, MC>,
@@ -59,7 +59,7 @@ impl<G, H, MC, UC, TT, UP, EP, SP> MCTSAlgo<G, H> for PlainMCTS<G, H, MC, UC, TT
 where
     G: MCTSGame,
     H: Heuristic<G>,
-    MC: MCTSConfig,
+    MC: MCTSConfig<G::Player>,
     UC: UTCCache<G, UP, MC>,
     TT: TranspositionTable<G::State, usize>,
     UP: UCTPolicy<G, MC>,

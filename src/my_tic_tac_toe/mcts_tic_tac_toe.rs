@@ -10,8 +10,8 @@ pub struct TicTacToePlayerAction {
 impl GamePlayer for TicTacToeStatus {
     fn next(&self) -> Self {
         match self {
-            TicTacToeStatus::Me => TicTacToeStatus::Opp,
-            TicTacToeStatus::Opp => TicTacToeStatus::Me,
+            TicTacToeStatus::First => TicTacToeStatus::Second,
+            TicTacToeStatus::Second => TicTacToeStatus::First,
             _ => panic!("Invalid player"),
         }
     }
@@ -30,13 +30,13 @@ impl TicTacToeGame {
     pub fn new() -> Self {
         TicTacToeGame {
             ttt: TicTacToeGameData::new(),
-            current_player: TicTacToeStatus::Me,
-            last_player: TicTacToeStatus::Me,
+            current_player: TicTacToeStatus::First,
+            last_player: TicTacToeStatus::First,
         }
     }
     pub fn set_current_player(&mut self, player: TicTacToeStatus) {
         match player {
-            TicTacToeStatus::Me | TicTacToeStatus::Opp => self.current_player = player,
+            TicTacToeStatus::First | TicTacToeStatus::Second => self.current_player = player,
             _ => panic!("Invalid player"),
         }
     }
@@ -98,7 +98,7 @@ impl MCTSGame for TicTacToeMCTSGame {
         state.last_player
     }
     fn perspective_player() -> Self::Player {
-        TicTacToeStatus::Me
+        TicTacToeStatus::First
     }
 }
 
@@ -135,7 +135,7 @@ mod tests {
     type TTTBasicMCTS = PlainMCTS<
         TicTacToeMCTSGame,
         NoHeuristic,
-        BaseConfig,
+        BaseConfig<TicTacToeStatus>,
         NoUTCCache,
         NoTranspositionTable,
         StaticC,
@@ -145,11 +145,11 @@ mod tests {
     type TTTFullMCTS = PlainMCTS<
         TicTacToeMCTSGame,
         NoHeuristic,
-        BaseConfig,
+        BaseConfig<TicTacToeStatus>,
         CachedUTC,
         TranspositionHashMap<TicTacToeGame, usize>,
         DynamicC,
-        ProgressiveWidening<TicTacToeMCTSGame, BaseConfig>,
+        ProgressiveWidening<TicTacToeMCTSGame, BaseConfig<TicTacToeStatus>>,
         DefaultSimulationPolicy,
     >;
 
@@ -175,14 +175,14 @@ mod tests {
             let mut mcts_tic_tac_toe: TTTBasicMCTS =
                 PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
             let mut ttt_game_data = TicTacToeGame::new();
-            ttt_game_data.set_current_player(TicTacToeStatus::Me);
+            ttt_game_data.set_current_player(TicTacToeStatus::First);
             let mut time_out = TIME_OUT_FIRST_TURN;
 
             while TicTacToeMCTSGame::evaluate(&ttt_game_data, &mut mcts_tic_tac_toe.game_cache)
                 .is_none()
             {
                 match ttt_game_data.current_player {
-                    TicTacToeStatus::Me => {
+                    TicTacToeStatus::First => {
                         let start = Instant::now();
                         mcts_tic_tac_toe.set_root(&ttt_game_data);
                         while start.elapsed() < time_out {
@@ -197,7 +197,7 @@ mod tests {
                             &mut mcts_tic_tac_toe.game_cache,
                         );
                     }
-                    TicTacToeStatus::Opp => {
+                    TicTacToeStatus::Second => {
                         // let opp act by choosing a random action
                         let opp_move = TicTacToeMCTSGame::available_moves(&ttt_game_data)
                             .choose(&mut thread_rng())
@@ -218,8 +218,8 @@ mod tests {
             eprintln!("Game ended");
             eprintln!("{}", ttt_game_data.ttt);
             match ttt_game_data.ttt.get_status() {
-                TicTacToeStatus::Me => eprintln!("me winner"),
-                TicTacToeStatus::Opp => {
+                TicTacToeStatus::First => eprintln!("me winner"),
+                TicTacToeStatus::Second => {
                     eprintln!("opp winner");
                     assert!(false, "opp should not win");
                 }
@@ -244,14 +244,14 @@ mod tests {
             let mut mcts_tic_tac_toe: TTTBasicMCTS =
                 PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
             let mut ttt_game_data = TicTacToeGame::new();
-            ttt_game_data.set_current_player(TicTacToeStatus::Me);
+            ttt_game_data.set_current_player(TicTacToeStatus::First);
             let mut time_out = TIME_OUT_FIRST_TURN;
 
             while TicTacToeMCTSGame::evaluate(&ttt_game_data, &mut mcts_tic_tac_toe.game_cache)
                 .is_none()
             {
                 match ttt_game_data.current_player {
-                    TicTacToeStatus::Me => {
+                    TicTacToeStatus::First => {
                         let start = Instant::now();
                         mcts_tic_tac_toe.set_root(&ttt_game_data);
                         while start.elapsed() < time_out {
@@ -266,7 +266,7 @@ mod tests {
                             &mut mcts_tic_tac_toe.game_cache,
                         );
                     }
-                    TicTacToeStatus::Opp => {
+                    TicTacToeStatus::Second => {
                         // let opp act by choosing a random action
                         let opp_move = TicTacToeMCTSGame::available_moves(&ttt_game_data)
                             .choose(&mut thread_rng())
@@ -287,8 +287,8 @@ mod tests {
             eprintln!("Game ended");
             eprintln!("{}", ttt_game_data.ttt);
             match ttt_game_data.ttt.get_status() {
-                TicTacToeStatus::Me => eprintln!("me winner"),
-                TicTacToeStatus::Opp => {
+                TicTacToeStatus::First => eprintln!("me winner"),
+                TicTacToeStatus::Second => {
                     eprintln!("opp winner");
                     assert!(false, "opp should not win");
                 }
@@ -313,12 +313,12 @@ mod tests {
             let mut first_mcts_tic_tac_toe: TTTBasicMCTS =
                 PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
             let mut first_ttt_game_data = TicTacToeGame::new();
-            first_ttt_game_data.set_current_player(TicTacToeStatus::Me);
+            first_ttt_game_data.set_current_player(TicTacToeStatus::First);
             let mut first_time_out = TIME_OUT_FIRST_TURN;
             let mut second_mcts_tic_tac_toe: TTTFullMCTS =
                 PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
             let mut second_ttt_game_data = TicTacToeGame::new();
-            second_ttt_game_data.set_current_player(TicTacToeStatus::Opp);
+            second_ttt_game_data.set_current_player(TicTacToeStatus::Second);
             let mut second_time_out = TIME_OUT_FIRST_TURN;
 
             let mut first = true;
@@ -382,11 +382,11 @@ mod tests {
             eprintln!("Game ended");
             eprintln!("{}", first_ttt_game_data.ttt);
             match first_ttt_game_data.ttt.get_status() {
-                TicTacToeStatus::Me => {
+                TicTacToeStatus::First => {
                     eprintln!("first winner");
                     assert!(false, "first should not win");
                 }
-                TicTacToeStatus::Opp => {
+                TicTacToeStatus::Second => {
                     eprintln!("second winner");
                     assert!(false, "second should not win");
                 }

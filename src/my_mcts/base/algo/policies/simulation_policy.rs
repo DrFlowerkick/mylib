@@ -4,15 +4,21 @@ use super::{Heuristic, HeuristicConfig, MCTSConfig, MCTSGame, SimulationPolicy};
 
 pub struct DefaultSimulationPolicy {}
 
-impl<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig> SimulationPolicy<G, H, Config>
-    for DefaultSimulationPolicy
+impl<G, H, Config> SimulationPolicy<G, H, Config> for DefaultSimulationPolicy
+where
+    G: MCTSGame,
+    H: Heuristic<G>,
+    Config: MCTSConfig<G::Player>,
 {
 }
 
 pub struct EarlyCutoff {}
 
-impl<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig> SimulationPolicy<G, H, Config>
-    for EarlyCutoff
+impl<G, H, Config> SimulationPolicy<G, H, Config> for EarlyCutoff
+where
+    G: MCTSGame,
+    H: Heuristic<G>,
+    Config: MCTSConfig<G::Player>,
 {
     fn should_cutoff(
         state: &G::State,
@@ -40,8 +46,11 @@ impl<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig> SimulationPolicy<G, H, Co
 
 pub struct HeuristicCutoff {}
 
-impl<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig> SimulationPolicy<G, H, Config>
-    for HeuristicCutoff
+impl<G, H, Config> SimulationPolicy<G, H, Config> for HeuristicCutoff
+where
+    G: MCTSGame,
+    H: Heuristic<G>,
+    Config: MCTSConfig<G::Player>,
 {
     fn should_cutoff(
         state: &G::State,

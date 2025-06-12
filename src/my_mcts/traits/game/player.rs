@@ -1,5 +1,7 @@
 // trait to define player abilities
 
-pub trait GamePlayer: PartialEq {
+use std::hash::Hash;
+
+pub trait GamePlayer: PartialEq + Eq + Hash {
     fn next(&self) -> Self;
 }

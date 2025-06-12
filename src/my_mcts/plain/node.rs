@@ -6,7 +6,7 @@ pub struct PlainNode<G, H, MC, UC, UP, EP>
 where
     G: MCTSGame,
     H: Heuristic<G>,
-    MC: MCTSConfig,
+    MC: MCTSConfig<G::Player>,
     UC: UTCCache<G, UP, MC>,
     UP: UCTPolicy<G, MC>,
     EP: ExpansionPolicy<G, H, MC>,
@@ -23,7 +23,7 @@ impl<G, H, MC, UC, UP, EP> MCTSNode<G, H, MC, UP, EP> for PlainNode<G, H, MC, UC
 where
     G: MCTSGame,
     H: Heuristic<G>,
-    MC: MCTSConfig,
+    MC: MCTSConfig<G::Player>,
     UC: UTCCache<G, UP, MC>,
     UP: UCTPolicy<G, MC>,
     EP: ExpansionPolicy<G, H, MC>,
@@ -74,14 +74,12 @@ where
             parent_visits,
             mcts_config,
             G::last_player(&self.state),
-            G::perspective_player(),
         );
         let exploration = self.utc_cache.get_exploration(
             self.visits,
             parent_visits,
             mcts_config,
             G::last_player(&self.state),
-            G::perspective_player(),
         );
         exploitation + exploration
     }

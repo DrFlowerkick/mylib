@@ -6,7 +6,7 @@ pub trait MCTSNode<G, H, MC, UP, EP>
 where
     G: MCTSGame,
     H: Heuristic<G>,
-    MC: MCTSConfig,
+    MC: MCTSConfig<G::Player>,
     UP: UCTPolicy<G, MC>,
     EP: ExpansionPolicy<G, H, MC>,
 {
