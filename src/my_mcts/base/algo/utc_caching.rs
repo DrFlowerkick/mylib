@@ -2,6 +2,7 @@
 
 use super::{MCTSConfig, MCTSGame, UCTPolicy, UTCCache};
 
+#[derive(Clone)]
 pub struct NoUTCCache;
 
 impl<G, UTC, Config> UTCCache<G, UTC, Config> for NoUTCCache
@@ -40,15 +41,11 @@ where
         mcts_config: &Config,
         last_player: G::Player,
     ) -> f32 {
-        UTC::exploration_score(
-            visits,
-            parent_visits,
-            mcts_config,
-            last_player,
-        )
+        UTC::exploration_score(visits, parent_visits, mcts_config, last_player)
     }
 }
 
+#[derive(Clone)]
 pub struct CachedUTC {
     exploitation: f32,
     exploration: f32,
@@ -98,12 +95,8 @@ where
         last_player: G::Player,
     ) {
         if self.last_parent_visits != parent_visits {
-            self.exploration = UTC::exploration_score(
-                visits,
-                parent_visits,
-                mcts_config,
-                last_player,
-            );
+            self.exploration =
+                UTC::exploration_score(visits, parent_visits, mcts_config, last_player);
             self.last_parent_visits = parent_visits;
         }
     }

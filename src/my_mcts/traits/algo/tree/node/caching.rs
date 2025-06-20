@@ -2,7 +2,7 @@
 
 use super::{MCTSConfig, MCTSGame, UCTPolicy};
 
-pub trait UTCCache<G, UTC, Config>
+pub trait UTCCache<G, UTC, Config>: Clone + Sync + Send
 where
     G: MCTSGame,
     UTC: UCTPolicy<G, Config>,

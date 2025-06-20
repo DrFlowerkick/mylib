@@ -2,6 +2,7 @@
 
 use super::{ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, MCTSNode, UCTPolicy, UTCCache};
 
+#[derive(Clone)]
 pub struct PlainNode<G, H, MC, UC, UP, EP>
 where
     G: MCTSGame,

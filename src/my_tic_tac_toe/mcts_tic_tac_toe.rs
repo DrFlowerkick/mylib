@@ -46,6 +46,7 @@ impl TicTacToeGame {
     }
 }
 
+#[derive(Clone)]
 pub struct TicTacToeMCTSGame {}
 
 impl MCTSGame for TicTacToeMCTSGame {
@@ -102,6 +103,7 @@ impl MCTSGame for TicTacToeMCTSGame {
     }
 }
 
+#[derive(Clone)]
 pub struct TicTacToeGameCache {
     // No move cache, because calc of move is cheaper than caching
     pub state_cache: HashMap<TicTacToeGameData, Option<f32>>,

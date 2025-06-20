@@ -11,6 +11,7 @@ use rand::prelude::IteratorRandom;
 pub type PlainTTHashMap<State> = TranspositionHashMap<State, usize>;
 
 // Use PlainMCTS with your specific implementations of the MCTS traits.
+#[derive(Clone)]
 pub struct PlainMCTS<G, H, MC, UC, TT, UP, EP, SP>
 where
     G: MCTSGame,

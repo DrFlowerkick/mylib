@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use super::{MCTSConfig, GamePlayer};
+use super::{GamePlayer, MCTSConfig};
 
 // default progressive widening with C = 2, alpha = 1/2
 // fast progressive widening with C = 4, alpha = 1/3
@@ -33,7 +33,7 @@ impl<Player: GamePlayer> MCTSConfig<Player> for BaseConfig<Player> {
         self.exploration_constant
     }
     fn exploration_boost(&self, player: Player) -> f32 {
-        self.exploration_boost.get(&player).cloned().unwrap_or(1.0)  
+        self.exploration_boost.get(&player).cloned().unwrap_or(1.0)
     }
     fn progressive_widening_constant(&self) -> f32 {
         self.progressive_widening_constant

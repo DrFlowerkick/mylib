@@ -13,6 +13,7 @@ type Node<G, H, A, UC> = PlainNode<
 >;
 
 // base implementation of MCTSTree
+#[derive(Clone)]
 pub struct PlainTree<G, H, A, UC>
 where
     G: MCTSGame,

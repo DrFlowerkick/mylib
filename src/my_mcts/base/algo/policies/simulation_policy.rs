@@ -2,6 +2,7 @@
 
 use super::{Heuristic, HeuristicConfig, MCTSConfig, MCTSGame, SimulationPolicy};
 
+#[derive(Clone)]
 pub struct DefaultSimulationPolicy {}
 
 impl<G, H, Config> SimulationPolicy<G, H, Config> for DefaultSimulationPolicy
@@ -12,6 +13,7 @@ where
 {
 }
 
+#[derive(Clone)]
 pub struct EarlyCutoff {}
 
 impl<G, H, Config> SimulationPolicy<G, H, Config> for EarlyCutoff
@@ -44,6 +46,7 @@ where
     }
 }
 
+#[derive(Clone)]
 pub struct HeuristicCutoff {}
 
 impl<G, H, Config> SimulationPolicy<G, H, Config> for HeuristicCutoff

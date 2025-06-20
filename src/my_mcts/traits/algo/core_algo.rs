@@ -13,7 +13,7 @@ use super::{
     TranspositionTable, UCTPolicy,
 };
 
-pub trait MCTSAlgo<G: MCTSGame, H: Heuristic<G>>: Sized {
+pub trait MCTSAlgo<G: MCTSGame, H: Heuristic<G>>: Sized + Clone + Sync + Send {
     type Tree: MCTSTree<G, H, Self>;
     type NodeID: Copy + Eq + std::fmt::Debug;
     type Config: MCTSConfig<G::Player>;

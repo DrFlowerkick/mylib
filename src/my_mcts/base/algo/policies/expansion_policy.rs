@@ -3,6 +3,7 @@
 use super::{ExpansionPolicy, GameCache, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame};
 use rand::prelude::SliceRandom;
 
+#[derive(Clone)]
 pub struct ExpandAll {}
 
 impl<G, H, Config> ExpansionPolicy<G, H, Config> for ExpandAll
@@ -33,6 +34,7 @@ where
     }
 }
 
+#[derive(Clone)]
 pub struct ProgressiveWidening<G, Config>
 where
     G: MCTSGame,
@@ -120,6 +122,7 @@ where
     }
 }
 
+#[derive(Clone)]
 pub struct HeuristicProgressiveWidening<G, H, Config>
 where
     G: MCTSGame,

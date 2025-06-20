@@ -8,9 +8,9 @@
 use super::{HeuristicCache, HeuristicConfig, MCTSGame};
 use rand::seq::SliceRandom;
 
-pub trait Heuristic<G: MCTSGame> {
-    type Cache: HeuristicCache<G::State, G::Move>;
-    type Config: HeuristicConfig;
+pub trait Heuristic<G: MCTSGame>: Clone + Sync + Send {
+    type Cache: HeuristicCache<G::State, G::Move> + Clone + Sync + Send;
+    type Config: HeuristicConfig + Clone + Sync + Send;
 
     fn evaluate_state(
         state: &G::State,

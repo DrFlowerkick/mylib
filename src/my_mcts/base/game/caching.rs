@@ -2,11 +2,20 @@
 
 use super::GameCache;
 
-pub struct NoGameCache<State, Move> {
+#[derive(Clone)]
+pub struct NoGameCache<State, Move>
+where
+    State: Clone,
+    Move: Clone,
+{
     phantom: std::marker::PhantomData<(State, Move)>,
 }
 
-impl<State, Move> GameCache<State, Move> for NoGameCache<State, Move> {
+impl<State, Move> GameCache<State, Move> for NoGameCache<State, Move>
+where
+    State: Clone,
+    Move: Clone,
+{
     fn new() -> Self {
         NoGameCache {
             phantom: std::marker::PhantomData,

@@ -2,6 +2,7 @@
 
 use super::{Heuristic, HeuristicConfig, MCTSGame, NoHeuristicCache};
 
+#[derive(Clone)]
 pub struct NoHeuristic {}
 
 impl HeuristicConfig for NoHeuristic {}

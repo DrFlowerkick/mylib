@@ -2,7 +2,7 @@
 
 use super::{ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, UCTPolicy, UTCCache};
 
-pub trait MCTSNode<G, H, MC, UP, EP>
+pub trait MCTSNode<G, H, MC, UP, EP>: Clone + Sync + Send
 where
     G: MCTSGame,
     H: Heuristic<G>,

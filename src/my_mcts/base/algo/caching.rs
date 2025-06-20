@@ -6,6 +6,7 @@ use std::collections::HashMap;
 
 // base implementation of TranspositionTable
 
+#[derive(Clone)]
 pub struct NoTranspositionTable {}
 
 impl<State, ID> TranspositionTable<State, ID> for NoTranspositionTable {
@@ -14,16 +15,19 @@ impl<State, ID> TranspositionTable<State, ID> for NoTranspositionTable {
     }
 }
 
+#[derive(Clone)]
 pub struct TranspositionHashMap<State, ID>
 where
-    State: Eq + std::hash::Hash,
+    State: Eq + std::hash::Hash + Clone + Sync + Send,
+    ID: Clone + Sync + Send,
 {
     pub table: HashMap<State, ID>,
 }
 
 impl<State, ID> TranspositionTable<State, ID> for TranspositionHashMap<State, ID>
 where
-    State: Eq + std::hash::Hash,
+    State: Eq + std::hash::Hash + Clone + Sync + Send,
+    ID: Clone + Sync + Send,
 {
     fn new(expected_num_nodes: usize) -> Self {
         Self {

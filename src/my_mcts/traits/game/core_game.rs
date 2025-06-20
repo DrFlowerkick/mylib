@@ -2,11 +2,11 @@
 
 use super::{GameCache, GamePlayer};
 
-pub trait MCTSGame: Sized {
-    type State: Clone + PartialEq;
-    type Move;
+pub trait MCTSGame: Sized + Clone + Sync + Send {
+    type State: Clone + PartialEq + Sync + Send;
+    type Move: Clone + Sync + Send;
     type Player: GamePlayer;
-    type Cache: GameCache<Self::State, Self::Move>;
+    type Cache: GameCache<Self::State, Self::Move> + Sync + Send;
 
     fn available_moves<'a>(state: &'a Self::State) -> Box<dyn Iterator<Item = Self::Move> + 'a>;
     fn apply_move(

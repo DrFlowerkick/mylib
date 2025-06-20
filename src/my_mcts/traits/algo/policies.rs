@@ -2,7 +2,7 @@
 
 use super::{Heuristic, MCTSConfig, MCTSGame};
 
-pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig<G::Player>> {
+pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig<G::Player>>: Clone + Sync + Send {
     // calculates the exploitation score from the view of the perspective player
     fn exploitation_score(
         accumulated_value: f32,
@@ -29,7 +29,9 @@ pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig<G::Player>> {
     }
 }
 
-pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Player>> {
+pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Player>>:
+    Clone + Sync + Send
+{
     fn new(
         state: &G::State,
         game_cache: &mut G::Cache,
@@ -56,7 +58,9 @@ pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Pl
 }
 
 // return value ist heuristic value at cutoff
-pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Player>> {
+pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Player>>:
+    Clone + Sync + Send
+{
     fn should_cutoff(
         _state: &G::State,
         _depth: usize,

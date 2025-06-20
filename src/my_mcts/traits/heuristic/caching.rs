@@ -1,6 +1,10 @@
 // caching of heuristic results, which may be useful for expensive heuristic calculations.
 
-pub trait HeuristicCache<State, Move> {
+pub trait HeuristicCache<State, Move>: Clone
+where
+    State: Clone,
+    Move: Clone,
+{
     fn new() -> Self;
     fn get_intermediate_score(&self, _state: &State) -> Option<f32> {
         None

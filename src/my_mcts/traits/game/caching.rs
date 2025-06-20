@@ -4,7 +4,11 @@
 //      - None: state is not terminal
 //      - Some(score): terminal score of game
 
-pub trait GameCache<State, Move> {
+pub trait GameCache<State, Move>: Clone
+where
+    State: Clone,
+    Move: Clone,
+{
     fn new() -> Self;
     fn get_applied_state(&self, _state: &State, _mv: &Move) -> Option<&State> {
         None

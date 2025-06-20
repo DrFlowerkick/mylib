@@ -3,7 +3,7 @@
 
 use super::GamePlayer;
 
-pub trait MCTSConfig<Player: GamePlayer> {
+pub trait MCTSConfig<Player: GamePlayer>: Clone + Sync + Send {
     fn exploration_constant(&self) -> f32 {
         1.4
     }

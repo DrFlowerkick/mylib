@@ -2,11 +2,20 @@
 
 use super::HeuristicCache;
 
-pub struct NoHeuristicCache<State, Move> {
+#[derive(Clone)]
+pub struct NoHeuristicCache<State, Move>
+where
+    State: Clone,
+    Move: Clone,
+{
     phantom: std::marker::PhantomData<(State, Move)>,
 }
 
-impl<State, Move> HeuristicCache<State, Move> for NoHeuristicCache<State, Move> {
+impl<State, Move> HeuristicCache<State, Move> for NoHeuristicCache<State, Move>
+where
+    State: Clone,
+    Move: Clone,
+{
     fn new() -> Self {
         NoHeuristicCache {
             phantom: std::marker::PhantomData,
