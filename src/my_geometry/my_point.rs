@@ -42,6 +42,25 @@ impl From<(i64, i64)> for Point {
     }
 }
 
+// input: a,b ; e.g. -1,20
+impl TryFrom<&str> for Point {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let error_message = "Format error. Expected input 'a,b' with a and b being integers".into();
+        let Some((x, y)) = value.trim().split_once(',') else {
+            return Err(error_message);
+        };
+        let Ok(x) = x.parse::<i64>() else {
+            return Err(error_message);
+        };
+        let Ok(y) = y.parse::<i64>() else {
+            return Err(error_message);
+        };
+        Ok(Point { x, y })
+    }
+}
+
 impl From<Cylindrical> for Point {
     fn from(value: Cylindrical) -> Self {
         Point {
