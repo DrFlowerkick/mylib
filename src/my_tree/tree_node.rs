@@ -33,11 +33,7 @@ impl<N: PartialEq> TreeNode<N> {
                 let new_level = p.get_level() + 1;
                 let mut current_max_level = (*p.max_level).borrow_mut();
                 *current_max_level = current_max_level.max(new_level);
-                (
-                    new_level,
-                    p.max_level.clone(),
-                    RefCell::new(vec![parent.clone()]),
-                )
+                (new_level, p.max_level.clone(), RefCell::new(vec![parent]))
             }
             None => (
                 0,

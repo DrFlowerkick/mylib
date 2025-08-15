@@ -1,4 +1,4 @@
-use super::my_point::Point;
+use super::{gcd, my_point::Point};
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone, Copy, Eq)]
@@ -230,5 +230,16 @@ impl LineSegment {
             }
         }
         so
+    }
+    pub fn lattice_points_on_segment(&self) -> Vec<Point> {
+        let (dx, dy) = (self.b.x - self.a.x, self.b.y - self.a.y);
+        if dx == 0 && dy == 0 {
+            return vec![self.a];
+        }
+        let g = gcd(dx.abs(), dy.abs());
+        let step = (dx / g, dy / g);
+        (0..=g)
+            .map(|k| (self.a.x + k * step.0, self.a.y + k * step.1).into())
+            .collect()
     }
 }
