@@ -117,9 +117,7 @@ impl<TS: ToleranceSettings> Candidate<TS> {
                 Level::DEBUG => debug!(config = ?config, score = self.score, message),
                 Level::TRACE => trace!(config = ?config, score = self.score, message),
             },
-            None => {
-                println!("{}: {config:?}, Score: {:.3}", message, self.score);
-            }
+            None => (),
         }
         Ok(())
     }
