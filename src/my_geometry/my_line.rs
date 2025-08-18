@@ -167,7 +167,11 @@ impl PartialOrd for LineSegment {
 
 impl PartialEq<Point> for LineSegment {
     fn eq(&self, other: &Point) -> bool {
-        self.line() == *other && self.min_x() <= other.x && other.x <= self.max_x()
+        self.line() == *other
+            && self.min_x() <= other.x
+            && other.x <= self.max_x()
+            && self.min_y() <= other.y
+            && other.y <= self.max_y()
     }
 }
 
