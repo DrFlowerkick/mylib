@@ -24,6 +24,7 @@ impl<TS: ToleranceSettings> ProgressReporter for GridSearch<TS> {
             num_cycles *= match &bound.bound {
                 ParamBound::Static(_) => 1,
                 ParamBound::MinMax(_, _) => self.steps_per_param,
+                ParamBound::MinMaxInt(_, _) => self.steps_per_param,
                 ParamBound::List(values) => {
                     let num_entries = values.len();
                     if num_entries == 0 {
@@ -143,6 +144,11 @@ impl<'a> Iterator for GridSearchIterator<'a> {
                         let step_size = (*max - *min) / (self.steps_per_param - 1) as f64;
                         *min + step_size * idx as f64
                     }
+                    ParamBound::MinMaxInt(min, max) => {
+                        let step_size = (*max - *min) / (self.steps_per_param - 1) as f64;
+                        let next_value = *min + step_size * idx as f64;
+                        next_value.round()
+                    }
                     ParamBound::List(values) => {
                         assert!(
                             !values.is_empty(),
@@ -169,6 +175,7 @@ impl<'a> Iterator for GridSearchIterator<'a> {
             self.current_indices[i] += 1;
             let limit = match &self.param_bounds[i].bound {
                 ParamBound::MinMax(_, _) => self.steps_per_param,
+                ParamBound::MinMaxInt(_, _) => self.steps_per_param,
                 ParamBound::List(v) => v.len(),
                 ParamBound::Static(_) => 1,
                 ParamBound::LogScale(_, _) => self.steps_per_param,

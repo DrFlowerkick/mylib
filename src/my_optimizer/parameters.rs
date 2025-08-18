@@ -9,6 +9,7 @@ use tracing::debug;
 pub enum ParamBound {
     Static(f64),        // static value, parameter will not be changed
     MinMax(f64, f64),   // continuous value range
+    MinMaxInt(f64, f64),// continuous value range, values rounded to zero decimal place
     List(Vec<f64>),     // discreet values
     LogScale(f64, f64), // logarithmic parameter scaling
 }
@@ -22,6 +23,12 @@ impl ParamBound {
                     return Err(anyhow::anyhow!("ParamBound::MinMax: Max <= Min"));
                 }
                 Ok(rng.gen_range(*min..=*max))
+            }
+            ParamBound::MinMaxInt(min, max) => {
+                if max <= min {
+                    return Err(anyhow::anyhow!("ParamBound::MinMax: Max <= Min"));
+                }
+                Ok(rng.gen_range(*min..=*max).round())
             }
             ParamBound::List(values) => {
                 values.choose(rng).cloned().context("Empty parameter list.")
@@ -67,6 +74,27 @@ impl ParamBound {
                         debug!(%name, delta_clamp, "Value clamped to bounds.");
                     }
                     Ok(clamped)
+                }
+            }
+            ParamBound::MinMaxInt(min, max) => {
+                if max <= min {
+                    return Err(anyhow::anyhow!("{} - ParamBound::MinMax: Max <= Min", name));
+                }
+                if rng.gen::<f64>() < hard_mutation_rate {
+                    // hard mutation → new value in range
+                    Ok(rng.gen_range(*min..=*max).round())
+                } else {
+                    // soft mutation → Gaussian Noise
+                    let value_range = max - min;
+                    let relative_std_dev = soft_mutation_relative_std_dev * value_range;
+                    let noise = rng.sample(Normal::new(0.0, relative_std_dev)?);
+                    let value = current_value + noise;
+                    let clamped = value.clamp(*min, *max);
+                    if value != clamped {
+                        let delta_clamp = value - clamped;
+                        debug!(%name, delta_clamp, "Value clamped to bounds.");
+                    }
+                    Ok(clamped.round())
                 }
             }
             ParamBound::List(values) => {
