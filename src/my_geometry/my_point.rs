@@ -249,6 +249,14 @@ impl Cylindrical {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Turns90 {
+    T0,
+    T90,
+    T180,
+    T270,
+}
+
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Default, Hash)]
 pub struct Point3D {
     pub x: i64,
@@ -296,6 +304,123 @@ impl Point3D {
             z: self.x * other.y - self.y * other.x,
         }
     }
+
+    pub const fn rotate_x_turn90(&self, t: Turns90) -> Self {
+        match t {
+            Turns90::T0 => *self,
+            Turns90::T90 => Point3D {
+                x: self.x,
+                y: -self.z,
+                z: self.y,
+            },
+            Turns90::T180 => Point3D {
+                x: self.x,
+                y: -self.y,
+                z: -self.z,
+            },
+            Turns90::T270 => Point3D {
+                x: self.x,
+                y: self.z,
+                z: -self.y,
+            },
+        }
+    }
+
+    pub const fn rotate_y_turn90(&self, t: Turns90) -> Self {
+        match t {
+            Turns90::T0 => *self,
+            Turns90::T90 => Point3D {
+                x: self.z,
+                y: self.y,
+                z: -self.x,
+            },
+            Turns90::T180 => Point3D {
+                x: -self.x,
+                y: self.y,
+                z: -self.z,
+            },
+            Turns90::T270 => Point3D {
+                x: -self.z,
+                y: self.y,
+                z: self.x,
+            },
+        }
+    }
+
+    pub const fn rotate_z_turn90(&self, t: Turns90) -> Self {
+        match t {
+            Turns90::T0 => *self,
+            Turns90::T90 => Point3D {
+                x: -self.y,
+                y: self.x,
+                z: self.z,
+            },
+            Turns90::T180 => Point3D {
+                x: -self.x,
+                y: -self.y,
+                z: self.z,
+            },
+            Turns90::T270 => Point3D {
+                x: self.y,
+                y: -self.x,
+                z: self.z,
+            },
+        }
+    }
+
+    pub const fn all_unambiguous_rotation_combinations() -> [(Turns90, Turns90, Turns90); 24] {
+        const POINT: Point3D = Point3D { x: 1, y: 2, z: 3 };
+        const MAX_COMBINATIONS: usize = 24;
+        let mut combinations: [(Turns90, Turns90, Turns90); MAX_COMBINATIONS] =
+            [(Turns90::T0, Turns90::T0, Turns90::T0); MAX_COMBINATIONS];
+        let mut rotation_results: [Point3D; MAX_COMBINATIONS] =
+            [Point3D { x: 0, y: 0, z: 0 }; MAX_COMBINATIONS];
+        let mut num_combinations = 0;
+        const ROTATIONS: [Turns90; 4] = [Turns90::T0, Turns90::T90, Turns90::T180, Turns90::T270];
+        let mut z = 0;
+        while z < 4 {
+            let rotate_z = ROTATIONS[z];
+            let mut y = 0;
+            while y < 4 {
+                let rotate_y = ROTATIONS[y];
+                let mut x = 0;
+                while x < 4 {
+                    let rotate_x = ROTATIONS[x];
+                    let rotated = POINT
+                        .rotate_x_turn90(rotate_x)
+                        .rotate_y_turn90(rotate_y)
+                        .rotate_z_turn90(rotate_z);
+                    let mut unique = true;
+                    let mut index = 0;
+                    while index < num_combinations && unique {
+                        unique = unique
+                            && (rotated.x != rotation_results[index].x
+                                || rotated.y != rotation_results[index].y
+                                || rotated.z != rotation_results[index].z);
+                        index += 1;
+                    }
+                    if unique {
+                        rotation_results[num_combinations] = rotated;
+                        combinations[num_combinations] = (rotate_x, rotate_y, rotate_z);
+                        num_combinations += 1;
+                    }
+                    x += 1;
+                }
+                y += 1;
+            }
+            z += 1;
+        }
+        combinations
+    }
+
+    pub const fn apply_rotation_combination(
+        &self,
+        combination: (Turns90, Turns90, Turns90),
+    ) -> Self {
+        self.rotate_x_turn90(combination.0)
+            .rotate_y_turn90(combination.1)
+            .rotate_z_turn90(combination.2)
+    }
 }
 
 #[cfg(test)]
@@ -326,5 +451,28 @@ mod tests {
         assert_eq!(Point::new(-4, 8).quadrant(), Quadrant::Second);
         assert_eq!(Point::new(-4, -8).quadrant(), Quadrant::Third);
         assert_eq!(Point::new(7, -3).quadrant(), Quadrant::Fourth);
+    }
+
+    #[test]
+    fn all_unambiguous_rotational_combinations() {
+        use std::collections::HashSet;
+        let mut rotation_results: HashSet<Point3D> = HashSet::new();
+        let point = Point3D::new(1, 2, 3);
+
+        // should not panic, which would happen, if there are more than 24 combinations
+        let combinations = Point3D::all_unambiguous_rotation_combinations();
+
+        // all combinations are unique?
+        for (index, left) in combinations.iter().enumerate() {
+            for right in combinations.iter().skip(index + 1) {
+                assert_ne!(left, right);
+            }
+        }
+
+        // all rotation results are unique?
+        for combination in combinations {
+            let rotated = point.apply_rotation_combination(combination);
+            assert!(rotation_results.insert(rotated));
+        }
     }
 }

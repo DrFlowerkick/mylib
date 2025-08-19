@@ -25,8 +25,7 @@ where
     A::NodeID: std::hash::Hash,
 {
     pub fn new(start: A::NodeID, skip: impl IntoIterator<Item = A::NodeID>) -> Self {
-        let mut stack = Vec::new();
-        stack.push(start);
+        let stack = vec![start];
         Self {
             stack,
             skip: skip.into_iter().collect(),

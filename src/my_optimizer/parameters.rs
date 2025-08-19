@@ -7,11 +7,11 @@ use tracing::debug;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ParamBound {
-    Static(f64),        // static value, parameter will not be changed
-    MinMax(f64, f64),   // continuous value range
-    MinMaxInt(f64, f64),// continuous value range, values rounded to zero decimal place
-    List(Vec<f64>),     // discreet values
-    LogScale(f64, f64), // logarithmic parameter scaling
+    Static(f64),         // static value, parameter will not be changed
+    MinMax(f64, f64),    // continuous value range
+    MinMaxInt(f64, f64), // continuous value range, values rounded to zero decimal place
+    List(Vec<f64>),      // discreet values
+    LogScale(f64, f64),  // logarithmic parameter scaling
 }
 
 impl ParamBound {
