@@ -249,7 +249,7 @@ impl Cylindrical {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum Turns90 {
     T0,
     T90,
