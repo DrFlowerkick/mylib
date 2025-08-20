@@ -1,3 +1,4 @@
+pub mod my_algo_collection;
 pub mod my_array;
 pub mod my_binary_tree;
 pub mod my_compass;

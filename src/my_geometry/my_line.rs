@@ -1,4 +1,5 @@
-use super::{gcd, my_point::Point};
+use super::my_point::Point;
+use crate::my_algo_collection::gcd;
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone, Copy, Eq)]
