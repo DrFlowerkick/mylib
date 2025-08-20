@@ -249,15 +249,16 @@ impl Cylindrical {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Default, Hash)]
 pub enum Turns90 {
+    #[default]
     T0,
     T90,
     T180,
     T270,
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Default, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Default, Hash)]
 pub struct Point3D {
     pub x: i64,
     pub y: i64,
