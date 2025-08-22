@@ -1,5 +1,9 @@
 // The surfaces of this box are always aligned with the coordinate axis. Therefore it can be described
 // by two 3d points: left_front_bottom (min corner) and right_back_top (max corner)
+// Box corners may be on same axis, resulting either in
+// - a surface (one identical axis)
+// - a line (two identical axis)
+// - a point (three identical axis -> identical corners)
 
 use super::my_point::Point3D;
 
@@ -34,9 +38,9 @@ impl Box3D {
     }
 
     pub fn is_valid(&self) -> bool {
-        self.left_front_bottom.x < self.right_back_top.x
-            && self.left_front_bottom.y < self.right_back_top.y
-            && self.left_front_bottom.z < self.right_back_top.z
+        self.left_front_bottom.x <= self.right_back_top.x
+            && self.left_front_bottom.y <= self.right_back_top.y
+            && self.left_front_bottom.z <= self.right_back_top.z
     }
 
     pub fn intersect(&self, other: Box3D) -> Option<Box3D> {
@@ -64,7 +68,7 @@ impl Box3D {
         let left = Box3D {
             left_front_bottom: self.left_front_bottom,
             right_back_top: Point3D {
-                x: intersect.left_front_bottom.x,
+                x: intersect.left_front_bottom.x - 1,
                 y: self.right_back_top.y,
                 z: self.right_back_top.z,
             },
@@ -74,7 +78,7 @@ impl Box3D {
         };
         let right = Box3D {
             left_front_bottom: Point3D {
-                x: intersect.right_back_top.x,
+                x: intersect.right_back_top.x + 1,
                 y: self.left_front_bottom.y,
                 z: self.left_front_bottom.z,
             },
@@ -93,7 +97,7 @@ impl Box3D {
             },
             right_back_top: Point3D {
                 x: intersect.right_back_top.x,
-                y: intersect.left_front_bottom.y,
+                y: intersect.left_front_bottom.y - 1,
                 z: self.right_back_top.z,
             },
         };
@@ -103,7 +107,7 @@ impl Box3D {
         let back = Box3D {
             left_front_bottom: Point3D {
                 x: intersect.left_front_bottom.x,
-                y: intersect.right_back_top.y,
+                y: intersect.right_back_top.y + 1,
                 z: self.left_front_bottom.z,
             },
             right_back_top: Point3D {
@@ -126,7 +130,7 @@ impl Box3D {
             right_back_top: Point3D {
                 x: intersect.right_back_top.x,
                 y: intersect.right_back_top.y,
-                z: intersect.left_front_bottom.z,
+                z: intersect.left_front_bottom.z - 1,
             },
         };
         if bottom.is_valid() {
@@ -136,7 +140,7 @@ impl Box3D {
             left_front_bottom: Point3D {
                 x: intersect.left_front_bottom.x,
                 y: intersect.left_front_bottom.y,
-                z: intersect.right_back_top.z,
+                z: intersect.right_back_top.z + 1,
             },
             right_back_top: Point3D {
                 x: intersect.right_back_top.x,
@@ -164,5 +168,119 @@ impl Box3D {
                 * (self.right_back_top.y - self.left_front_bottom.y + 1) as u64
                 * (self.right_back_top.z - self.left_front_bottom.z + 1) as u64,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_intersection() {
+        let box_a_corner_a = Point3D::new(10, 10, 10);
+        let box_a_corner_b = Point3D::new(12, 12, 12);
+        let box_a = Box3D::new(box_a_corner_a, box_a_corner_b);
+        let size_a = box_a.size().unwrap();
+
+        let box_b_corner_a = Point3D::new(11, 11, 11);
+        let box_b_corner_b = Point3D::new(13, 13, 13);
+        let box_b = Box3D::new(box_b_corner_a, box_b_corner_b);
+        let size_b = box_b.size().unwrap();
+
+        let (intersection, remaining_a, remaining_b) = box_a.split_intersecting(box_b).unwrap();
+        let size_intersection = intersection.size().unwrap();
+
+        // check intersection
+        assert_eq!(intersection.left_front_bottom, Point3D::new(11, 11, 11));
+        assert_eq!(intersection.right_back_top, Point3D::new(12, 12, 12));
+
+        // check remaining a
+        assert_eq!(remaining_a.len(), 3);
+        let remaining_a_box_left = remaining_a[0];
+        assert_eq!(
+            remaining_a_box_left.left_front_bottom,
+            Point3D::new(10, 10, 10)
+        );
+        assert_eq!(
+            remaining_a_box_left.right_back_top,
+            Point3D::new(10, 12, 12)
+        );
+        let size_remaining_a_box_left = remaining_a_box_left.size().unwrap();
+        let remaining_a_box_front = remaining_a[1];
+        assert_eq!(
+            remaining_a_box_front.left_front_bottom,
+            Point3D::new(11, 10, 10)
+        );
+        assert_eq!(
+            remaining_a_box_front.right_back_top,
+            Point3D::new(12, 10, 12)
+        );
+        let size_remaining_a_box_front = remaining_a_box_front.size().unwrap();
+        let remaining_a_box_bottom = remaining_a[2];
+        assert_eq!(
+            remaining_a_box_bottom.left_front_bottom,
+            Point3D::new(11, 11, 10)
+        );
+        assert_eq!(
+            remaining_a_box_bottom.right_back_top,
+            Point3D::new(12, 12, 10)
+        );
+        let size_remaining_a_box_bottom = remaining_a_box_bottom.size().unwrap();
+        assert_eq!(
+            size_a,
+            size_intersection
+                + size_remaining_a_box_left
+                + size_remaining_a_box_front
+                + size_remaining_a_box_bottom
+        );
+
+        // check remaining b
+        assert_eq!(remaining_b.len(), 3);
+        let remaining_b_box_right = remaining_b[0];
+        assert_eq!(
+            remaining_b_box_right.left_front_bottom,
+            Point3D::new(13, 11, 11)
+        );
+        assert_eq!(
+            remaining_b_box_right.right_back_top,
+            Point3D::new(13, 13, 13)
+        );
+        let size_remaining_b_box_right = remaining_b_box_right.size().unwrap();
+        let remaining_b_box_back = remaining_b[1];
+        assert_eq!(
+            remaining_b_box_back.left_front_bottom,
+            Point3D::new(11, 13, 11)
+        );
+        assert_eq!(
+            remaining_b_box_back.right_back_top,
+            Point3D::new(12, 13, 13)
+        );
+        let size_remaining_b_box_back = remaining_b_box_back.size().unwrap();
+        let remaining_b_box_top = remaining_b[2];
+        assert_eq!(
+            remaining_b_box_top.left_front_bottom,
+            Point3D::new(11, 11, 13)
+        );
+        assert_eq!(
+            remaining_b_box_top.right_back_top,
+            Point3D::new(12, 12, 13)
+        );
+        let size_remaining_b_box_top = remaining_b_box_top.size().unwrap();
+        assert_eq!(
+            size_b,
+            size_intersection
+                + size_remaining_b_box_right
+                + size_remaining_b_box_back
+                + size_remaining_b_box_top
+        );
+
+        // check again sum sizes
+        let size_remaining_a: u64 = remaining_a.iter().filter_map(|b| b.size()).sum();
+        let size_remaining_b: u64 = remaining_b.iter().filter_map(|b| b.size()).sum();
+        // intersection is part of a and b, therefore factor 2
+        assert_eq!(
+            size_a + size_b,
+            2 * size_intersection + size_remaining_a + size_remaining_b
+        );
     }
 }

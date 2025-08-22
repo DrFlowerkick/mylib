@@ -77,7 +77,7 @@ mod tests {
         let main_group = [1, 2, 3, 4, 5];
         let num_to_collect = 3;
         let collections = collect_all_n_from_m_elements(&main_group, num_to_collect);
-        
+
         assert_eq!(collections.len(), 10);
         assert_eq!(collections[0], [1, 2, 3]);
         assert_eq!(collections[1], [1, 2, 4]);
