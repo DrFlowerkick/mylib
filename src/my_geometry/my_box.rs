@@ -283,4 +283,25 @@ mod tests {
             2 * size_intersection + size_remaining_a + size_remaining_b
         );
     }
+
+    #[test]
+    fn test_intersection_box_inside_box() {
+        let box_a_corner_a = Point3D::new(0, 0, 0);
+        let box_a_corner_b = Point3D::new(3, 3, 3);
+        let box_a = Box3D::new(box_a_corner_a, box_a_corner_b);
+        let size_a = box_a.size().unwrap();
+        assert_eq!(size_a, 64);
+
+        let box_b_corner_a = Point3D::new(1, 1, 1);
+        let box_b_corner_b = Point3D::new(2, 2, 2);
+        let box_b = Box3D::new(box_b_corner_a, box_b_corner_b);
+        let size_b = box_b.size().unwrap();
+        assert_eq!(size_b, 8);
+
+        let (intersection, remaining_a, remaining_b) = box_a.split_intersecting(box_b).unwrap();
+        let size_intersection = intersection.size().unwrap();
+        assert_eq!(size_intersection, 8);
+        assert_eq!(remaining_a.into_iter().filter_map(|b| b.size()).collect::<Vec<u64>>(), [16, 16, 8, 8, 4, 4]);
+        assert_eq!(remaining_b.len(), 0);
+    }
 }
