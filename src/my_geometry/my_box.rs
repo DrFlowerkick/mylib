@@ -157,4 +157,10 @@ impl Box3D {
         let i = self.intersect(other)?;
         Some((i, self.subtract(i), other.subtract(i)))
     }
+
+    pub fn size(&self) -> i64 {
+        (self.right_back_top.x - self.left_front_bottom.x + 1)
+            * (self.right_back_top.y - self.left_front_bottom.y + 1)
+            * (self.right_back_top.z - self.left_front_bottom.z + 1)
+    }
 }
