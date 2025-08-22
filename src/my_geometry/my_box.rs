@@ -158,9 +158,11 @@ impl Box3D {
         Some((i, self.subtract(i), other.subtract(i)))
     }
 
-    pub fn size(&self) -> i64 {
-        (self.right_back_top.x - self.left_front_bottom.x + 1)
-            * (self.right_back_top.y - self.left_front_bottom.y + 1)
-            * (self.right_back_top.z - self.left_front_bottom.z + 1)
+    pub fn size(&self) -> Option<u64> {
+        self.is_valid().then_some(
+            (self.right_back_top.x - self.left_front_bottom.x + 1) as u64
+                * (self.right_back_top.y - self.left_front_bottom.y + 1) as u64
+                * (self.right_back_top.z - self.left_front_bottom.z + 1) as u64,
+        )
     }
 }
