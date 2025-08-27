@@ -155,6 +155,18 @@ impl Point {
             y: self.y * factor,
         }
     }
+    pub fn turn(&self, turn: Turns90, clockwise: bool) -> Point {
+        match (turn, clockwise) {
+            (Turns90::T0, _) => *self,
+            (Turns90::T180, _) => Point::new(-self.x, -self.y),
+            (Turns90::T90, true) | (Turns90::T270, false) => Point::new(self.y, -self.x),
+            (Turns90::T270, true) | (Turns90::T90, false) => Point::new(-self.y, self.x),
+        }
+    }
+    pub fn turn_around_point(&self, pos: Point, turn: Turns90, clockwise: bool) -> Point {
+        self.subtract(pos).turn(turn, clockwise).add(pos)
+
+    }
     pub fn scale_toward_point_with_len(&self, target: Point, len: f32) -> Point {
         let vector = Cylindrical::from(target.subtract(*self));
         self.add(vector.set_radius(len).into())
