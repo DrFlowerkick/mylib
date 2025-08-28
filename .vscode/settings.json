@@ -6,6 +6,7 @@
     "chrono",
     "codingame",
     "Deque",
+    "egcd",
     "fract",
     "Hasher",
     "imec",
