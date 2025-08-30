@@ -211,6 +211,32 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         }
         rotated
     }
+    pub fn rotate_clockwise_inline(&mut self) -> Result<(), String> {
+        if X != Y {
+            return Err("inline rotation is only possible for quadratic map".into());
+        }
+        // x_rot = Y - y - 1
+        // y_rot = x
+        for y in 0..Y {
+            for x in 0..X {
+                self.swap_cell_values((x, y).into(), (Y - y - 1, x).into());
+            }
+        }
+        Ok(())
+    }
+    pub fn rotate_counter_clockwise_inline(&mut self) -> Result<(), String> {
+        if X != Y {
+            return Err("inline rotation is only possible for quadratic map".into());
+        }
+        // x_rot = y
+        // y_rot = X - x - 1
+        for y in 0..Y {
+            for x in 0..X {
+                self.swap_cell_values((x, y).into(), (y, X - x - 1).into());
+            }
+        }
+        Ok(())
+    }
     pub fn iter(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         self.items.iter().enumerate().flat_map(|(y, row)| {
             row.iter()
