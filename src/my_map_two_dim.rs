@@ -177,7 +177,17 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         }
         free_zones > 1
     }
-    pub fn flip_horizontal(&mut self) {
+    pub fn flip_horizontal(&self) -> Self {
+        let mut flip = *self;
+        flip.flip_horizontal_inline();
+        flip
+    }
+    pub fn flip_vertical(&self) -> Self {
+        let mut flip = *self;
+        flip.flip_vertical_inline();
+        flip
+    }
+    pub fn flip_horizontal_inline(&mut self) {
         // flip around middle of Y. if Y is odd, middle is untouched
         for x in 0..X {
             for y in 0..Y / 2 {
@@ -185,11 +195,11 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
             }
         }
     }
-    pub fn flip_vertical(&mut self) {
+    pub fn flip_vertical_inline(&mut self) {
         // flip around middle of X. if X is odd, middle is untouched
         for y in 0..Y {
             for x in 0..X / 2 {
-                self.swap_cell_values((x, y).into(), (X - x - 1, Y).into());
+                self.swap_cell_values((x, y).into(), (X - x - 1, y).into());
             }
         }
     }
@@ -210,32 +220,6 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
             rotated.set((pos.y(), X - pos.x() - 1).into(), *val);
         }
         rotated
-    }
-    pub fn rotate_clockwise_inline(&mut self) -> Result<(), String> {
-        if X != Y {
-            return Err("inline rotation is only possible for quadratic map".into());
-        }
-        // x_rot = Y - y - 1
-        // y_rot = x
-        for y in 0..Y {
-            for x in 0..X {
-                self.swap_cell_values((x, y).into(), (Y - y - 1, x).into());
-            }
-        }
-        Ok(())
-    }
-    pub fn rotate_counter_clockwise_inline(&mut self) -> Result<(), String> {
-        if X != Y {
-            return Err("inline rotation is only possible for quadratic map".into());
-        }
-        // x_rot = y
-        // y_rot = X - x - 1
-        for y in 0..Y {
-            for x in 0..X {
-                self.swap_cell_values((x, y).into(), (y, X - x - 1).into());
-            }
-        }
-        Ok(())
     }
     pub fn iter(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         self.items.iter().enumerate().flat_map(|(y, row)| {
@@ -521,5 +505,35 @@ mod tests {
             }
             eprintln!();
         }
+    }
+
+    #[test]
+    fn test_rotate_and_flip() {
+        let map = "..##.#..#.\n\
+                         ##..#.....\n\
+                         #...##..#.\n\
+                         ####.#...#\n\
+                         ##.##.###.\n\
+                         ##...#.###\n\
+                         .#.#.#..##\n\
+                         ..#....#..\n\
+                         ###...#.#.\n\
+                         ..###..###";
+        let map: MyMap2D<char, 10, 10> = map.into();
+        let double_rotate = map.rotate_clockwise().rotate_clockwise();
+        let double_flip = map.flip_horizontal().flip_vertical();
+        assert_eq!(double_flip, double_rotate);
+
+        let reverse_rotate = double_flip.rotate_counter_clockwise().rotate_counter_clockwise();
+        assert_eq!(map, reverse_rotate);
+
+        let flip_flop = map.flip_horizontal().flip_horizontal();
+        assert_eq!(map, flip_flop);
+
+        let flop_flip = map.flip_vertical().flip_vertical();
+        assert_eq!(map, flop_flip);
+
+        let no_rotate = map.rotate_clockwise().rotate_counter_clockwise();
+        assert_eq!(map, no_rotate);
     }
 }
