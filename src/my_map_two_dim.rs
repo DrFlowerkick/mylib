@@ -177,6 +177,40 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         }
         free_zones > 1
     }
+    pub fn flip_horizontal(&mut self) {
+        // flip around middle of Y. if Y is odd, middle is untouched
+        for x in 0..X {
+            for y in 0..Y / 2 {
+                self.swap_cell_values((x, y).into(), (x, Y - y - 1).into());
+            }
+        }
+    }
+    pub fn flip_vertical(&mut self) {
+        // flip around middle of X. if X is odd, middle is untouched
+        for y in 0..Y {
+            for x in 0..X / 2 {
+                self.swap_cell_values((x, y).into(), (X - x - 1, Y).into());
+            }
+        }
+    }
+    pub fn rotate_clockwise(&self) -> MyMap2D<T, Y, X> {
+        // x_rot = Y - y - 1
+        // y_rot = x
+        let mut rotated: MyMap2D<T, Y, X> = MyMap2D::default();
+        for (pos, val) in self.iter() {
+            rotated.set((Y - pos.y() - 1, pos.x()).into(), *val);
+        }
+        rotated
+    }
+    pub fn rotate_counter_clockwise(&self) -> MyMap2D<T, Y, X> {
+        // x_rot = y
+        // y_rot = X - x - 1
+        let mut rotated: MyMap2D<T, Y, X> = MyMap2D::default();
+        for (pos, val) in self.iter() {
+            rotated.set((pos.y(), X - pos.x() - 1).into(), *val);
+        }
+        rotated
+    }
     pub fn iter(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         self.items.iter().enumerate().flat_map(|(y, row)| {
             row.iter()
