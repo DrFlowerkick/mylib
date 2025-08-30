@@ -213,7 +213,7 @@ mod tests {
                     }
                     _ => {
                         eprintln!("Invalid player");
-                        assert!(false, "Invalid player");
+                        panic!("Invalid player");
                     }
                 }
             }
@@ -223,12 +223,12 @@ mod tests {
                 TicTacToeStatus::First => eprintln!("me winner"),
                 TicTacToeStatus::Second => {
                     eprintln!("opp winner");
-                    assert!(false, "opp should not win");
+                    panic!("opp should not win");
                 }
                 TicTacToeStatus::Tie => eprintln!("tie"),
                 TicTacToeStatus::Vacant => {
                     eprintln!("vacant: Game ended without winner!?");
-                    assert!(false, "vacant: Game ended without winner!?");
+                    panic!("vacant: Game ended without winner!?");
                 }
             }
             wins += TicTacToeMCTSGame::evaluate(&ttt_game_data, &mut mcts_tic_tac_toe.game_cache)
@@ -282,7 +282,7 @@ mod tests {
                     }
                     _ => {
                         eprintln!("Invalid player");
-                        assert!(false, "Invalid player");
+                        panic!("Invalid player");
                     }
                 }
             }
@@ -292,12 +292,12 @@ mod tests {
                 TicTacToeStatus::First => eprintln!("me winner"),
                 TicTacToeStatus::Second => {
                     eprintln!("opp winner");
-                    assert!(false, "opp should not win");
+                    panic!("opp should not win");
                 }
                 TicTacToeStatus::Tie => eprintln!("tie"),
                 TicTacToeStatus::Vacant => {
                     eprintln!("vacant: Game ended without winner!?");
-                    assert!(false, "vacant: Game ended without winner!?");
+                    panic!("vacant: Game ended without winner!?");
                 }
             }
             wins += TicTacToeMCTSGame::evaluate(&ttt_game_data, &mut mcts_tic_tac_toe.game_cache)
@@ -386,16 +386,16 @@ mod tests {
             match first_ttt_game_data.ttt.get_status() {
                 TicTacToeStatus::First => {
                     eprintln!("first winner");
-                    assert!(false, "first should not win");
+                    panic!("first should not win");
                 }
                 TicTacToeStatus::Second => {
                     eprintln!("second winner");
-                    assert!(false, "second should not win");
+                    panic!("second should not win");
                 }
                 TicTacToeStatus::Tie => eprintln!("tie"),
                 TicTacToeStatus::Vacant => {
                     eprintln!("vacant: Game ended without winner!?");
-                    assert!(false, "vacant: Game ended without winner!?");
+                    panic!("vacant: Game ended without winner!?");
                 }
             }
             wins += TicTacToeMCTSGame::evaluate(

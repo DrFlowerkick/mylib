@@ -425,14 +425,14 @@ mod tests {
     #[test]
     fn test_collect() {
         let array = [0, 1, 2, 3, 4];
-        let my_array: MyArray<i32, 10> = array.iter().map(|i| *i).collect();
+        let my_array: MyArray<i32, 10> = array.iter().copied().collect();
         assert_eq!(my_array.as_slice(), &array[..]);
     }
 
     #[test]
     fn test_collect_empty_collection() {
         let array: [i32; 0] = [];
-        let my_array: MyArray<i32, 10> = array.iter().map(|i| *i).collect();
+        let my_array: MyArray<i32, 10> = array.iter().copied().collect();
         assert_eq!(my_array.len(), 0);
     }
 
@@ -440,13 +440,13 @@ mod tests {
     #[should_panic]
     fn test_collect_to_large_collection() {
         let array = [0, 1, 2, 3, 4];
-        let _my_array: MyArray<i32, 4> = array.iter().map(|i| *i).collect();
+        let _my_array: MyArray<i32, 4> = array.iter().copied().collect();
     }
 
     #[test]
     fn test_remove() {
         let array = [0, 1, 2, 3, 4];
-        let mut my_array: MyArray<i32, 10> = array.iter().map(|i| *i).collect();
+        let mut my_array: MyArray<i32, 10> = array.iter().copied().collect();
         let removed = my_array.remove(2).unwrap();
         assert_eq!(my_array.as_slice(), &[0, 1, 3, 4]);
         assert_eq!(removed, 2);
@@ -455,7 +455,7 @@ mod tests {
     #[test]
     fn test_insert() {
         let array = [0, 1, 2, 3, 4];
-        let mut my_array: MyArray<i32, 10> = array.iter().map(|i| *i).collect();
+        let mut my_array: MyArray<i32, 10> = array.iter().copied().collect();
         my_array.insert(2, 6);
         assert_eq!(my_array.as_slice(), &[0, 1, 6, 2, 3, 4]);
     }
@@ -463,7 +463,7 @@ mod tests {
     #[test]
     fn test_index() {
         let array = [0, 1, 2, 3, 4];
-        let mut my_array: MyArray<i32, 10> = array.iter().map(|i| *i).collect();
+        let mut my_array: MyArray<i32, 10> = array.iter().copied().collect();
         assert_eq!(my_array[2], 2);
         my_array[2] = 5;
         assert_eq!(my_array[2], 5);

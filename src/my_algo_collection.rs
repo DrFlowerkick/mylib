@@ -15,12 +15,13 @@ pub fn gcd(mut a: i64, mut b: i64) -> i64 {
 /// inv_a_mod_b = x mod b
 /// if only positive remainder is required, use rem_euclid() instead of % for mod
 pub fn egcd(a: i64, b: i64) -> (i64, i64, i64) {
-    if b == 0 { (a, 1, 0) } else {
+    if b == 0 {
+        (a, 1, 0)
+    } else {
         let (g, x, y) = egcd(b, a % b);
         (g, y, x - (a / b) * y)
     }
 }
-
 
 /// collecting all possible sub groups with n elements of a group with m elements and m > n
 use std::cmp::Ordering;

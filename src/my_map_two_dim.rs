@@ -409,35 +409,35 @@ mod tests {
             let is_cell_free_fn = Box::new(|_: MapPoint<X, Y>, c: &bool| *c);
             *cut_off_map.get_mut(p) = game_map.is_cut_off_cell(p, is_cell_free_fn);
         }
-        assert_eq!(cut_off_map.iter().filter(|(_, c)| **c == true).count(), 5);
+        assert_eq!(cut_off_map.iter().filter(|(_, c)| **c).count(), 5);
 
         game_map.set(MapPoint::<X, Y>::new(8, 2), false);
         for (p, _) in game_map.iter().filter(|(_, c)| **c) {
             let is_cell_free_fn = Box::new(|_: MapPoint<X, Y>, c: &bool| *c);
             *cut_off_map.get_mut(p) = game_map.is_cut_off_cell(p, is_cell_free_fn);
         }
-        assert_eq!(cut_off_map.iter().filter(|(_, c)| **c == true).count(), 5);
+        assert_eq!(cut_off_map.iter().filter(|(_, c)| **c).count(), 5);
 
         game_map.set(MapPoint::<X, Y>::new(7, 4), false);
         for (p, _) in game_map.iter().filter(|(_, c)| **c) {
             let is_cell_free_fn = Box::new(|_: MapPoint<X, Y>, c: &bool| *c);
             *cut_off_map.get_mut(p) = game_map.is_cut_off_cell(p, is_cell_free_fn);
         }
-        assert_eq!(cut_off_map.iter().filter(|(_, c)| **c == true).count(), 7);
+        assert_eq!(cut_off_map.iter().filter(|(_, c)| **c).count(), 7);
 
         game_map.set(MapPoint::<X, Y>::new(7, 6), false);
         for (p, _) in game_map.iter().filter(|(_, c)| **c) {
             let is_cell_free_fn = Box::new(|_: MapPoint<X, Y>, c: &bool| *c);
             *cut_off_map.get_mut(p) = game_map.is_cut_off_cell(p, is_cell_free_fn);
         }
-        assert_eq!(cut_off_map.iter().filter(|(_, c)| **c == true).count(), 10);
+        assert_eq!(cut_off_map.iter().filter(|(_, c)| **c).count(), 10);
 
         game_map.set(MapPoint::<X, Y>::new(9, 8), false);
         for (p, _) in game_map.iter().filter(|(_, c)| **c) {
             let is_cell_free_fn = Box::new(|_: MapPoint<X, Y>, c: &bool| *c);
             *cut_off_map.get_mut(p) = game_map.is_cut_off_cell(p, is_cell_free_fn);
         }
-        assert_eq!(cut_off_map.iter().filter(|(_, c)| **c == true).count(), 14);
+        assert_eq!(cut_off_map.iter().filter(|(_, c)| **c).count(), 14);
         assert!(*cut_off_map.get(MapPoint::<X, Y>::new(8, 7)));
     }
 
@@ -459,7 +459,7 @@ mod tests {
             for cell in map.get_column(col).iter() {
                 eprint!("{:03} ", cell);
             }
-            eprintln!("");
+            eprintln!();
         }
     }
 }

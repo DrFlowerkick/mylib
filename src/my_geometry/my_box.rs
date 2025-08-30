@@ -261,10 +261,7 @@ mod tests {
             remaining_b_box_top.left_front_bottom,
             Point3D::new(11, 11, 13)
         );
-        assert_eq!(
-            remaining_b_box_top.right_back_top,
-            Point3D::new(12, 12, 13)
-        );
+        assert_eq!(remaining_b_box_top.right_back_top, Point3D::new(12, 12, 13));
         let size_remaining_b_box_top = remaining_b_box_top.size().unwrap();
         assert_eq!(
             size_b,
@@ -301,7 +298,13 @@ mod tests {
         let (intersection, remaining_a, remaining_b) = box_a.split_intersecting(box_b).unwrap();
         let size_intersection = intersection.size().unwrap();
         assert_eq!(size_intersection, 8);
-        assert_eq!(remaining_a.into_iter().filter_map(|b| b.size()).collect::<Vec<u64>>(), [16, 16, 8, 8, 4, 4]);
+        assert_eq!(
+            remaining_a
+                .into_iter()
+                .filter_map(|b| b.size())
+                .collect::<Vec<u64>>(),
+            [16, 16, 8, 8, 4, 4]
+        );
         assert_eq!(remaining_b.len(), 0);
     }
 }

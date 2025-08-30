@@ -139,6 +139,9 @@ mod tests {
             .collect();
         assert_eq!(level_order_vector, ['A', 'D', 'I', 'C', 'E', 'H']);
 
+        // we mus use clone, because otherwise test_tree (root of tree) does go out of scope, which will make weak
+        // Rc references in children go out of scope, too.
+        #[allow(clippy::redundant_clone)]
         let level_order_vector: Vec<char> = LevelOrderTraversal::new(test_tree.clone(), 1, Some(2))
             .map(|(n, _)| *n.get_value())
             .collect();

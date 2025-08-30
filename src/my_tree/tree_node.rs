@@ -348,32 +348,20 @@ pub mod tests {
         assert_eq!(*child_h.get_value(), 'H');
         assert_eq!(*child_h.get_root().get_value(), 'F');
 
-        assert_eq!(test_tree.add_unambiguous_child('I', 0).is_none(), true);
-        assert_eq!(child_h.insert_unambiguous_child('F', 0, 0).is_none(), true);
-        assert_eq!(
-            test_tree
-                .add_unambiguous_child_to_parent('I', &'Z', 0)
-                .is_none(),
-            true
-        );
-        assert_eq!(
-            test_tree
-                .add_unambiguous_child_to_parent('I', &'B', 0)
-                .is_none(),
-            true
-        );
-        assert_eq!(
-            child_h
-                .insert_unambiguous_child_at_parent('F', &'Z', 0, 0)
-                .is_none(),
-            true
-        );
-        assert_eq!(
-            child_h
-                .insert_unambiguous_child_at_parent('F', &'A', 0, 0)
-                .is_none(),
-            true
-        );
+        assert!(test_tree.add_unambiguous_child('I', 0).is_none());
+        assert!(child_h.insert_unambiguous_child('F', 0, 0).is_none());
+        assert!(test_tree
+            .add_unambiguous_child_to_parent('I', &'Z', 0)
+            .is_none());
+        assert!(test_tree
+            .add_unambiguous_child_to_parent('I', &'B', 0)
+            .is_none());
+        assert!(child_h
+            .insert_unambiguous_child_at_parent('F', &'Z', 0, 0)
+            .is_none());
+        assert!(child_h
+            .insert_unambiguous_child_at_parent('F', &'A', 0, 0)
+            .is_none());
 
         assert!(child_h.is_leave());
         let child_d = test_tree.get_node(&'D').unwrap();
@@ -384,7 +372,7 @@ pub mod tests {
 
         let child_b = test_tree.get_child(0).unwrap();
         assert_eq!(*child_b.get_child(0).unwrap().get_value(), 'A');
-        child_b.sort_children_by(|a, b| b.cmp(&a));
+        child_b.sort_children_by(|a, b| b.cmp(a));
         assert_eq!(*child_b.get_child(0).unwrap().get_value(), 'D');
 
         // changing value of node
