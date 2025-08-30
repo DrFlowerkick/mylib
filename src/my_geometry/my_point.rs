@@ -165,7 +165,6 @@ impl Point {
     }
     pub fn turn_around_point(&self, pos: Point, turn: Turns90, clockwise: bool) -> Point {
         self.subtract(pos).turn(turn, clockwise).add(pos)
-
     }
     pub fn scale_toward_point_with_len(&self, target: Point, len: f32) -> Point {
         let vector = Cylindrical::from(target.subtract(*self));
@@ -433,6 +432,31 @@ impl Point3D {
         self.rotate_x_turn90(combination.0)
             .rotate_y_turn90(combination.1)
             .rotate_z_turn90(combination.2)
+    }
+    pub fn iter_cuboid(
+        &self,
+        dx_minus: i64,
+        dx_plus: i64,
+        dy_minus: i64,
+        dy_plus: i64,
+        dz_minus: i64,
+        dz_plus: i64,
+    ) -> impl Iterator<Item = Point3D> + '_ {
+        (dx_minus <= 0
+            && dx_plus >= 0
+            && dy_minus <= 0
+            && dy_plus >= 0
+            && dz_minus <= 0
+            && dz_plus >= 0)
+            .then(|| {
+                (dz_minus..=dz_plus).flat_map(move |dz| {
+                    (dy_minus..=dy_plus).flat_map(move |dy| {
+                        (dx_minus..=dx_plus).map(move |dx| self.add(&(dx, dy, dz).into()))
+                    })
+                })
+            })
+            .into_iter()
+            .flatten()
     }
 }
 
