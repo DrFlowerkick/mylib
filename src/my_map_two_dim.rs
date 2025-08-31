@@ -191,7 +191,8 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         // flip around middle of Y. if Y is odd, middle is untouched
         for x in 0..X {
             for y in 0..Y / 2 {
-                self.swap_cell_values((x, y).into(), (x, Y - y - 1).into());
+                let pos = (x, y).into();
+                self.swap_cell_values(pos , pos.flip_horizontal());
             }
         }
     }
@@ -199,7 +200,8 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         // flip around middle of X. if X is odd, middle is untouched
         for y in 0..Y {
             for x in 0..X / 2 {
-                self.swap_cell_values((x, y).into(), (X - x - 1, y).into());
+                let pos = (x, y).into();
+                self.swap_cell_values(pos, pos.flip_vertical());
             }
         }
     }
@@ -208,7 +210,7 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         // y_rot = x
         let mut rotated: MyMap2D<T, Y, X> = MyMap2D::default();
         for (pos, val) in self.iter() {
-            rotated.set((Y - pos.y() - 1, pos.x()).into(), *val);
+            rotated.set(pos.rotate_clockwise(), *val);
         }
         rotated
     }
@@ -217,7 +219,7 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         // y_rot = X - x - 1
         let mut rotated: MyMap2D<T, Y, X> = MyMap2D::default();
         for (pos, val) in self.iter() {
-            rotated.set((pos.y(), X - pos.x() - 1).into(), *val);
+            rotated.set(pos.rotate_counter_clockwise(), *val);
         }
         rotated
     }

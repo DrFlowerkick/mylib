@@ -235,6 +235,25 @@ impl<const X: usize, const Y: usize> MapPoint<X, Y> {
             y: Y - 1 - self.y,
         }
     }
+    pub fn flip_horizontal(&self) -> Self {
+        // flip around middle of Y. if Y is odd and self.y == 1 + Y / 2, returns self
+        MapPoint { x: self.x, y: Y - self.y - 1 }
+    }
+    pub fn flip_vertical(&self) -> Self {
+        // flip around middle of X. if X is odd and self.x == 1 + Y / 2, returns self
+        MapPoint { x: X - self.x - 1, y: self.y }
+    }
+    pub fn rotate_clockwise(&self) -> MapPoint<Y, X> {
+        // x_rot = Y - y - 1
+        // y_rot = x
+        MapPoint { x: Y - self.y - 1, y: self.x }
+        
+    }
+    pub fn rotate_counter_clockwise(&self) -> MapPoint<Y, X> {
+        // x_rot = y
+        // y_rot = X - x - 1
+        MapPoint { x: self.y, y: X - self.x - 1 }
+    }
     pub fn neighbor(&self, orientation: Compass) -> Option<MapPoint<X, Y>> {
         match orientation {
             Compass::Center => Some(*self),
