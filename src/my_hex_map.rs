@@ -115,10 +115,9 @@ mod tests {
     use super::*;
     use crate::my_map_point::*;
     use crate::my_map_two_dim::*;
-    // see C:\Users\Marc\Documents\Repos\basic_rust\projects\my_lib\example_hex_map.png
     const N: usize = 27;
     // neigh 0 to neigh 5
-    const HEXMAP: &str = "1 3 -1 2 4 -1\n\
+    const HEX_MAP: &str = "1 3 -1 2 4 -1\n\
                           5 -1 3 0 -1 -1\n\
                           0 -1 -1 6 -1 4\n\
                           -1 -1 7 -1 0 1\n\
@@ -145,10 +144,10 @@ mod tests {
                           14 -1 22 -1 -1 -1\n\
                           17 -1 -1 -1 20 12\n\
                           -1 19 11 18 -1 -1";
-    fn read_hexmap() -> MyArray<HexNeigh, N> {
+    fn read_hex_map() -> MyArray<HexNeigh, N> {
         let init_item: HexNeigh = [None; 6];
         let mut neighbors: MyArray<HexNeigh, N> = MyArray::init(init_item, N);
-        let lines = HEXMAP.lines().map(|l| l.trim());
+        let lines = HEX_MAP.lines().map(|l| l.trim());
         for (index, line) in lines.enumerate() {
             for (i, neighbor) in line
                 .split_whitespace()
@@ -169,7 +168,7 @@ mod tests {
     fn test_hex_distance() {
         let mut distance_map: MyMap2D<usize, N, N> = MyMap2D::default();
         let mut hex_map: MyHexMap<usize, N> = MyHexMap::new();
-        let neighbors = read_hexmap();
+        let neighbors = read_hex_map();
         for (item, neighbor) in neighbors.iter().enumerate() {
             hex_map.push(item, *neighbor);
         }

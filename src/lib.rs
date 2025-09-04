@@ -6,6 +6,7 @@ pub mod my_cube_map;
 pub mod my_fibonacci;
 pub mod my_geometry;
 pub mod my_graph;
+pub mod my_hex_grid;
 pub mod my_hex_map;
 pub mod my_map_3x3;
 pub mod my_map_one_dim;
