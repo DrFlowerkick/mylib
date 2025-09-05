@@ -81,6 +81,80 @@ fn recursive_collection_of_elements<T: Copy>(
     }
 }
 
+/// get all possible combinations of a range of numbers as iterator
+use std::collections::VecDeque;
+pub struct RangeCombinations {
+    start: i64,
+    end: i64,
+    combination: VecDeque<i64>,
+    iter_finished: bool,
+}
+
+impl RangeCombinations {
+    pub fn new(start: i64, end: i64) -> Self {
+        Self {
+            start,
+            end,
+            combination: VecDeque::new(),
+            iter_finished: start > end,
+        }
+    }
+    fn set_next(&mut self) -> bool {
+        if self.combination.is_empty() {
+            self.add_entry();
+            false
+        } else if self.set_last() {
+            true
+        } else {
+            self.add_entry();
+            false
+        }
+    }
+    fn set_last(&mut self) -> bool {
+        // there are no further combinations, if no number left to pop
+        let Some(last) = self.combination.pop_back() else { return true;};
+        if last + 1 > self.end {
+            // reached end of range -> move one backwards
+            self.set_last()
+        } else if let Some(next) = (last + 1..=self.end)
+            .filter(|n| !self.combination.contains(n))
+            .next()
+        {
+            self.combination.push_back(next);
+            false
+        } else {
+            // could not find possible next number -> move one backwards
+            self.set_last()
+        }
+    }
+    fn add_entry(&mut self) {
+        // add entry, if some number from range is missing
+        if let Some(next) = (self.start..=self.end)
+            .filter(|n| !self.combination.contains(n))
+            .next()
+        {
+            self.combination.push_back(next);
+            self.add_entry();
+        }
+    }
+}
+
+impl Iterator for RangeCombinations {
+    type Item = VecDeque<i64>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.iter_finished {
+            return None;
+        }
+        if self.set_next() {
+            self.iter_finished = true;
+            None
+        } else {
+            Some(self.combination.clone())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -102,5 +176,18 @@ mod tests {
         assert_eq!(collections[7], [2, 3, 5]);
         assert_eq!(collections[8], [2, 4, 5]);
         assert_eq!(collections[9], [3, 4, 5]);
+    }
+
+    #[test]
+    fn test_range_combinations() {
+        let mut range_combinations = RangeCombinations::new(0, 2);
+        assert_eq!(range_combinations.next(), Some([0, 1, 2].into()));
+        assert_eq!(range_combinations.next(), Some([0, 2, 1].into()));
+        assert_eq!(range_combinations.next(), Some([1, 0, 2].into()));
+        assert_eq!(range_combinations.next(), Some([1, 2, 0].into()));
+        assert_eq!(range_combinations.next(), Some([2, 0, 1].into()));
+        assert_eq!(range_combinations.next(), Some([2, 1, 0].into()));
+        assert_eq!(range_combinations.next(), None);
+
     }
 }
