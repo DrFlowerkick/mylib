@@ -52,12 +52,11 @@ impl<T: Copy + Clone + Default + Display, const X: usize, const Y: usize> Displa
     for MyMap2D<T, X, Y>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut line = String::new();
         for (p, v) in self.iter() {
-            line = format!("{}{}", line, v);
-            if (p.x() + 1) % X == 0 && !line.is_empty() {
-                writeln!(f, "{}", line)?;
-                line = "".into();
+            write!(f, "{}", v)?;
+            // last cell in line but not last line
+            if (p.x() + 1) == X && p.y() + 1 < Y {
+                writeln!(f)?;
             }
         }
         Ok(())
@@ -192,7 +191,7 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize> MyMap2D<T, X, Y>
         for x in 0..X {
             for y in 0..Y / 2 {
                 let pos = (x, y).into();
-                self.swap_cell_values(pos , pos.flip_horizontal());
+                self.swap_cell_values(pos, pos.flip_horizontal());
             }
         }
     }
@@ -526,7 +525,9 @@ mod tests {
         let double_flip = map.flip_horizontal().flip_vertical();
         assert_eq!(double_flip, double_rotate);
 
-        let reverse_rotate = double_flip.rotate_counter_clockwise().rotate_counter_clockwise();
+        let reverse_rotate = double_flip
+            .rotate_counter_clockwise()
+            .rotate_counter_clockwise();
         assert_eq!(map, reverse_rotate);
 
         let flip_flop = map.flip_horizontal().flip_horizontal();
