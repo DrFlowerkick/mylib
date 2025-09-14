@@ -48,10 +48,13 @@ pub fn modinv_i128(a: i128, m: i128) -> Option<i128> {
 /// (base^exp) % modulus, iterative, O(log exp).
 /// Warning: big values of exp and modulus may result in overflow errors
 pub fn modpow(base: i64, exp: i64, modulus: i64) -> i64 {
-    modpow_i128(base as i128, exp as i128, modulus as i128) as i64
+    assert!(base >= 0);
+    assert!(exp >= 0);
+    assert!(modulus >= 0);
+    modpow_u128(base as u128, exp as u128, modulus as u128) as i64
 }
 
-pub fn modpow_i128(mut base: i128, mut exp: i128, modulus: i128) -> i128 {
+pub fn modpow_u128(mut base: u128, mut exp: u128, modulus: u128) -> u128 {
     if modulus == 1 { return 0; }
     let mut result = 1 % modulus;
     base %= modulus;
