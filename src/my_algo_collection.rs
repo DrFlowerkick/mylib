@@ -1,7 +1,11 @@
 // collection of useful algorithms I try to keep as generic as possible
 
 /// greatest common divider for integer
-pub fn gcd(mut a: i64, mut b: i64) -> i64 {
+pub fn gcd(a: i64, b: i64) -> i64 {
+    gcd_i128(a as i128, b as i128) as i64
+}
+
+pub fn gcd_i128(mut a: i128, mut b: i128) -> i128 {
     while b != 0 {
         let t = a % b;
         a = b;
@@ -15,13 +19,53 @@ pub fn gcd(mut a: i64, mut b: i64) -> i64 {
 /// inv_a_mod_b = x mod b
 /// if only positive remainder is required, use rem_euclid() instead of % for mod
 pub fn egcd(a: i64, b: i64) -> (i64, i64, i64) {
+    let (gcd, x, y) = egcd_i128(a as i128, b as i128);
+    (gcd as i64, x as i64, y as i64)
+}
+
+pub fn egcd_i128(a: i128, b: i128) -> (i128, i128, i128) {
     if b == 0 {
         (a, 1, 0)
     } else {
-        let (g, x, y) = egcd(b, a % b);
+        let (g, x, y) = egcd_i128(b, a % b);
         (g, y, x - (a / b) * y)
     }
 }
+
+/// modinv calculate the first inverse of a mod m
+
+pub fn modinv(a: i64, m: i64) -> Option<i64> {
+    modinv_i128(a as i128, m as i128).map(|r| r as i64)
+}
+pub fn modinv_i128(a: i128, m: i128) -> Option<i128> {
+    let (g, x, _) = egcd_i128(a, m);
+    if g != 1 && g != -1 { return None; }
+    Some(x.rem_euclid(m))
+}
+
+
+/// modpow: calculate (base^exp) % mod
+/// (base^exp) % modulus, iterative, O(log exp).
+/// Warning: big values of exp and modulus may result in overflow errors
+pub fn modpow(base: i64, exp: i64, modulus: i64) -> i64 {
+    modpow_i128(base as i128, exp as i128, modulus as i128) as i64
+}
+
+pub fn modpow_i128(mut base: i128, mut exp: i128, modulus: i128) -> i128 {
+    if modulus == 1 { return 0; }
+    let mut result = 1 % modulus;
+    base %= modulus;
+
+    while exp > 0 {
+        if (exp & 1) == 1 {
+            result = (result * base) % modulus;
+        }
+        base = (base * base) % modulus;
+        exp >>= 1;
+    }
+    result
+}
+
 
 /// collecting all possible sub groups with n elements of a group with m elements and m > n
 use std::cmp::Ordering;
