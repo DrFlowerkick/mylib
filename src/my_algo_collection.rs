@@ -47,26 +47,27 @@ pub fn modinv_i128(a: i128, m: i128) -> Option<i128> {
 /// modpow: calculate (base^exp) % mod
 /// (base^exp) % modulus, iterative, O(log exp).
 /// Warning: big values of exp and modulus may result in overflow errors
-pub fn modpow(base: i64, exp: i64, modulus: i64) -> i64 {
-    assert!(base >= 0);
-    assert!(exp >= 0);
-    assert!(modulus >= 0);
-    modpow_u128(base as u128, exp as u128, modulus as u128) as i64
+pub fn modpow(base: i64, exp: i64, modulus: i64) -> Option<i64> {
+    modpow_i128(base as i128, exp as i128, modulus as i128).map(|r| r as i64)
 }
 
-pub fn modpow_u128(mut base: u128, mut exp: u128, modulus: u128) -> u128 {
-    if modulus == 1 { return 0; }
+// If modpow_i128() returns None, than the numbers become to big to fit into i128.
+// In this case use crate num-bigint, which provides modpow (and modinv).
+// To convert to and from rust primitives like i128 to BigIt or BigUInt and back
+// to rust primitives, use crate num-traits with traits FromPrimitive and ToPrimitive.
+pub fn modpow_i128(mut base: i128, mut exp: i128, modulus: i128) -> Option<i128> {
+    if modulus == 1 { return Some(0); }
     let mut result = 1 % modulus;
     base %= modulus;
 
     while exp > 0 {
         if (exp & 1) == 1 {
-            result = (result * base) % modulus;
+            result = result.checked_mul(base)? % modulus;
         }
-        base = (base * base) % modulus;
+        base = base.checked_mul(base)? % modulus;
         exp >>= 1;
     }
-    result
+    Some(result)
 }
 
 
