@@ -74,7 +74,7 @@ pub fn modpow_i128(mut base: i128, mut exp: i128, modulus: i128) -> Option<i128>
 /// collecting all possible sub groups with n elements of a group with m elements and m > n
 use std::cmp::Ordering;
 
-pub fn collect_all_n_from_m_elements<T: Copy>(
+pub fn collect_all_n_from_m_elements<T: Clone>(
     main_group: &[T],
     num_to_collect: usize,
 ) -> Vec<Vec<T>> {
@@ -101,7 +101,7 @@ pub fn collect_all_n_from_m_elements<T: Copy>(
     collections
 }
 
-fn recursive_collection_of_elements<T: Copy>(
+fn recursive_collection_of_elements<T: Clone>(
     mg: &[T],
     num_to_collect: usize,
     current_collection: &mut Vec<T>,
@@ -111,7 +111,7 @@ fn recursive_collection_of_elements<T: Copy>(
         return;
     }
     for index in 0..mg.len() {
-        current_collection.push(mg[index]);
+        current_collection.push(mg[index].clone());
         if current_collection.len() == num_to_collect {
             collections.push(current_collection.to_owned());
         } else {
