@@ -105,23 +105,25 @@ impl Point {
             y: self.x,
         }
     }
-    pub fn distance_x(&self, target: Point) -> i64 {
-        self.x - target.x
+    pub fn distance_x(&self, target: impl Into<Point>) -> i64 {
+        self.x - target.into().x
     }
-    pub fn delta_x(&self, target: Point) -> i64 {
-        (self.x - target.x).abs()
+    pub fn delta_x(&self, target: impl Into<Point>) -> i64 {
+        (self.x - target.into().x).abs()
     }
-    pub fn distance_y(&self, target: Point) -> i64 {
-        self.y - target.y
+    pub fn distance_y(&self, target: impl Into<Point>) -> i64 {
+        self.y - target.into().y
     }
-    pub fn delta_y(&self, target: Point) -> i64 {
-        (self.y - target.y).abs()
+    pub fn delta_y(&self, target: impl Into<Point>) -> i64 {
+        (self.y - target.into().y).abs()
     }
-    pub fn distance(&self, target: Point) -> f32 {
+    pub fn distance(&self, target: impl Into<Point>) -> f32 {
+        let target = target.into();
         let result = self.distance_x(target).pow(2) + self.distance_y(target).pow(2);
         (result as f32).sqrt()
     }
-    pub fn delta(&self, target: Point) -> i64 {
+    pub fn delta(&self, target: impl Into<Point>) -> i64 {
+        let target = target.into();
         self.delta_x(target) + self.delta_y(target)
     }
     pub fn quadrant(&self) -> Quadrant {
@@ -137,13 +139,15 @@ impl Point {
             (_, _) => Quadrant::Third,
         }
     }
-    pub fn add(&self, offset: Point) -> Point {
+    pub fn add(&self, offset: impl Into<Point>) -> Point {
+        let offset = offset.into();
         Point {
             x: self.x + offset.x,
             y: self.y + offset.y,
         }
     }
-    pub fn subtract(&self, offset: Point) -> Point {
+    pub fn subtract(&self, offset: impl Into<Point>) -> Point {
+        let offset = offset.into();
         Point {
             x: self.x - offset.x,
             y: self.y - offset.y,
@@ -163,16 +167,19 @@ impl Point {
             (Turns90::T270, true) | (Turns90::T90, false) => Point::new(-self.y, self.x),
         }
     }
-    pub fn turn_around_point(&self, pos: Point, turn: Turns90, clockwise: bool) -> Point {
+    pub fn turn_around_point(&self, pos: impl Into<Point>, turn: Turns90, clockwise: bool) -> Point {
+        let pos = pos.into();
         self.subtract(pos).turn(turn, clockwise).add(pos)
     }
-    pub fn scale_toward_point_with_len(&self, target: Point, len: f32) -> Point {
+    pub fn scale_toward_point_with_len(&self, target: impl Into<Point>, len: f32) -> Point {
+        let target = target.into();
         let vector = Cylindrical::from(target.subtract(*self));
-        self.add(vector.set_radius(len).into())
+        self.add(vector.set_radius(len))
     }
-    pub fn scale_toward_point_with_factor(&self, target: Point, factor: f32) -> Point {
+    pub fn scale_toward_point_with_factor(&self, target: impl Into<Point>, factor: f32) -> Point {
+        let target = target.into();
         let vector = Cylindrical::from(target.subtract(*self));
-        self.add(vector.stretch(factor).into())
+        self.add(vector.stretch(factor))
     }
 }
 
@@ -293,7 +300,8 @@ impl Point3D {
         Point3D { x, y, z }
     }
 
-    pub fn add(&self, other: &Self) -> Self {
+    pub fn add(&self, other: impl Into<Self>) -> Self {
+        let other = other.into();
         Point3D {
             x: self.x + other.x,
             y: self.y + other.y,
@@ -301,7 +309,8 @@ impl Point3D {
         }
     }
 
-    pub fn subtract(&self, other: &Self) -> Self {
+    pub fn subtract(&self, other: impl Into<Self>) -> Self {
+        let other = other.into();
         Point3D {
             x: self.x - other.x,
             y: self.y - other.y,
@@ -309,7 +318,8 @@ impl Point3D {
         }
     }
 
-    pub fn cross_product(&self, other: &Self) -> Self {
+    pub fn cross_product(&self, other: impl Into<Self>) -> Self {
+        let other = other.into();
         Point3D {
             x: self.y * other.z - self.z * other.y,
             y: self.z * other.x - self.x * other.z,
@@ -451,7 +461,7 @@ impl Point3D {
             .then(|| {
                 (dz_minus..=dz_plus).flat_map(move |dz| {
                     (dy_minus..=dy_plus).flat_map(move |dy| {
-                        (dx_minus..=dx_plus).map(move |dx| self.add(&(dx, dy, dz).into()))
+                        (dx_minus..=dx_plus).map(move |dx| self.add((dx, dy, dz)))
                     })
                 })
             })

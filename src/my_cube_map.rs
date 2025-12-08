@@ -73,7 +73,7 @@ impl<T: Copy + Clone + Default + From<char> + Debug, const N: usize> CubeMap<T, 
         // set edge relations from surface block positions
         for (block, si) in cj.flat_map_surfaces.iter() {
             for dir in [Compass::N, Compass::E, Compass::S, Compass::W] {
-                if let Some(neighbor_si) = cj.flat_map_surfaces.get(&block.add(dir.into())) {
+                if let Some(neighbor_si) = cj.flat_map_surfaces.get(&block.add(dir)) {
                     cj.edges.insert((*si, dir), (*neighbor_si, dir.flip()));
                 }
             }
@@ -115,7 +115,7 @@ impl<T: Copy + Clone + Default + From<char> + Debug, const N: usize> CubeMap<T, 
                     let a_vector = corners
                         .get(&(current_surface, cdir_corner.clockwise().clockwise()))
                         .unwrap()
-                        .subtract(&corner);
+                        .subtract(corner);
                     // b_vector: get corner 2x compass counterclockwise and subtract corner
                     let b_vector = corners
                         .get(&(
@@ -123,9 +123,9 @@ impl<T: Copy + Clone + Default + From<char> + Debug, const N: usize> CubeMap<T, 
                             cdir_corner.counterclockwise().counterclockwise(),
                         ))
                         .unwrap()
-                        .subtract(&corner);
+                        .subtract(corner);
                     // x-product: a x b + corner is second corner to add
-                    let far_corner = a_vector.cross_product(&b_vector).add(&corner);
+                    let far_corner = a_vector.cross_product(b_vector).add(corner);
                     corners.insert((*ni, *cdir_corner), far_corner);
                 }
             }

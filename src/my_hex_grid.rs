@@ -52,7 +52,7 @@ impl<T> HexGrid<T> {
 // hex coordinates and two hex orientation traits for orientation specific functions.
 
 pub trait HexCoordinates {
-    fn hex_distance(&self, hex_b: &Self) -> i64;
+    fn hex_distance(&self, hex_b: Self) -> i64;
     fn is_hex_coordinate(&self) -> bool;
 }
 
@@ -76,7 +76,7 @@ pub trait FlatTopHex {
 }
 
 impl HexCoordinates for Point3D {
-    fn hex_distance(&self, hex_b: &Self) -> i64 {
+    fn hex_distance(&self, hex_b: Self) -> i64 {
         let delta = self.subtract(hex_b);
         delta.x.max(delta.y).max(delta.z)
     }
