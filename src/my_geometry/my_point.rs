@@ -318,6 +318,10 @@ impl Point3D {
         }
     }
 
+    pub fn length(&self) -> f64 {
+        ((self.x.pow(2) + self.y.pow(2) + self.z.pow(2)) as f64).sqrt()
+    }
+
     pub fn cross_product(&self, other: impl Into<Self>) -> Self {
         let other = other.into();
         Point3D {
