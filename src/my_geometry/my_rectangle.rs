@@ -53,24 +53,19 @@ impl PartialOrd<Point> for Rectangle {
     }
 }
 
-impl TryFrom<(Point, Point)> for Rectangle {
-    type Error = &'static str;
-
-    fn try_from((a, b): (Point, Point)) -> Result<Self, Self::Error> {
-        if a.x != b.x && a.y != b.y {
-            let top_left = Point::new(a.x.min(b.x), a.y.max(b.y));
-            let bottom_right = Point::new(a.x.max(b.x), a.y.min(b.y));
-            Ok(Rectangle::new(top_left, bottom_right))
-        } else {
-            Err("Zero area rectangle cannot be created")
-        }
+impl From<(Point, Point)> for Rectangle {
+    fn from((a, b): (Point, Point)) -> Self {
+        let top_left = Point::new(a.x.min(b.x), a.y.max(b.y));
+        let bottom_right = Point::new(a.x.max(b.x), a.y.min(b.y));
+        Rectangle::new(top_left, bottom_right)
     }
 }
 
 impl Rectangle {
     pub fn new(top_left: Point, bottom_right: Point) -> Self {
-        assert!(top_left.x < bottom_right.x);
-        assert!(top_left.y > bottom_right.y);
+        // we allow zero surface rectangles here for convenience
+        assert!(top_left.x <= bottom_right.x);
+        assert!(top_left.y >= bottom_right.y);
         Self {
             top_left,
             bottom_right,
@@ -84,6 +79,15 @@ impl Rectangle {
     }
     pub fn surface(&self) -> i64 {
         self.size_x() * self.size_y()
+    }
+    pub fn size_x_inclusive(&self) -> i64 {
+        self.size_x() + 1
+    }
+    pub fn size_y_inclusive(&self) -> i64 {
+        self.size_y() + 1
+    }
+    pub fn surface_inclusive(&self) -> i64 {
+        self.size_x_inclusive() * self.size_y_inclusive()
     }
     pub fn corners(&self) -> [Point; 4] {
         [
