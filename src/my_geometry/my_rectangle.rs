@@ -99,29 +99,35 @@ impl Rectangle {
             self.bottom_right,
         ]
     }
-    pub fn sides(&self) -> [LineSegment; 4] {
-        [
-            // top
-            LineSegment::new(
-                self.top_left,
-                Point::new(self.bottom_right.x, self.top_left.y),
-            ),
-            // right
-            LineSegment::new(
-                Point::new(self.bottom_right.x, self.top_left.y),
-                self.bottom_right,
-            ),
-            // bottom
-            LineSegment::new(
-                self.bottom_right,
-                Point::new(self.top_left.x, self.bottom_right.y),
-            ),
-            // left
-            LineSegment::new(
-                Point::new(self.top_left.x, self.bottom_right.y),
-                self.top_left,
-            ),
-        ]
+    pub fn sides(&self) -> Vec<LineSegment> {
+        let mut sides: Vec<LineSegment> = Vec::with_capacity(4);
+        let [top_left, top_right, bottom_left, bottom_right] = self.corners();
+        if top_left == bottom_right {
+            return sides;
+        }
+        if top_left == top_right {
+            // vertical line
+            sides.push(LineSegment::new(top_left, bottom_left));
+            return sides;
+        }
+        if top_left == bottom_left {
+            // horizontal line
+            sides.push(LineSegment::new(top_left, top_right));
+            return sides;
+        }
+        // top side
+        sides.push(LineSegment::new(top_left, top_right));
+
+        // right side
+        sides.push(LineSegment::new(top_right, bottom_right));
+
+        // bottom side
+        sides.push(LineSegment::new(bottom_right, bottom_left));
+
+        // left side
+        sides.push(LineSegment::new(bottom_left, top_left));
+
+        sides
     }
     pub fn overlapping_corners(&self, other: &Self) -> Vec<Point> {
         let mut oc: Vec<Point> = Vec::new();
