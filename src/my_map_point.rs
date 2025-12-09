@@ -237,22 +237,33 @@ impl<const X: usize, const Y: usize> MapPoint<X, Y> {
     }
     pub fn flip_horizontal(&self) -> Self {
         // flip around middle of Y. if Y is odd and self.y == 1 + Y / 2, returns self
-        MapPoint { x: self.x, y: Y - self.y - 1 }
+        MapPoint {
+            x: self.x,
+            y: Y - self.y - 1,
+        }
     }
     pub fn flip_vertical(&self) -> Self {
         // flip around middle of X. if X is odd and self.x == 1 + Y / 2, returns self
-        MapPoint { x: X - self.x - 1, y: self.y }
+        MapPoint {
+            x: X - self.x - 1,
+            y: self.y,
+        }
     }
     pub fn rotate_clockwise(&self) -> MapPoint<Y, X> {
         // x_rot = Y - y - 1
         // y_rot = x
-        MapPoint { x: Y - self.y - 1, y: self.x }
-        
+        MapPoint {
+            x: Y - self.y - 1,
+            y: self.x,
+        }
     }
     pub fn rotate_counter_clockwise(&self) -> MapPoint<Y, X> {
         // x_rot = y
         // y_rot = X - x - 1
-        MapPoint { x: self.y, y: X - self.x - 1 }
+        MapPoint {
+            x: self.y,
+            y: X - self.x - 1,
+        }
     }
     pub fn neighbor(&self, orientation: Compass) -> Option<MapPoint<X, Y>> {
         match orientation {
@@ -273,32 +284,32 @@ impl<const X: usize, const Y: usize> MapPoint<X, Y> {
             .map(|(_, o)| o)
     }
     pub fn iter_neighbors(
-        &self,
+        self,
         initial_orientation: Compass,
         rotation_direction: bool,
         include_center: bool,
         include_corners: bool,
     ) -> impl Iterator<Item = (MapPoint<X, Y>, Compass)> {
         NeighborIter::new(
-            *self,
+            self,
             initial_orientation,
             rotation_direction,
             include_center,
             include_corners,
         )
     }
-    pub fn iter_orientation(&self, orientation: Compass) -> impl Iterator<Item = MapPoint<X, Y>> {
-        OrientationIter::new(*self, orientation, false, Compass::Center)
+    pub fn iter_orientation(self, orientation: Compass) -> impl Iterator<Item = MapPoint<X, Y>> {
+        OrientationIter::new(self, orientation, false, Compass::Center)
     }
     pub fn iter_orientation_wrap_around(
-        &self,
+        self,
         orientation: Compass,
         offset: Compass,
     ) -> impl Iterator<Item = MapPoint<X, Y>> {
-        OrientationIter::new(*self, orientation, true, offset)
+        OrientationIter::new(self, orientation, true, offset)
     }
-    pub fn iter_edge(&self, counterclockwise: bool) -> impl Iterator<Item = MapPoint<X, Y>> {
-        EdgeIter::new(*self, counterclockwise)
+    pub fn iter_edge(self, counterclockwise: bool) -> impl Iterator<Item = MapPoint<X, Y>> {
+        EdgeIter::new(self, counterclockwise)
     }
 }
 
@@ -431,21 +442,34 @@ impl<const X: usize, const Y: usize> OrientationIter<X, Y> {
             .filter_map(|p| MapPoint::<X, Y>::try_from(*p).ok())
             .collect();
         match rli.len() {
-            0 => self.current_point = match self.current_point.map_position() {
-                Compass::NW => MapPoint::<X, Y>::SE,
-                Compass::NE => MapPoint::<X, Y>::SW,
-                Compass::SW => MapPoint::<X, Y>::NE,
-                Compass::SE => MapPoint::<X, Y>::NW,
-                _ => panic!("line {}, wrap around fails to find new current_point while not being at cardinal point of map.", line!())
-            },
+            0 => {
+                self.current_point = match self.current_point.map_position() {
+                    Compass::NW => MapPoint::<X, Y>::SE,
+                    Compass::NE => MapPoint::<X, Y>::SW,
+                    Compass::SW => MapPoint::<X, Y>::NE,
+                    Compass::SE => MapPoint::<X, Y>::NW,
+                    _ => panic!(
+                        "line {}, wrap around fails to find new current_point while not being at cardinal point of map.",
+                        line!()
+                    ),
+                }
+            }
             1 => self.current_point = rli[0],
             2 => {
                 let orientation = self.orientation;
                 let mut rli_iter = rli.iter().filter(|p| p.neighbor(orientation).is_some());
-                self.current_point = *rli_iter.next().unwrap_or_else(|| panic!("line {}, wrap around fails to find neighbor in map at edge point", line!()));
+                self.current_point = *rli_iter.next().unwrap_or_else(|| {
+                    panic!(
+                        "line {}, wrap around fails to find neighbor in map at edge point",
+                        line!()
+                    )
+                });
                 assert!(rli_iter.next().is_none());
-            },
-            _ => panic!("line {}, internal error. this should never happen.", line!()),
+            }
+            _ => panic!(
+                "line {}, internal error. this should never happen.",
+                line!()
+            ),
         }
     }
 }

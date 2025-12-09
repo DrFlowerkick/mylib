@@ -50,7 +50,7 @@ where
         Some(node_id)
     }
 
-    pub fn into_iter(self, tree: &A::Tree) -> BfsIterator<G, H, A> {
+    pub fn into_iter(self, tree: &A::Tree) -> BfsIterator<'_, G, H, A> {
         BfsIterator { walker: self, tree }
     }
 }

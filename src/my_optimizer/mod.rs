@@ -15,21 +15,21 @@ pub use self::core::{
 };
 pub use evolutionary::EvolutionaryOptimizer;
 pub use grid_search::GridSearch;
-pub use parameters::{generate_random_params, ParamBound, ParamDescriptor};
+pub use parameters::{ParamBound, ParamDescriptor, generate_random_params};
 pub use population::{
-    load_population, save_population, Candidate, CsvConversion, Population, PopulationSaver,
-    SharedPopulation,
+    Candidate, CsvConversion, Population, PopulationSaver, SharedPopulation, load_population,
+    save_population,
 };
 pub use random_search::RandomSearch;
 pub use schedule::{
     ConstantSchedule, DecaySchedule, ExponentialSchedule, LinearSchedule, Schedule, SigmoidSchedule,
 };
 pub use trace_analysis::{
-    analyze_clamp_events, analyze_evo_log_entries, read_log_file, read_logs_from_dir, ClampStats,
-    ClampedLogEntry, DefaultLogEntry, EvoFields, EvoSpan, LogEntryParser, MutationKey,
-    MutationParentAndOffspring, MutationStats,
+    ClampStats, ClampedLogEntry, DefaultLogEntry, EvoFields, EvoSpan, LogEntryParser, MutationKey,
+    MutationParentAndOffspring, MutationStats, analyze_clamp_events, analyze_evo_log_entries,
+    read_log_file, read_logs_from_dir,
 };
 pub use utils::{
-    evaluate_with_shared_error, increment_progress_counter_by, reset_progress_counter,
-    update_progress, FileLogConfig, LogFormat, SharedError, TracingConfig,
+    FileLogConfig, LogFormat, SharedError, TracingConfig, evaluate_with_shared_error,
+    increment_progress_counter_by, reset_progress_counter, update_progress,
 };

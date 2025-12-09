@@ -1,13 +1,13 @@
 // Random Search explorer
 
 use super::{
-    evaluate_with_shared_error, generate_random_params, Explorer, ObjectiveFunction,
-    ParamDescriptor, Population, PopulationSaver, ProgressReporter, SharedError, SharedPopulation,
-    ToleranceSettings,
+    Explorer, ObjectiveFunction, ParamDescriptor, Population, PopulationSaver, ProgressReporter,
+    SharedError, SharedPopulation, ToleranceSettings, evaluate_with_shared_error,
+    generate_random_params,
 };
 use anyhow::Context;
 use rayon::prelude::*;
-use tracing::{error, info, span, Level};
+use tracing::{Level, error, info, span};
 
 pub struct RandomSearch<TS: ToleranceSettings> {
     pub iterations: usize,

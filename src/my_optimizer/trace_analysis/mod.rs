@@ -1,12 +1,12 @@
 // utils for analyzing log files created with trace log. Files must be in json format.
 
 pub mod clamp_events;
-pub use clamp_events::{analyze_clamp_events, ClampStats, ClampedLogEntry};
+pub use clamp_events::{ClampStats, ClampedLogEntry, analyze_clamp_events};
 
 pub mod mutation_stats;
 pub use mutation_stats::{
-    analyze_evo_log_entries, EvoFields, EvoSpan, MutationKey, MutationParentAndOffspring,
-    MutationStats,
+    EvoFields, EvoSpan, MutationKey, MutationParentAndOffspring, MutationStats,
+    analyze_evo_log_entries,
 };
 
 use std::collections::HashMap;
@@ -147,13 +147,13 @@ where
     let mut log_entries = Vec::new();
     for entry in glob(&full_pattern)? {
         let path = entry?;
-        if let Some(date) = extract_date_from_filename(&path) {
-            if let Some((start, end)) = date_range {
-                if date < start || date > end {
-                    continue;
-                }
-            }
+        if let Some(date) = extract_date_from_filename(&path)
+            && let Some((start, end)) = date_range
+            && (date < start || date > end)
+        {
+            continue;
         }
+
         log_entries.append(&mut read_log_file(path)?);
     }
 

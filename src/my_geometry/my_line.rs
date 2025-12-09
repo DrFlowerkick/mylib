@@ -55,7 +55,7 @@ impl Line {
         }
         Self {
             a: (m * factor) as i64,
-            b: (-1. * factor) as i64,
+            b: (-factor) as i64,
             c: (q * factor) as i64,
         }
     }
@@ -209,18 +209,19 @@ impl LineSegment {
         self.line().is_parallel(&other.line())
     }
     pub fn segment_intersection(&self, other: &Self) -> Option<Point> {
-        if let Some(si) = self.line().line_intersection(&other.line()) {
-            if self == &si && other == &si {
-                return Some(si);
-            }
+        if let Some(si) = self.line().line_intersection(&other.line())
+            && self == &si
+            && other == &si
+        {
+            return Some(si);
         }
         None
     }
     pub fn segment_line_intersection(&self, line: &Line) -> Option<Point> {
-        if let Some(si) = self.line().line_intersection(line) {
-            if self == &si {
-                return Some(si);
-            }
+        if let Some(si) = self.line().line_intersection(line)
+            && self == &si
+        {
+            return Some(si);
         }
         None
     }

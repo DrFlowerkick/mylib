@@ -6,7 +6,7 @@
 // Heuristic depends upon MCTSGame for State and Move type amongst others.
 
 use super::{HeuristicCache, HeuristicConfig, MCTSGame};
-use rand::seq::SliceRandom;
+use rand::{rng, seq::SliceRandom};
 
 pub trait Heuristic<G: MCTSGame>: Clone + Sync + Send {
     type Cache: HeuristicCache<G::State, G::Move> + Clone + Sync + Send;
@@ -42,7 +42,7 @@ pub trait Heuristic<G: MCTSGame>: Clone + Sync + Send {
                 )
             })
             .collect::<Vec<_>>();
-        heuristic_moves.shuffle(&mut rand::thread_rng());
+        heuristic_moves.shuffle(&mut rng());
         heuristic_moves
             .sort_unstable_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
         heuristic_moves

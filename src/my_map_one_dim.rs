@@ -22,10 +22,10 @@ pub type IsCellFreeFn<T, const X: usize, const Y: usize> = Box<dyn Fn(MapPoint<X
 #[derive(Copy, Clone, PartialEq)]
 pub struct MyMap1D<T, const X: usize, const Y: usize, const N: usize> {
     // Saving the map data of a 2-dim map in a 1-dim array saves a substantial amount of compilation time at the
-    // cost of a small overhead in run time to calculate the indizes of map into an index and vice versa.
+    // cost of a small overhead in run time to calculate the indices of map into an index and vice versa.
     // X: size of dimension x
     // Y: size of dimension Y
-    // N: total Numer if items in Map. Since N must be constant in type definition, you must give the result of X*Y manually as value of N
+    // N: total Number of items in Map. Since N must be constant in type definition, you must give the result of X*Y manually as value of N
     items: MyArray<T, N>,
 }
 
@@ -113,7 +113,7 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize, const N: usize>
             .map(|(p, o)| (is_cell_free_fn(p, self.get(p)), o.is_cardinal()))
         {
             if !last_free && is_free && is_side {
-                // new free zones start always at a side of map_point, since movement over cornes is not allowed
+                // new free zones start always at a side of map_point, since movement over corners is not allowed
                 free_zones += 1;
             }
             last_free = if is_side || !is_free {
@@ -207,22 +207,22 @@ impl<T: Copy + Clone + Default, const X: usize, const Y: usize, const N: usize>
             .iter_orientation(orientation)
             .map(move |p| (p, self.get(p)))
     }
-    pub fn iter_diagonale_top_left(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
+    pub fn iter_diagonal_top_left(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         MapPoint::<X, Y>::new(0, 0)
             .iter_orientation(Compass::SE)
             .map(move |p| (p, self.get(p)))
     }
-    pub fn iter_diagonale_top_right(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
+    pub fn iter_diagonal_top_right(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         MapPoint::<X, Y>::new(X - 1, 0)
             .iter_orientation(Compass::SW)
             .map(move |p| (p, self.get(p)))
     }
-    pub fn iter_diagonale_bottom_left(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
+    pub fn iter_diagonal_bottom_left(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         MapPoint::<X, Y>::new(0, Y - 1)
             .iter_orientation(Compass::NE)
             .map(move |p| (p, self.get(p)))
     }
-    pub fn iter_diagonale_bottom_right(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
+    pub fn iter_diagonal_bottom_right(&self) -> impl Iterator<Item = (MapPoint<X, Y>, &T)> {
         MapPoint::<X, Y>::new(X - 1, Y - 1)
             .iter_orientation(Compass::NW)
             .map(move |p| (p, self.get(p)))
@@ -318,7 +318,7 @@ mod tests {
     }
 
     #[test]
-    fn iter_diagonale_test() {
+    fn iter_diagonal_test() {
         const X: usize = 4;
         const Y: usize = 7;
         const N: usize = X * Y;
@@ -335,7 +335,7 @@ mod tests {
         assert_eq!(*zeros.get(MapPoint::<X, Y>::new(1, 1)), 1);
         assert_eq!(*zeros.get(MapPoint::<X, Y>::new(0, 2)), 1);
 
-        for (point, value) in zeros.iter_diagonale_top_left() {
+        for (point, value) in zeros.iter_diagonal_top_left() {
             ones.set(point, *value + 1);
         }
         assert_eq!(*ones.get(MapPoint::<X, Y>::new(0, 0)), 1);
@@ -344,20 +344,20 @@ mod tests {
     }
 
     #[test]
-    fn iter_diagonale_test_3x3() {
+    fn iter_diagonal_test_3x3() {
         const X: usize = 3;
         const Y: usize = X;
         const N: usize = X * Y;
 
         let zeros: MyMap1D<i32, X, Y, N> = MyMap1D::new();
 
-        let mut pos_diag = zeros.iter_diagonale_top_right();
+        let mut pos_diag = zeros.iter_diagonal_top_right();
         assert_eq!(pos_diag.next().unwrap().0, MapPoint::<X, Y>::new(2, 0));
         assert_eq!(pos_diag.next().unwrap().0, MapPoint::<X, Y>::new(1, 1));
         assert_eq!(pos_diag.next().unwrap().0, MapPoint::<X, Y>::new(0, 2));
         assert_eq!(pos_diag.next(), None);
 
-        let mut neg_diag = zeros.iter_diagonale_top_left();
+        let mut neg_diag = zeros.iter_diagonal_top_left();
         assert_eq!(neg_diag.next().unwrap().0, MapPoint::<X, Y>::new(0, 0));
         assert_eq!(neg_diag.next().unwrap().0, MapPoint::<X, Y>::new(1, 1));
         assert_eq!(neg_diag.next().unwrap().0, MapPoint::<X, Y>::new(2, 2));

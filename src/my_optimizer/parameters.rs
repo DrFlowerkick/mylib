@@ -1,7 +1,7 @@
 // data types for handling parameters
 
 use anyhow::Context;
-use rand::prelude::*;
+use rand::{prelude::*, rng};
 use rand_distr::Normal;
 use tracing::debug;
 
@@ -15,31 +15,32 @@ pub enum ParamBound {
 }
 
 impl ParamBound {
-    pub fn rng_sample<R: Rng + ?Sized>(&self, rng: &mut R) -> anyhow::Result<f64> {
+    pub fn rng_sample<R: Rng + ?Sized>(&self, thread_rng: &mut R) -> anyhow::Result<f64> {
         match self {
             ParamBound::Static(val) => Ok(*val),
             ParamBound::MinMax(min, max) => {
                 if max <= min {
                     return Err(anyhow::anyhow!("ParamBound::MinMax: Max <= Min"));
                 }
-                Ok(rng.gen_range(*min..=*max))
+                Ok(thread_rng.random_range(*min..=*max))
             }
             ParamBound::MinMaxInt(min, max) => {
                 if max <= min {
                     return Err(anyhow::anyhow!("ParamBound::MinMax: Max <= Min"));
                 }
-                Ok(rng.gen_range(*min..=*max).round())
+                Ok(thread_rng.random_range(*min..=*max).round())
             }
-            ParamBound::List(values) => {
-                values.choose(rng).cloned().context("Empty parameter list.")
-            }
+            ParamBound::List(values) => values
+                .choose(thread_rng)
+                .cloned()
+                .context("Empty parameter list."),
             ParamBound::LogScale(min, max) => {
                 if max <= min {
                     return Err(anyhow::anyhow!("ParamBound::LogScale: Max <= Min"));
                 }
                 let log_min = min.ln();
                 let log_max = max.ln();
-                let sample_log = rng.gen_range(log_min..=log_max);
+                let sample_log = thread_rng.random_range(log_min..=log_max);
                 Ok(sample_log.exp())
             }
         }
@@ -48,7 +49,7 @@ impl ParamBound {
     pub fn mutate<R: Rng + ?Sized>(
         &self,
         current_value: f64,
-        rng: &mut R,
+        thread_rng: &mut R,
         hard_mutation_rate: f64,
         soft_mutation_relative_std_dev: f64,
         name: &str,
@@ -59,14 +60,14 @@ impl ParamBound {
                 if max <= min {
                     return Err(anyhow::anyhow!("{} - ParamBound::MinMax: Max <= Min", name));
                 }
-                if rng.gen::<f64>() < hard_mutation_rate {
+                if thread_rng.random::<f64>() < hard_mutation_rate {
                     // hard mutation → new value in range
-                    Ok(rng.gen_range(*min..=*max))
+                    Ok(thread_rng.random_range(*min..=*max))
                 } else {
                     // soft mutation → Gaussian Noise
                     let value_range = max - min;
                     let relative_std_dev = soft_mutation_relative_std_dev * value_range;
-                    let noise = rng.sample(Normal::new(0.0, relative_std_dev)?);
+                    let noise = thread_rng.sample(Normal::new(0.0, relative_std_dev)?);
                     let value = current_value + noise;
                     let clamped = value.clamp(*min, *max);
                     if value != clamped {
@@ -80,14 +81,14 @@ impl ParamBound {
                 if max <= min {
                     return Err(anyhow::anyhow!("{} - ParamBound::MinMax: Max <= Min", name));
                 }
-                if rng.gen::<f64>() < hard_mutation_rate {
+                if thread_rng.random::<f64>() < hard_mutation_rate {
                     // hard mutation → new value in range
-                    Ok(rng.gen_range(*min..=*max).round())
+                    Ok(thread_rng.random_range(*min..=*max).round())
                 } else {
                     // soft mutation → Gaussian Noise
                     let value_range = max - min;
                     let relative_std_dev = soft_mutation_relative_std_dev * value_range;
-                    let noise = rng.sample(Normal::new(0.0, relative_std_dev)?);
+                    let noise = thread_rng.sample(Normal::new(0.0, relative_std_dev)?);
                     let value = current_value + noise;
                     let clamped = value.clamp(*min, *max);
                     if value != clamped {
@@ -98,10 +99,10 @@ impl ParamBound {
                 }
             }
             ParamBound::List(values) => {
-                if rng.gen::<f64>() < hard_mutation_rate {
+                if thread_rng.random::<f64>() < hard_mutation_rate {
                     // hard mutation → random value from list
                     values
-                        .choose(rng)
+                        .choose(thread_rng)
                         .cloned()
                         .context(format!("{} - Parameter list is empty!", name))
                 } else {
@@ -110,7 +111,7 @@ impl ParamBound {
                     let max = values.iter().cloned().reduce(f64::max).unwrap();
                     let value_range = max - min;
                     let relative_std_dev = soft_mutation_relative_std_dev * value_range;
-                    let noise = rng.sample(Normal::new(0.0, relative_std_dev)?);
+                    let noise = thread_rng.sample(Normal::new(0.0, relative_std_dev)?);
                     let target_value = current_value + noise;
 
                     values
@@ -135,15 +136,15 @@ impl ParamBound {
                 let log_max = max.ln();
                 let current_log = current_value.ln();
 
-                if rng.gen::<f64>() < hard_mutation_rate {
+                if thread_rng.random::<f64>() < hard_mutation_rate {
                     // hard mutation → random value in log range
-                    let new_log = rng.gen_range(log_min..=log_max);
+                    let new_log = thread_rng.random_range(log_min..=log_max);
                     Ok(new_log.exp())
                 } else {
                     // soft mutation → Gaussian Noise in log range
                     let log_range = max - min;
                     let relative_std_dev = soft_mutation_relative_std_dev * log_range;
-                    let noise = rng.sample(Normal::new(0.0, relative_std_dev)?);
+                    let noise = thread_rng.sample(Normal::new(0.0, relative_std_dev)?);
                     let value = (current_log + noise).exp();
                     let clamped = value.clamp(*min, *max);
                     if value != clamped {
@@ -164,19 +165,19 @@ pub struct ParamDescriptor {
 }
 
 impl ParamDescriptor {
-    pub fn rng_sample<R: Rng + ?Sized>(&self, rng: &mut R) -> anyhow::Result<f64> {
-        self.bound.rng_sample(rng)
+    pub fn rng_sample<R: Rng + ?Sized>(&self, thread_rng: &mut R) -> anyhow::Result<f64> {
+        self.bound.rng_sample(thread_rng)
     }
     pub fn mutate<R: Rng + ?Sized>(
         &self,
         current_value: f64,
-        rng: &mut R,
+        thread_rng: &mut R,
         hard_mutation_rate: f64,
         soft_mutation_relative_std_dev: f64,
     ) -> anyhow::Result<f64> {
         self.bound.mutate(
             current_value,
-            rng,
+            thread_rng,
             hard_mutation_rate,
             soft_mutation_relative_std_dev,
             &self.name,
@@ -185,9 +186,9 @@ impl ParamDescriptor {
 }
 
 pub fn generate_random_params(param_bounds: &[ParamDescriptor]) -> anyhow::Result<Vec<f64>> {
-    let mut rng = rand::thread_rng();
+    let mut thread_rng = rng();
     param_bounds
         .iter()
-        .map(|pb| pb.rng_sample(&mut rng))
+        .map(|pb| pb.rng_sample(&mut thread_rng))
         .collect()
 }

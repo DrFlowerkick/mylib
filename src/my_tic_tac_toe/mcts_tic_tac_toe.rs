@@ -126,7 +126,7 @@ impl GameCache<TicTacToeGame, TicTacToePlayerAction> for TicTacToeGameCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::prelude::*;
+    use rand::{prelude::*, rng};
 
     use crate::my_mcts::{
         BaseConfig, CachedUTC, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo, NoHeuristic,
@@ -202,7 +202,7 @@ mod tests {
                     TicTacToeStatus::Second => {
                         // let opp act by choosing a random action
                         let opp_move = TicTacToeMCTSGame::available_moves(&ttt_game_data)
-                            .choose(&mut thread_rng())
+                            .choose(&mut rng())
                             .expect("No available moves");
                         eprintln!("opp: {}", opp_move.cell);
                         ttt_game_data = TicTacToeMCTSGame::apply_move(
@@ -271,7 +271,7 @@ mod tests {
                     TicTacToeStatus::Second => {
                         // let opp act by choosing a random action
                         let opp_move = TicTacToeMCTSGame::available_moves(&ttt_game_data)
-                            .choose(&mut thread_rng())
+                            .choose(&mut rng())
                             .expect("No available moves");
                         eprintln!("opp: {}", opp_move.cell);
                         ttt_game_data = TicTacToeMCTSGame::apply_move(

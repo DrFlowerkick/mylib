@@ -1,13 +1,13 @@
 // evolutionary algorithm
 
 use super::{
-    evaluate_with_shared_error, ObjectiveFunction, Optimizer, ParamDescriptor, Population,
-    PopulationSaver, ProgressReporter, Schedule, SharedError, SharedPopulation, ToleranceSettings,
+    ObjectiveFunction, Optimizer, ParamDescriptor, Population, PopulationSaver, ProgressReporter,
+    Schedule, SharedError, SharedPopulation, ToleranceSettings, evaluate_with_shared_error,
 };
 use anyhow::Context;
-use rand::prelude::*;
+use rand::{prelude::*, rng};
 use rayon::prelude::*;
-use tracing::{error, info, span, warn, Level};
+use tracing::{Level, error, info, span, warn};
 
 pub struct EvolutionaryOptimizer<
     Selection: Schedule,
@@ -25,12 +25,8 @@ pub struct EvolutionaryOptimizer<
     pub population_saver: Option<PopulationSaver>,
 }
 
-impl<
-        Selection: Schedule,
-        HardMutation: Schedule,
-        SoftMutation: Schedule,
-        TS: ToleranceSettings,
-    > ProgressReporter for EvolutionaryOptimizer<Selection, HardMutation, SoftMutation, TS>
+impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule, TS: ToleranceSettings>
+    ProgressReporter for EvolutionaryOptimizer<Selection, HardMutation, SoftMutation, TS>
 {
     fn get_estimate_of_cycles(&self, _param_bounds: &[ParamDescriptor]) -> anyhow::Result<usize> {
         let mut estimation = 0;
@@ -46,12 +42,8 @@ impl<
     }
 }
 
-impl<
-        Selection: Schedule,
-        HardMutation: Schedule,
-        SoftMutation: Schedule,
-        TS: ToleranceSettings,
-    > Optimizer<TS> for EvolutionaryOptimizer<Selection, HardMutation, SoftMutation, TS>
+impl<Selection: Schedule, HardMutation: Schedule, SoftMutation: Schedule, TS: ToleranceSettings>
+    Optimizer<TS> for EvolutionaryOptimizer<Selection, HardMutation, SoftMutation, TS>
 {
     fn optimize<F: ObjectiveFunction + Sync>(
         &self,
@@ -86,13 +78,13 @@ impl<
         let shared_error = SharedError::new();
 
         // evolution loop
-        for gen in 0..self.generations {
-            let gen_span = span!(Level::INFO, "Generation", generation = gen + 1);
+        for generation in 0..self.generations {
+            let gen_span = span!(Level::INFO, "Generation", generation = generation + 1);
             let _gen_enter = gen_span.enter();
 
             let selection_fraction = self
                 .selection_schedule
-                .value_at(gen, self.generations)
+                .value_at(generation, self.generations)
                 .clamp(0.0, 1.0);
 
             let parent_count = ((population_size as f64) * selection_fraction).ceil() as usize;
@@ -103,10 +95,12 @@ impl<
             }
 
             let top_parents = shared_population.top_n(parent_count);
-            let hard_mutation_rate = self.hard_mutation_rate.value_at(gen, self.generations);
+            let hard_mutation_rate = self
+                .hard_mutation_rate
+                .value_at(generation, self.generations);
             let soft_mutation_relative_std_dev = self
                 .soft_mutation_relative_std_dev
-                .value_at(gen, self.generations);
+                .value_at(generation, self.generations);
             info!(
                 parent_count,
                 hard_mutation_rate, soft_mutation_relative_std_dev, "Starting offspring generation",
@@ -125,12 +119,12 @@ impl<
                     Level::DEBUG,
                     "Offspring",
                     id = offspring_id,
-                    generation = gen + 1
+                    generation = generation + 1
                 );
                 let _offspring_enter = offspring_span.enter();
 
-                let mut rng = rand::thread_rng();
-                let parent = top_parents.choose(&mut rng).unwrap();
+                let mut thread_rng = rng();
+                let parent = top_parents.choose(&mut thread_rng).unwrap();
                 match parent.log::<F>(Level::DEBUG, "Selected Parent") {
                     Ok(_) => {}
                     Err(e) => {
@@ -174,7 +168,7 @@ impl<
 
             info!(
                 "Generation {} completed. Best Score: {:.3}, Params: {:?}",
-                gen + 1,
+                generation + 1,
                 best.score,
                 best.params
             );

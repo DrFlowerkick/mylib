@@ -59,13 +59,13 @@ where
 {
     let mut stats: HashMap<String, ClampStats> = HashMap::new();
     for entry in log_entries {
-        if let Some(clamp_entry) = entry.get_fields() {
-            if clamp_entry.message.contains("clamped") {
-                stats
-                    .entry(clamp_entry.name.to_owned())
-                    .or_default()
-                    .record(clamp_entry.delta_clamp);
-            }
+        if let Some(clamp_entry) = entry.get_fields()
+            && clamp_entry.message.contains("clamped")
+        {
+            stats
+                .entry(clamp_entry.name.to_owned())
+                .or_default()
+                .record(clamp_entry.delta_clamp);
         }
     }
     Ok(stats)

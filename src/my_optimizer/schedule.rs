@@ -112,8 +112,8 @@ impl Display for DecaySchedule {
     }
 }
 impl Schedule for DecaySchedule {
-    fn value_at(&self, gen: usize, _total: usize) -> f64 {
-        self.end + (self.start - self.end) * self.decay.powf(gen as f64)
+    fn value_at(&self, generation: usize, _total: usize) -> f64 {
+        self.end + (self.start - self.end) * self.decay.powf(generation as f64)
     }
 
     fn start_schedule(&self) -> f64 {

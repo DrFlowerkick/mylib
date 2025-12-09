@@ -1,11 +1,11 @@
 // handling populations of candidates
 
 use super::{
-    evaluate_with_shared_error, generate_random_params, LogFormat, ObjectiveFunction,
-    ParamDescriptor, SharedError, ToleranceSettings,
+    LogFormat, ObjectiveFunction, ParamDescriptor, SharedError, ToleranceSettings,
+    evaluate_with_shared_error, generate_random_params,
 };
 use anyhow::Context;
-use rand::Rng;
+use rand::{prelude::*, rng};
 use rayon::prelude::*;
 use std::cmp;
 use std::collections::{BTreeSet, HashSet};
@@ -14,7 +14,7 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
-use tracing::{debug, error, info, span, trace, warn, Level};
+use tracing::{Level, debug, error, info, span, trace, warn};
 
 // csv conversion trait
 pub trait CsvConversion {
@@ -35,11 +35,11 @@ pub struct Candidate<TS: ToleranceSettings> {
 
 impl<TS: ToleranceSettings> Candidate<TS> {
     pub fn new(params: Vec<f64>, score: f64) -> Self {
-        let mut rng = rand::thread_rng();
+        let mut thread_rng = rng();
         Self {
             params,
             score,
-            noise_score: score + rng.gen_range(0.0..TS::epsilon()),
+            noise_score: score + thread_rng.random_range(0.0..TS::epsilon()),
             phantom: std::marker::PhantomData,
         }
     }
@@ -70,7 +70,7 @@ impl<TS: ToleranceSettings> Candidate<TS> {
         max_attempts: usize,
         shared_population: &SharedPopulation<TS>,
     ) -> anyhow::Result<Vec<f64>> {
-        let mut rng = rand::thread_rng();
+        let mut thread_rng = rng();
         for _ in 0..max_attempts {
             let params = param_bounds
                 .iter()
@@ -78,7 +78,7 @@ impl<TS: ToleranceSettings> Candidate<TS> {
                 .map(|(i, pb)| {
                     pb.mutate(
                         self.params[i],
-                        &mut rng,
+                        &mut thread_rng,
                         hard_mutation_rate,
                         soft_mutation_relative_std_dev,
                     )
@@ -94,7 +94,11 @@ impl<TS: ToleranceSettings> Candidate<TS> {
             );
         }
         let random_params = generate_random_params(param_bounds)?;
-        warn!(?random_params, "Failed to generate unique offspring parameters after {} attempts, Generating random offspring.", max_attempts);
+        warn!(
+            ?random_params,
+            "Failed to generate unique offspring parameters after {} attempts, Generating random offspring.",
+            max_attempts
+        );
         Ok(random_params)
     }
     pub fn log<F: ObjectiveFunction>(&self, level: Level, message: &str) -> anyhow::Result<()> {
@@ -150,7 +154,7 @@ impl<TS: ToleranceSettings> CsvConversion for Candidate<TS> {
             .map(|num| num.parse::<f64>())
             .collect::<Result<Vec<_>, _>>()
         {
-            let Some(score) = params.pop() else { return None };
+            let score = params.pop()?;
             return Some(Candidate::new(params, score));
         }
         None
@@ -209,10 +213,11 @@ impl<TS: ToleranceSettings> Population<TS> {
 
     pub fn insert(&mut self, candidate: Candidate<TS>) -> PopulationInsertResult<TS> {
         // reject if candidate is worse than the worst candidate in the population
-        if let Some(smallest) = self.members.first() {
-            if self.members.len() == self.capacity && candidate <= *smallest {
-                return PopulationInsertResult::Rejected;
-            }
+        if let Some(smallest) = self.members.first()
+            && self.members.len() == self.capacity
+            && candidate <= *smallest
+        {
+            return PopulationInsertResult::Rejected;
         }
         self.members.insert(candidate);
         // if capacity is reached, remove worst candidate and return it
@@ -258,10 +263,10 @@ impl<TS: ToleranceSettings> Population<TS> {
             if shared_error.is_set() {
                 return;
             }
-            let mut rng = rand::thread_rng();
+            let mut thread_rng = rng();
             let params = match param_bounds
                 .iter()
-                .map(|pb| pb.rng_sample(&mut rng))
+                .map(|pb| pb.rng_sample(&mut thread_rng))
                 .collect::<anyhow::Result<Vec<_>>>()
             {
                 Ok(params) => params,
@@ -456,7 +461,7 @@ impl<TS: ToleranceSettings> SharedPopulation<TS> {
             })),
         }
     }
-    pub fn lock(&self) -> MutexGuard<InnerSharedPopulation<TS>> {
+    pub fn lock(&self) -> MutexGuard<'_, InnerSharedPopulation<TS>> {
         self.inner.lock().expect("Population lock poisoned.")
     }
     pub fn is_similar_params(&self, params: &[f64]) -> bool {
@@ -530,16 +535,15 @@ impl<TS: ToleranceSettings> InnerSharedPopulation<TS> {
         // insert candidate into population and save if necessary
         self.candidate_counter += 1;
         let insert_result = self.population.insert(candidate);
-        if let Some(ref ps) = self.population_saver {
-            if self.candidate_counter - self.count_candidate_inserted_last > ps.step_size
-                && matches!(
-                    insert_result,
-                    PopulationInsertResult::Accepted | PopulationInsertResult::Replaced(_)
-                )
-            {
-                self.count_candidate_inserted_last = self.candidate_counter;
-                ps.save_population(&self.population, param_bounds)?;
-            }
+        if let Some(ref ps) = self.population_saver
+            && self.candidate_counter - self.count_candidate_inserted_last > ps.step_size
+            && matches!(
+                insert_result,
+                PopulationInsertResult::Accepted | PopulationInsertResult::Replaced(_)
+            )
+        {
+            self.count_candidate_inserted_last = self.candidate_counter;
+            ps.save_population(&self.population, param_bounds)?;
         }
         Ok(insert_result)
     }

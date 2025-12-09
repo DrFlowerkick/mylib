@@ -9,8 +9,8 @@ use std::rc::Rc;
 use std::rc::Weak;
 
 use super::{
-    unique_id::generate_unique_id, BackTrack, IterChildren, IterParents, IterSelf,
-    LevelOrderTraversal, PostOrderTraversal, PreOrderTraversal,
+    BackTrack, IterChildren, IterParents, IterSelf, LevelOrderTraversal, PostOrderTraversal,
+    PreOrderTraversal, unique_id::generate_unique_id,
 };
 
 pub struct TreeNode<N> {
@@ -350,18 +350,26 @@ pub mod tests {
 
         assert!(test_tree.add_unambiguous_child('I', 0).is_none());
         assert!(child_h.insert_unambiguous_child('F', 0, 0).is_none());
-        assert!(test_tree
-            .add_unambiguous_child_to_parent('I', &'Z', 0)
-            .is_none());
-        assert!(test_tree
-            .add_unambiguous_child_to_parent('I', &'B', 0)
-            .is_none());
-        assert!(child_h
-            .insert_unambiguous_child_at_parent('F', &'Z', 0, 0)
-            .is_none());
-        assert!(child_h
-            .insert_unambiguous_child_at_parent('F', &'A', 0, 0)
-            .is_none());
+        assert!(
+            test_tree
+                .add_unambiguous_child_to_parent('I', &'Z', 0)
+                .is_none()
+        );
+        assert!(
+            test_tree
+                .add_unambiguous_child_to_parent('I', &'B', 0)
+                .is_none()
+        );
+        assert!(
+            child_h
+                .insert_unambiguous_child_at_parent('F', &'Z', 0, 0)
+                .is_none()
+        );
+        assert!(
+            child_h
+                .insert_unambiguous_child_at_parent('F', &'A', 0, 0)
+                .is_none()
+        );
 
         assert!(child_h.is_leave());
         let child_d = test_tree.get_node(&'D').unwrap();

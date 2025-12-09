@@ -1,14 +1,13 @@
 // grid search for significant parameter sets
 
 use super::{
-    evaluate_with_shared_error, Explorer, ObjectiveFunction, ParamBound, ParamDescriptor,
-    Population, PopulationSaver, ProgressReporter, SharedError, SharedPopulation,
-    ToleranceSettings,
+    Explorer, ObjectiveFunction, ParamBound, ParamDescriptor, Population, PopulationSaver,
+    ProgressReporter, SharedError, SharedPopulation, ToleranceSettings, evaluate_with_shared_error,
 };
 use anyhow::Context;
 use itertools::Itertools;
 use rayon::prelude::*;
-use tracing::{info, span, Level};
+use tracing::{Level, info, span};
 
 pub struct GridSearch<TS: ToleranceSettings> {
     pub steps_per_param: usize,

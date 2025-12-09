@@ -7,10 +7,10 @@ use std::io;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use tracing::{error, info, Level};
+use tracing::{Level, error, info};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
-use tracing_subscriber::{filter::EnvFilter, fmt, prelude::*, Registry};
+use tracing_subscriber::{Registry, filter::EnvFilter, fmt, prelude::*};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum LogFormat {
@@ -136,7 +136,7 @@ static PROGRESS_COUNTER: Lazy<AtomicUsize> = Lazy::new(|| AtomicUsize::new(0));
 pub fn update_progress(total: Option<usize>, step_size: usize) {
     let current = increment_progress_counter_by(1);
 
-    if current % step_size == 0 {
+    if current.is_multiple_of(step_size) {
         let percent = total.map(|t| (current as f64 / t as f64) * 100.0);
         if let Some(p) = percent {
             info!(

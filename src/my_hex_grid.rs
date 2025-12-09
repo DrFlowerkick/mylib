@@ -3,11 +3,17 @@
 // plane in 3D Space. This plane is our hex map.
 
 use crate::my_geometry::my_point::Point3D;
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{HashMap, hash_map::Entry};
 
 #[derive(Debug, Clone)]
 pub struct HexGrid<T> {
     pub grid: HashMap<Point3D, T>,
+}
+
+impl<T> Default for HexGrid<T> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<T> HexGrid<T> {

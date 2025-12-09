@@ -33,16 +33,16 @@ pub fn egcd_i128(a: i128, b: i128) -> (i128, i128, i128) {
 }
 
 /// modinv calculate the first inverse of a mod m
-
 pub fn modinv(a: i64, m: i64) -> Option<i64> {
     modinv_i128(a as i128, m as i128).map(|r| r as i64)
 }
 pub fn modinv_i128(a: i128, m: i128) -> Option<i128> {
     let (g, x, _) = egcd_i128(a, m);
-    if g != 1 && g != -1 { return None; }
+    if g != 1 && g != -1 {
+        return None;
+    }
     Some(x.rem_euclid(m))
 }
-
 
 /// modpow: calculate (base^exp) % mod
 /// (base^exp) % modulus, iterative, O(log exp).
@@ -56,7 +56,9 @@ pub fn modpow(base: i64, exp: i64, modulus: i64) -> Option<i64> {
 // To convert to and from rust primitives like i128 to BigIt or BigUInt and back
 // to rust primitives, use crate num-traits with traits FromPrimitive and ToPrimitive.
 pub fn modpow_i128(mut base: i128, mut exp: i128, modulus: i128) -> Option<i128> {
-    if modulus == 1 { return Some(0); }
+    if modulus == 1 {
+        return Some(0);
+    }
     let mut result = 1 % modulus;
     base %= modulus;
 
@@ -69,7 +71,6 @@ pub fn modpow_i128(mut base: i128, mut exp: i128, modulus: i128) -> Option<i128>
     }
     Some(result)
 }
-
 
 /// collecting all possible sub groups with n elements of a group with m elements and m > n
 use std::cmp::Ordering;
@@ -160,14 +161,13 @@ impl RangeCombinations {
     }
     fn set_last(&mut self) -> bool {
         // there are no further combinations, if no number left to pop
-        let Some(last) = self.combination.pop_back() else { return true;};
+        let Some(last) = self.combination.pop_back() else {
+            return true;
+        };
         if last + 1 > self.end {
             // reached end of range -> move one backwards
             self.set_last()
-        } else if let Some(next) = (last + 1..=self.end)
-            .filter(|n| !self.combination.contains(n))
-            .next()
-        {
+        } else if let Some(next) = (last + 1..=self.end).find(|n| !self.combination.contains(n)) {
             self.combination.push_back(next);
             false
         } else {
@@ -177,10 +177,7 @@ impl RangeCombinations {
     }
     fn add_entry(&mut self) {
         // add entry, if some number from range is missing
-        if let Some(next) = (self.start..=self.end)
-            .filter(|n| !self.combination.contains(n))
-            .next()
-        {
+        if let Some(next) = (self.start..=self.end).find(|n| !self.combination.contains(n)) {
             self.combination.push_back(next);
             self.add_entry();
         }
@@ -236,6 +233,5 @@ mod tests {
         assert_eq!(range_combinations.next(), Some([2, 0, 1].into()));
         assert_eq!(range_combinations.next(), Some([2, 1, 0].into()));
         assert_eq!(range_combinations.next(), None);
-
     }
 }

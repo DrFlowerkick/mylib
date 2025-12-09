@@ -18,10 +18,10 @@ pub struct LevelOrderTraversal<N> {
 impl<N: PartialEq> LevelOrderTraversal<N> {
     pub fn new(start_node: Rc<TreeNode<N>>, start_level: usize, end_level: Option<usize>) -> Self {
         // start_level and end_level ar relative to start_node
-        if let Some(level) = end_level {
-            if start_level > level {
-                panic!("end_level must be >= start_level.");
-            }
+        if let Some(level) = end_level
+            && start_level > level
+        {
+            panic!("end_level must be >= start_level.");
         }
         let vec_capacity = start_node.get_max_level();
         let mut child_indices: Vec<usize> = Vec::with_capacity(vec_capacity);
@@ -38,11 +38,11 @@ impl<N: PartialEq> LevelOrderTraversal<N> {
         }
     }
     fn increment_target_level(&mut self) -> bool {
-        if let Some(level) = self.end_level {
-            if self.target_level == level {
-                self.finished = true;
-                return true;
-            }
+        if let Some(level) = self.end_level
+            && self.target_level == level
+        {
+            self.finished = true;
+            return true;
         }
         self.target_level += 1;
         false

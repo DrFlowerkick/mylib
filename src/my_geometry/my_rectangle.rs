@@ -1,9 +1,9 @@
 use super::{
+    FormOrdering,
     my_circle::Circle,
     my_diamond::Diamond,
     my_line::{Line, LineSegment},
     my_point::Point,
-    FormOrdering,
 };
 use std::cmp::Ordering;
 
@@ -180,10 +180,10 @@ impl Rectangle {
         let mut ri: Vec<Point> = Vec::new();
         for self_side in self.sides().iter() {
             for other_side in other.sides().iter() {
-                if let Some(ip) = self_side.segment_intersection(other_side) {
-                    if !ri.contains(&ip) {
-                        ri.push(ip);
-                    }
+                if let Some(ip) = self_side.segment_intersection(other_side)
+                    && !ri.contains(&ip)
+                {
+                    ri.push(ip);
                 }
                 for op in self_side.segment_overlapping(other_side).iter() {
                     if !ri.contains(op) {
@@ -198,10 +198,10 @@ impl Rectangle {
     pub fn rectangle_line_intersection(&self, line: &Line) -> Vec<Point> {
         let mut rli: Vec<Point> = Vec::new();
         for side in self.sides().iter() {
-            if let Some(si) = side.segment_line_intersection(line) {
-                if !rli.contains(&si) {
-                    rli.push(si);
-                }
+            if let Some(si) = side.segment_line_intersection(line)
+                && !rli.contains(&si)
+            {
+                rli.push(si);
             }
         }
         rli
@@ -210,10 +210,10 @@ impl Rectangle {
     pub fn rectangle_segment_intersection(&self, segment: &LineSegment) -> Vec<Point> {
         let mut rli: Vec<Point> = Vec::new();
         for side in self.sides().iter() {
-            if let Some(si) = side.segment_intersection(segment) {
-                if !rli.contains(&si) {
-                    rli.push(si);
-                }
+            if let Some(si) = side.segment_intersection(segment)
+                && !rli.contains(&si)
+            {
+                rli.push(si);
             }
         }
         rli
@@ -223,10 +223,10 @@ impl Rectangle {
         let mut rdi: Vec<Point> = Vec::new();
         for rectangle_side in self.sides().iter() {
             for diamond_side in diamond.sides().iter() {
-                if let Some(si) = rectangle_side.segment_intersection(diamond_side) {
-                    if !rdi.contains(&si) {
-                        rdi.push(si);
-                    }
+                if let Some(si) = rectangle_side.segment_intersection(diamond_side)
+                    && !rdi.contains(&si)
+                {
+                    rdi.push(si);
                 }
             }
         }

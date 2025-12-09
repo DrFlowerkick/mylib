@@ -5,7 +5,7 @@ use super::{
     MCTSNode, MCTSTree, PlainNode, PlainTree, SimulationPolicy, TranspositionHashMap,
     TranspositionTable, UCTPolicy, UTCCache,
 };
-use rand::prelude::IteratorRandom;
+use rand::{prelude::IteratorRandom, rng};
 
 // plain type of TranspositionHashMap, which works with PlainTree
 pub type PlainTTHashMap<State> = TranspositionHashMap<State, usize>;
@@ -230,7 +230,9 @@ where
                     new_children.push(new_child_id);
                 }
                 // take the first newly added child
-                let Some(child_index) = new_children.first() else { continue; };
+                let Some(child_index) = new_children.first() else {
+                    continue;
+                };
                 path.push(*child_index);
                 current_id = *child_index;
                 break;
@@ -265,7 +267,7 @@ where
             current_state = G::apply_move(
                 &current_state,
                 &G::available_moves(&current_state)
-                    .choose(&mut rand::thread_rng())
+                    .choose(&mut rng())
                     .expect("No available moves"),
                 game_cache,
             );

@@ -167,7 +167,12 @@ impl Point {
             (Turns90::T270, true) | (Turns90::T90, false) => Point::new(-self.y, self.x),
         }
     }
-    pub fn turn_around_point(&self, pos: impl Into<Point>, turn: Turns90, clockwise: bool) -> Point {
+    pub fn turn_around_point(
+        &self,
+        pos: impl Into<Point>,
+        turn: Turns90,
+        clockwise: bool,
+    ) -> Point {
         let pos = pos.into();
         self.subtract(pos).turn(turn, clockwise).add(pos)
     }
@@ -198,11 +203,7 @@ impl From<Point> for Cylindrical {
             0.0
         } else {
             let alpha = ((value.x as f32) / r).acos().to_degrees();
-            if value.y < 0 {
-                360.0 - alpha
-            } else {
-                alpha
-            }
+            if value.y < 0 { 360.0 - alpha } else { alpha }
         };
         Self { r, angle }
     }

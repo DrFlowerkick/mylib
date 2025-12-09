@@ -1,7 +1,7 @@
 // implementations of ExpansionPolicy
 
 use super::{ExpansionPolicy, GameCache, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame};
-use rand::prelude::SliceRandom;
+use rand::{prelude::SliceRandom, rng};
 
 #[derive(Clone)]
 pub struct ExpandAll {}
@@ -29,7 +29,7 @@ where
         _heuristic_config: &H::Config,
     ) -> Vec<G::Move> {
         let mut moves: Vec<_> = G::available_moves(state).collect();
-        moves.shuffle(&mut rand::thread_rng());
+        moves.shuffle(&mut rng());
         moves
     }
 }
@@ -83,7 +83,7 @@ where
             };
         }
         let mut unexpanded_moves = G::available_moves(state).collect::<Vec<_>>();
-        unexpanded_moves.shuffle(&mut rand::thread_rng());
+        unexpanded_moves.shuffle(&mut rng());
         ProgressiveWidening {
             unexpanded_moves,
             phantom: std::marker::PhantomData,

@@ -35,7 +35,7 @@ impl<T: Copy + Clone + Default + From<char> + Debug, const N: usize> CubeMap<T, 
         let n_chars_in_line = flat_map.lines().map(|l| l.chars().count()).max().unwrap();
         let n_lines = flat_map.lines().count();
         assert!(n_chars_in_line % N == 0);
-        assert!(n_lines % N == 0);
+        assert!(n_lines.is_multiple_of(N));
         let x_blocks = n_chars_in_line / N;
         let y_blocks = n_lines / N;
         assert_eq!(x_blocks.min(y_blocks), 3);

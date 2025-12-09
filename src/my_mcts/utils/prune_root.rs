@@ -23,7 +23,7 @@ where
     fn prune_to_root(&mut self) {
         let Some(root_id) = self.root_id() else {
             // uninitialized tree
-            return
+            return;
         };
         if root_id == 0 {
             // nothing to prune
