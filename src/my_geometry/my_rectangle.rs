@@ -53,11 +53,17 @@ impl PartialOrd<Point> for Rectangle {
     }
 }
 
-impl From<(Point, Point)> for Rectangle {
-    fn from((a, b): (Point, Point)) -> Self {
-        let top_left = Point::new(a.x.min(b.x), a.y.max(b.y));
-        let bottom_right = Point::new(a.x.max(b.x), a.y.min(b.y));
-        Rectangle::new(top_left, bottom_right)
+impl TryFrom<(Point, Point)> for Rectangle {
+    type Error = &'static str;
+
+    fn try_from((a, b): (Point, Point)) -> Result<Self, Self::Error> {
+        if a.x != b.x && a.y != b.y {
+            let top_left = Point::new(a.x.min(b.x), a.y.max(b.y));
+            let bottom_right = Point::new(a.x.max(b.x), a.y.min(b.y));
+            Ok(Rectangle::new(top_left, bottom_right))
+        } else {
+            Err("Zero area rectangle cannot be created")
+        }
     }
 }
 
