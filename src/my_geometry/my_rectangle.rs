@@ -53,6 +53,14 @@ impl PartialOrd<Point> for Rectangle {
     }
 }
 
+impl From<(Point, Point)> for Rectangle {
+    fn from((a, b): (Point, Point)) -> Self {
+        let top_left = Point::new(a.x.min(b.x), a.y.max(b.y));
+        let bottom_right = Point::new(a.x.max(b.x), a.y.min(b.y));
+        Rectangle::new(top_left, bottom_right)
+    }
+}
+
 impl Rectangle {
     pub fn new(top_left: Point, bottom_right: Point) -> Self {
         assert!(top_left.x < bottom_right.x);
@@ -213,9 +221,9 @@ impl Rectangle {
 
     pub fn rectangle_diamond_intersection(&self, diamond: &Diamond) -> Vec<Point> {
         let mut rdi: Vec<Point> = Vec::new();
-        for rside in self.sides().iter() {
-            for dside in diamond.sides().iter() {
-                if let Some(si) = rside.segment_intersection(dside) {
+        for rectangle_side in self.sides().iter() {
+            for diamond_side in diamond.sides().iter() {
+                if let Some(si) = rectangle_side.segment_intersection(diamond_side) {
                     if !rdi.contains(&si) {
                         rdi.push(si);
                     }
