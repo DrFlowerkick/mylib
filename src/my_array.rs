@@ -2,7 +2,7 @@ use std::iter::FromIterator;
 use std::ops::Index;
 use std::ops::IndexMut;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct MyArray<T, const N: usize> {
     items: [T; N],
     n_items: usize,
