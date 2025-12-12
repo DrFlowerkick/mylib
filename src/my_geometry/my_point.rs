@@ -176,6 +176,30 @@ impl Point {
         let pos = pos.into();
         self.subtract(pos).turn(turn, clockwise).add(pos)
     }
+    pub fn mirror_x(&self) -> Point {
+        Point {
+            x: self.x,
+            y: -self.y,
+        }
+    }
+    pub fn mirror_y(&self) -> Point {
+        Point {
+            x: -self.x,
+            y: self.y,
+        }
+    }
+    pub fn mirror_x_at_y(&self, y: i64) -> Point {
+        Point {
+            x: self.x,
+            y: 2 * y - self.y,
+        }
+    }
+    pub fn mirror_y_at_x(&self, x: i64) -> Point {
+        Point {
+            x: 2 * x - self.x,
+            y: self.y,
+        }
+    }
     pub fn scale_toward_point_with_len(&self, target: impl Into<Point>, len: f32) -> Point {
         let target = target.into();
         let vector = Cylindrical::from(target.subtract(*self));
