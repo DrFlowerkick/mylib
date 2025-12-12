@@ -71,6 +71,12 @@ impl Rectangle {
             bottom_right,
         }
     }
+    pub fn shifted(&self, offset: Point) -> Self {
+        Self {
+            top_left: self.top_left.add(offset),
+            bottom_right: self.bottom_right.add(offset),
+        }
+    }
     pub fn size_x(&self) -> i64 {
         self.bottom_right.x - self.top_left.x
     }
