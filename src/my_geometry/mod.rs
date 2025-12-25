@@ -9,6 +9,7 @@ pub mod my_line;
 pub mod my_point;
 pub mod my_rectangle;
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FormOrdering {
     Identical,
     Inside,

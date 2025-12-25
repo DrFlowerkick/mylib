@@ -64,6 +64,9 @@ impl From<(Point, Point)> for Rectangle {
 impl Rectangle {
     pub fn new(top_left: Point, bottom_right: Point) -> Self {
         // we allow zero surface rectangles here for convenience
+        // this is useful for inclusive rectangles, where rectangles represent
+        // an area of tiles. In this case, the rectangle with top_left == bottom_right
+        // represents a rectangle of size 1x1, i.e. a single tile.
         assert!(top_left.x <= bottom_right.x);
         assert!(top_left.y >= bottom_right.y);
         Self {
@@ -198,7 +201,9 @@ impl Rectangle {
         }
     }
 
-    pub fn rectangle_intersection(&self, other: &Self) -> Vec<Point> {
+    /// Returns all intersection points between 2 rectangles
+    /// If inclusive is true, considers touching edges as intersections.
+    pub fn rectangle_intersection(&self, other: &Self, inclusive: bool) -> Option<Rectangle> {
         let mut ri: Vec<Point> = Vec::new();
         for self_side in self.sides().iter() {
             for other_side in other.sides().iter() {
@@ -207,14 +212,92 @@ impl Rectangle {
                 {
                     ri.push(ip);
                 }
-                for op in self_side.segment_overlapping(other_side).iter() {
-                    if !ri.contains(op) {
-                        ri.push(*op);
+                if inclusive {
+                    for op in self_side.segment_overlapping(other_side).iter() {
+                        if !ri.contains(op) {
+                            ri.push(*op);
+                        }
                     }
                 }
             }
         }
-        ri
+        if ri.is_empty() {
+            None
+        } else {
+            // find top-left and bottom-right points
+            let min_x = ri.iter().map(|p| p.x).min().unwrap();
+            let max_x = ri.iter().map(|p| p.x).max().unwrap();
+            let min_y = ri.iter().map(|p| p.y).min().unwrap();
+            let max_y = ri.iter().map(|p| p.y).max().unwrap();
+            Some(Rectangle::new(
+                Point::new(min_x, max_y),
+                Point::new(max_x, min_y),
+            ))
+        }
+    }
+
+    /// Returns remaining non overlapping areas of self and cutter as list of
+    /// rectangles. If cutter fully covers self, returns empty list.
+    /// If there is no overlap, returns list with self as only element.
+    /// If inclusive is true, considers touching edges as overlapping.
+    pub fn cut_rectangle(
+        &self,
+        cutter: &Self,
+        inclusive: bool,
+    ) -> Vec<Rectangle> {
+        let Some(intersection) = self.rectangle_intersection(cutter, inclusive) else {
+            return vec![*self];
+        };
+        let mut remaining: Vec<Rectangle> = Vec::new();
+        // top part
+        if self.top_left.y > intersection.top_left.y {
+            let bottom_right_y = if inclusive {
+                intersection.top_left.y + 1
+            } else {
+                intersection.top_left.y
+            };
+            remaining.push(Rectangle::new(
+                self.top_left,
+                Point::new(self.bottom_right.x, bottom_right_y),
+            ));
+        }
+        // bottom part
+        if self.bottom_right.y < intersection.bottom_right.y {
+            let top_left_y = if inclusive {
+                intersection.bottom_right.y - 1
+            } else {
+                intersection.bottom_right.y
+            };
+            remaining.push(Rectangle::new(
+                Point::new(self.top_left.x, top_left_y),
+                self.bottom_right,
+            ));
+        }
+        // left part
+        if self.top_left.x < intersection.top_left.x {
+            let right_x = if inclusive {
+                intersection.top_left.x - 1
+            } else {
+                intersection.top_left.x
+            };
+            remaining.push(Rectangle::new(
+                Point::new(self.top_left.x, intersection.top_left.y),
+                Point::new(right_x, intersection.bottom_right.y),
+            ));
+        }
+        // right part
+        if self.bottom_right.x > intersection.bottom_right.x {
+            let left_x = if inclusive {
+                intersection.bottom_right.x + 1
+            } else {
+                intersection.bottom_right.x
+            };
+            remaining.push(Rectangle::new(
+                Point::new(left_x, intersection.top_left.y),
+                Point::new(self.bottom_right.x, intersection.bottom_right.y),
+            ));
+        }
+        remaining
     }
 
     pub fn rectangle_line_intersection(&self, line: &Line) -> Vec<Point> {
