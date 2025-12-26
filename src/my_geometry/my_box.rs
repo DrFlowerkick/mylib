@@ -29,10 +29,10 @@ impl Box3D {
             std::mem::swap(&mut self.left_front_bottom.x, &mut self.right_back_top.x)
         };
         if self.left_front_bottom.y > self.right_back_top.y {
-            std::mem::swap(&mut self.left_front_bottom.y, &mut self.right_back_top.z)
+            std::mem::swap(&mut self.left_front_bottom.y, &mut self.right_back_top.y)
         };
-        if self.left_front_bottom.y > self.right_back_top.y {
-            std::mem::swap(&mut self.left_front_bottom.y, &mut self.right_back_top.z)
+        if self.left_front_bottom.z > self.right_back_top.z {
+            std::mem::swap(&mut self.left_front_bottom.z, &mut self.right_back_top.z)
         };
         self
     }
