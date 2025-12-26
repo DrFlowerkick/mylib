@@ -1,4 +1,4 @@
-use super::{
+use crate::my_geometry::{
     FormOrdering,
     my_circle::Circle,
     my_line::{Line, LineSegment},
@@ -66,7 +66,6 @@ impl PartialOrd<Point> for Diamond {
 
 impl Diamond {
     pub fn new(center: Point, radius: i64) -> Self {
-        assert!(radius > 0);
         Self { center, radius }
     }
     pub fn get_center(&self) -> Point {

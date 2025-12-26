@@ -1,10 +1,10 @@
 use super::{
     FormOrdering,
     my_circle::Circle,
-    my_diamond::Diamond,
     my_line::{Line, LineSegment},
     my_point::Point,
 };
+use crate::my_pixels::my_diamond::Diamond;
 use std::cmp::Ordering;
 
 // Rectangle: defined by top-left and bottom-right point
@@ -240,11 +240,7 @@ impl Rectangle {
     /// rectangles. If cutter fully covers self, returns empty list.
     /// If there is no overlap, returns list with self as only element.
     /// If inclusive is true, considers touching edges as overlapping.
-    pub fn cut_rectangle(
-        &self,
-        cutter: &Self,
-        inclusive: bool,
-    ) -> Vec<Rectangle> {
+    pub fn cut_rectangle(&self, cutter: &Self, inclusive: bool) -> Vec<Rectangle> {
         let Some(intersection) = self.rectangle_intersection(cutter, inclusive) else {
             return vec![*self];
         };

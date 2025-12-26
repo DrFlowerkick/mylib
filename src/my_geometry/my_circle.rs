@@ -1,10 +1,10 @@
 use super::{
     FormOrdering,
-    my_diamond::Diamond,
     my_line::{Line, LineSegment},
     my_point::{Cylindrical, Point},
     my_rectangle::Rectangle,
 };
+use crate::my_pixels::my_diamond::Diamond;
 use std::cmp::Ordering;
 
 // Circle: (x - x_c)² + (y - y_c)² = r²

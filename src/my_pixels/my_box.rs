@@ -5,7 +5,7 @@
 // - a line (two identical axis)
 // - a point (three identical axis -> identical corners)
 
-use super::my_point::Point3D;
+use crate::my_geometry::my_point::Point3D;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Default, Hash)]
 pub struct Box3D {
