@@ -108,6 +108,21 @@ impl Rectangle {
             self.bottom_right,
         ]
     }
+    pub fn scale_around_center(&self, scale: f64) -> Self {
+        let center_x = (self.top_left.x as f64 + self.bottom_right.x as f64) / 2.0;
+        let center_y = (self.top_left.y as f64 + self.bottom_right.y as f64) / 2.0;
+        let half_size_x = (self.size_x() as f64 * scale) / 2.0;
+        let half_size_y = (self.size_y() as f64 * scale) / 2.0;
+        let new_top_left = Point::new(
+            (center_x - half_size_x).round() as i64,
+            (center_y + half_size_y).round() as i64,
+        );
+        let new_bottom_right = Point::new(
+            (center_x + half_size_x).round() as i64,
+            (center_y - half_size_y).round() as i64,
+        );
+        Rectangle::new(new_top_left, new_bottom_right)
+    }
     pub fn sides(&self) -> Vec<LineSegment> {
         let mut sides: Vec<LineSegment> = Vec::with_capacity(4);
         let [top_left, top_right, bottom_left, bottom_right] = self.corners();
