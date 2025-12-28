@@ -24,7 +24,7 @@ pub enum Quadrant {
     Origin,
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Default, Hash)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Default, Hash, PartialOrd, Ord)]
 pub struct Point {
     pub x: i64,
     pub y: i64,
