@@ -26,8 +26,8 @@ pub enum Quadrant {
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Default, Hash, PartialOrd, Ord)]
 pub struct Point {
-    pub x: i64,
     pub y: i64,
+    pub x: i64,
 }
 
 impl Display for Point {
@@ -514,6 +514,17 @@ mod tests {
         let on_negative_x_axis = Point::new(-10000, 0);
         let abs_difference = (Cylindrical::from(on_negative_x_axis).angle - angle).abs();
         assert!(abs_difference <= 0.01);
+    }
+
+    #[test]
+    fn test_point_ordering() {
+        let p1 = Point::new(1, 0);
+        let p2 = Point::new(0, 1);
+        let p3 = Point::new(1, 1);
+        // y before x
+        assert!(p1 < p2);
+        // both y equal, x decides
+        assert!(p2 < p3);
     }
 
     #[test]
