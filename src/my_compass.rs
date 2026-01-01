@@ -94,6 +94,21 @@ impl Compass {
     pub const fn cardinals() -> [Compass; 4] {
         [Compass::N, Compass::E, Compass::S, Compass::W]
     }
+    pub const fn ordinals() -> [Compass; 4] {
+        [Compass::NW, Compass::NE, Compass::SE, Compass::SW]
+    }
+    pub fn cardinals_and_ordinals() -> [Compass; 8] {
+        [
+            Compass::N,
+            Compass::NE,
+            Compass::E,
+            Compass::SE,
+            Compass::S,
+            Compass::SW,
+            Compass::W,
+            Compass::NW,
+        ]
+    }
     pub fn flip(&self) -> Self {
         match self {
             Compass::N => Compass::S,
