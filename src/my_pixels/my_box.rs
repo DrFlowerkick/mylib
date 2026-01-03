@@ -170,7 +170,10 @@ impl Box3D {
         )
     }
 
-    pub fn delta_to_point(&self, point: Point3D) -> i64 {
+    pub fn delta_to_point(&self, point: Point3D) -> Option<i64> {
+        if !self.is_valid() {
+            return None;
+        }
         let calc_delta = |min: i64, max: i64, coord: i64| {
             if coord < min {
                 min - coord
@@ -183,7 +186,7 @@ impl Box3D {
         let dx = calc_delta(self.left_front_bottom.x, self.right_back_top.x, point.x);
         let dy = calc_delta(self.left_front_bottom.y, self.right_back_top.y, point.y);
         let dz = calc_delta(self.left_front_bottom.z, self.right_back_top.z, point.z);
-        dx + dy + dz
+        Some(dx + dy + dz)
     }
 
     /// create eight sub-boxes (octants) by splitting this box at the midpoints of each axis
