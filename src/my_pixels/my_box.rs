@@ -196,41 +196,41 @@ impl Box3D {
     }
 
     pub fn split_box(&self) -> Vec<Box3D> {
-        if let Some(size) = self.size() {
-            if size <= 1 {
-                return vec![*self];
-            }
-        } else {
-            return vec![];
-        }
-        let mut boxes = Vec::with_capacity(8);
-        let mid_x = (self.left_front_bottom.x + self.right_back_top.x) / 2;
-        let mid_y = (self.left_front_bottom.y + self.right_back_top.y) / 2;
-        let mid_z = (self.left_front_bottom.z + self.right_back_top.z) / 2;
+        if let Some(size) = self.size()
+            && size > 1
+        {
+            let mut boxes = Vec::with_capacity(8);
+            let mid_x = (self.left_front_bottom.x + self.right_back_top.x) / 2;
+            let mid_y = (self.left_front_bottom.y + self.right_back_top.y) / 2;
+            let mid_z = (self.left_front_bottom.z + self.right_back_top.z) / 2;
 
-        let coords_x = [
-            (self.left_front_bottom.x, mid_x),
-            (mid_x + 1, self.right_back_top.x),
-        ];
-        let coords_y = [
-            (self.left_front_bottom.y, mid_y),
-            (mid_y + 1, self.right_back_top.y),
-        ];
-        let coords_z = [
-            (self.left_front_bottom.z, mid_z),
-            (mid_z + 1, self.right_back_top.z),
-        ];
+            let coords_x = [
+                (self.left_front_bottom.x, mid_x),
+                (mid_x + 1, self.right_back_top.x),
+            ];
+            let coords_y = [
+                (self.left_front_bottom.y, mid_y),
+                (mid_y + 1, self.right_back_top.y),
+            ];
+            let coords_z = [
+                (self.left_front_bottom.z, mid_z),
+                (mid_z + 1, self.right_back_top.z),
+            ];
 
-        for &(x1, x2) in &coords_x {
-            for &(y1, y2) in &coords_y {
-                for &(z1, z2) in &coords_z {
-                    let b = Box3D::new(Point3D::new(x1, y1, z1), Point3D::new(x2, y2, z2));
-                    boxes.push(b);
+            for &(x1, x2) in &coords_x {
+                for &(y1, y2) in &coords_y {
+                    for &(z1, z2) in &coords_z {
+                        let b = Box3D::new(Point3D::new(x1, y1, z1), Point3D::new(x2, y2, z2));
+                        boxes.push(b);
+                    }
                 }
             }
-        }
 
-        boxes
+            boxes
+        } else {
+            // box cannot be split or is invalid
+            vec![]
+        }
     }
 }
 
