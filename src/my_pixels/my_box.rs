@@ -202,7 +202,7 @@ impl Box3D {
                 if min == max {
                     vec![(min, max)]
                 } else {
-                    let mid = (min + max) / 2;
+                    let mid = min + (max - min) / 2;
                     vec![(min, mid), (mid + 1, max)]
                 }
             };
