@@ -203,21 +203,19 @@ impl Box3D {
             && size > 1
         {
             let mut boxes = Vec::with_capacity(8);
-            let mid_x = (self.left_front_bottom.x + self.right_back_top.x) / 2;
-            let mid_y = (self.left_front_bottom.y + self.right_back_top.y) / 2;
-            let mid_z = (self.left_front_bottom.z + self.right_back_top.z) / 2;
 
-            let calc_coords = |min: i64, max: i64, mid: i64| {
+            let calc_coords = |min: i64, max: i64| {
                 if min == max {
                     vec![(min, max)]
                 } else {
+                    let mid = (min + max) / 2;
                     vec![(min, mid), (mid + 1, max)]
                 }
             };
 
-            let coords_x = calc_coords(self.left_front_bottom.x, self.right_back_top.x, mid_x);
-            let coords_y = calc_coords(self.left_front_bottom.y, self.right_back_top.y, mid_y);
-            let coords_z = calc_coords(self.left_front_bottom.z, self.right_back_top.z, mid_z);
+            let coords_x = calc_coords(self.left_front_bottom.x, self.right_back_top.x);
+            let coords_y = calc_coords(self.left_front_bottom.y, self.right_back_top.y);
+            let coords_z = calc_coords(self.left_front_bottom.z, self.right_back_top.z);
 
             for &(x1, x2) in &coords_x {
                 for &(y1, y2) in &coords_y {
