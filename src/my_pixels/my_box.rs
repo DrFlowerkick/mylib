@@ -162,12 +162,75 @@ impl Box3D {
         Some((i, self.subtract(i), other.subtract(i)))
     }
 
-    pub fn size(&self) -> Option<u64> {
+    pub fn size(&self) -> Option<i64> {
         self.is_valid().then_some(
-            (self.right_back_top.x - self.left_front_bottom.x + 1) as u64
-                * (self.right_back_top.y - self.left_front_bottom.y + 1) as u64
-                * (self.right_back_top.z - self.left_front_bottom.z + 1) as u64,
+            (self.right_back_top.x - self.left_front_bottom.x + 1)
+                * (self.right_back_top.y - self.left_front_bottom.y + 1)
+                * (self.right_back_top.z - self.left_front_bottom.z + 1),
         )
+    }
+
+    pub fn delta_to_point(&self, point: Point3D) -> i64 {
+        let dx = if point.x < self.left_front_bottom.x {
+            self.left_front_bottom.x - point.x
+        } else if point.x > self.right_back_top.x {
+            point.x - self.right_back_top.x
+        } else {
+            0
+        };
+        let dy = if point.y < self.left_front_bottom.y {
+            self.left_front_bottom.y - point.y
+        } else if point.y > self.right_back_top.y {
+            point.y - self.right_back_top.y
+        } else {
+            0
+        };
+        let dz = if point.z < self.left_front_bottom.z {
+            self.left_front_bottom.z - point.z
+        } else if point.z > self.right_back_top.z {
+            point.z - self.right_back_top.z
+        } else {
+            0
+        };
+        dx + dy + dz
+    }
+
+    pub fn split_box(&self) -> Vec<Box3D> {
+        if let Some(size) = self.size() {
+            if size <= 1 {
+                return vec![*self];
+            }
+        } else {
+            return vec![];
+        }
+        let mut boxes = Vec::with_capacity(8);
+        let mid_x = (self.left_front_bottom.x + self.right_back_top.x) / 2;
+        let mid_y = (self.left_front_bottom.y + self.right_back_top.y) / 2;
+        let mid_z = (self.left_front_bottom.z + self.right_back_top.z) / 2;
+
+        let coords_x = [
+            (self.left_front_bottom.x, mid_x),
+            (mid_x + 1, self.right_back_top.x),
+        ];
+        let coords_y = [
+            (self.left_front_bottom.y, mid_y),
+            (mid_y + 1, self.right_back_top.y),
+        ];
+        let coords_z = [
+            (self.left_front_bottom.z, mid_z),
+            (mid_z + 1, self.right_back_top.z),
+        ];
+
+        for &(x1, x2) in &coords_x {
+            for &(y1, y2) in &coords_y {
+                for &(z1, z2) in &coords_z {
+                    let b = Box3D::new(Point3D::new(x1, y1, z1), Point3D::new(x2, y2, z2));
+                    boxes.push(b);
+                }
+            }
+        }
+
+        boxes
     }
 }
 
@@ -272,8 +335,8 @@ mod tests {
         );
 
         // check again sum sizes
-        let size_remaining_a: u64 = remaining_a.iter().filter_map(|b| b.size()).sum();
-        let size_remaining_b: u64 = remaining_b.iter().filter_map(|b| b.size()).sum();
+        let size_remaining_a: i64 = remaining_a.iter().filter_map(|b| b.size()).sum();
+        let size_remaining_b: i64 = remaining_b.iter().filter_map(|b| b.size()).sum();
         // intersection is part of a and b, therefore factor 2
         assert_eq!(
             size_a + size_b,
@@ -302,7 +365,7 @@ mod tests {
             remaining_a
                 .into_iter()
                 .filter_map(|b| b.size())
-                .collect::<Vec<u64>>(),
+                .collect::<Vec<i64>>(),
             [16, 16, 8, 8, 4, 4]
         );
         assert_eq!(remaining_b.len(), 0);
