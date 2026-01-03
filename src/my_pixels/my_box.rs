@@ -195,6 +195,9 @@ impl Box3D {
         dx + dy + dz
     }
 
+    /// create eight sub-boxes (octants) by splitting this box at the midpoints of each axis
+    /// If the box cannot be split (size <= 1), an empty vector is returned
+    /// If an axis has identical min and max coordinates, only one sub-box is created along that axis
     pub fn split_box(&self) -> Vec<Box3D> {
         if let Some(size) = self.size()
             && size > 1
@@ -204,18 +207,17 @@ impl Box3D {
             let mid_y = (self.left_front_bottom.y + self.right_back_top.y) / 2;
             let mid_z = (self.left_front_bottom.z + self.right_back_top.z) / 2;
 
-            let coords_x = [
-                (self.left_front_bottom.x, mid_x),
-                (mid_x + 1, self.right_back_top.x),
-            ];
-            let coords_y = [
-                (self.left_front_bottom.y, mid_y),
-                (mid_y + 1, self.right_back_top.y),
-            ];
-            let coords_z = [
-                (self.left_front_bottom.z, mid_z),
-                (mid_z + 1, self.right_back_top.z),
-            ];
+            let calc_coords = |min: i64, max: i64, mid: i64| {
+                if min == max {
+                    vec![(min, max)]
+                } else {
+                    vec![(min, mid), (mid + 1, max)]
+                }
+            };
+
+            let coords_x = calc_coords(self.left_front_bottom.x, self.right_back_top.x, mid_x);
+            let coords_y = calc_coords(self.left_front_bottom.y, self.right_back_top.y, mid_y);
+            let coords_z = calc_coords(self.left_front_bottom.z, self.right_back_top.z, mid_z);
 
             for &(x1, x2) in &coords_x {
                 for &(y1, y2) in &coords_y {
