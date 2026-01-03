@@ -343,6 +343,23 @@ impl Point3D {
         }
     }
 
+    pub fn delta_x(&self, target: impl Into<Point3D>) -> i64 {
+        (self.x - target.into().x).abs()
+    }
+
+    pub fn delta_y(&self, target: impl Into<Point3D>) -> i64 {
+        (self.y - target.into().y).abs()
+    }
+
+    pub fn delta_z(&self, target: impl Into<Point3D>) -> i64 {
+        (self.z - target.into().z).abs()
+    }
+
+    pub fn delta(&self, target: impl Into<Point3D>) -> i64 {
+        let target = target.into();
+        self.delta_x(target) + self.delta_y(target) + self.delta_z(target)
+    }
+
     pub fn length(&self) -> f64 {
         ((self.x.pow(2) + self.y.pow(2) + self.z.pow(2)) as f64).sqrt()
     }
