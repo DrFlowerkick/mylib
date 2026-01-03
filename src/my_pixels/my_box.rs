@@ -163,11 +163,25 @@ impl Box3D {
     }
 
     pub fn size(&self) -> Option<i64> {
-        self.is_valid().then_some(
-            (self.right_back_top.x - self.left_front_bottom.x + 1)
-                * (self.right_back_top.y - self.left_front_bottom.y + 1)
-                * (self.right_back_top.z - self.left_front_bottom.z + 1),
-        )
+        self.is_valid().then_some({
+            let dx = self
+                .right_back_top
+                .x
+                .saturating_sub(self.left_front_bottom.x)
+                .saturating_add(1);
+            let dy = self
+                .right_back_top
+                .y
+                .saturating_sub(self.left_front_bottom.y)
+                .saturating_add(1);
+            let dz = self
+                .right_back_top
+                .z
+                .saturating_sub(self.left_front_bottom.z)
+                .saturating_add(1);
+
+            dx.saturating_mul(dy).saturating_mul(dz)
+        })
     }
 
     pub fn delta_to_point(&self, point: Point3D) -> Option<i64> {
