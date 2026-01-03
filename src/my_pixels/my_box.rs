@@ -171,27 +171,18 @@ impl Box3D {
     }
 
     pub fn delta_to_point(&self, point: Point3D) -> i64 {
-        let dx = if point.x < self.left_front_bottom.x {
-            self.left_front_bottom.x - point.x
-        } else if point.x > self.right_back_top.x {
-            point.x - self.right_back_top.x
-        } else {
-            0
+        let calc_delta = |min: i64, max: i64, coord: i64| {
+            if coord < min {
+                min - coord
+            } else if coord > max {
+                coord - max
+            } else {
+                0
+            }
         };
-        let dy = if point.y < self.left_front_bottom.y {
-            self.left_front_bottom.y - point.y
-        } else if point.y > self.right_back_top.y {
-            point.y - self.right_back_top.y
-        } else {
-            0
-        };
-        let dz = if point.z < self.left_front_bottom.z {
-            self.left_front_bottom.z - point.z
-        } else if point.z > self.right_back_top.z {
-            point.z - self.right_back_top.z
-        } else {
-            0
-        };
+        let dx = calc_delta(self.left_front_bottom.x, self.right_back_top.x, point.x);
+        let dy = calc_delta(self.left_front_bottom.y, self.right_back_top.y, point.y);
+        let dz = calc_delta(self.left_front_bottom.z, self.right_back_top.z, point.z);
         dx + dy + dz
     }
 
