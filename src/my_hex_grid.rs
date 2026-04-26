@@ -84,7 +84,7 @@ pub trait FlatTopHex {
 impl HexCoordinates for Point3D {
     fn hex_distance(&self, hex_b: Self) -> i64 {
         let delta = self.subtract(hex_b);
-        delta.x.max(delta.y).max(delta.z)
+        delta.x.abs().max(delta.y.abs()).max(delta.z.abs())
     }
     fn is_hex_coordinate(&self) -> bool {
         self.x + self.y + self.z == 0
