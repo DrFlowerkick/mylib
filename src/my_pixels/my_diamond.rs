@@ -152,12 +152,20 @@ impl Diamond {
             .abs()
             .cmp(&self.center.delta(other.center))
         {
-            Ordering::Greater => FormOrdering::Inside,
+            Ordering::Greater => {
+                if self.radius > other.radius {
+                    FormOrdering::Inside
+                } else {
+                    FormOrdering::IsContainedBy
+                }
+            }
             Ordering::Equal => {
                 if self.center == other.center {
                     FormOrdering::Identical
-                } else {
+                } else if self.radius > other.radius {
                     FormOrdering::InsideTouching
+                } else {
+                    FormOrdering::IsContainedByAndTouching
                 }
             }
             Ordering::Less => match self

@@ -14,5 +14,7 @@ pub enum FormOrdering {
     InsideTouching,
     Overlapping,
     Touching,
+    IsContainedBy,
+    IsContainedByAndTouching,
     NonOverlapping,
 }

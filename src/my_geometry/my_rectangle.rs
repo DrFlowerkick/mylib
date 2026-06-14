@@ -170,6 +170,7 @@ impl Rectangle {
         let oc_self_in_other = other.overlapping_corners(self);
         match oc_other_in_self.len().cmp(&oc_self_in_other.len()) {
             Ordering::Greater => {
+                // other has more corners in self than self has in other, so self is bigger than other
                 if oc_other_in_self.len() == 4 && oc_other_in_self.iter().any(|c| self == c) {
                     FormOrdering::InsideTouching
                 } else if oc_other_in_self.len() == 4 {
@@ -182,10 +183,11 @@ impl Rectangle {
                 }
             }
             Ordering::Less => {
+                // other has fewer corners in self than self has in other, so self is smaller than other
                 if oc_self_in_other.len() == 4 && oc_self_in_other.iter().any(|c| other == c) {
-                    FormOrdering::InsideTouching
+                    FormOrdering::IsContainedByAndTouching
                 } else if oc_self_in_other.len() == 4 {
-                    FormOrdering::Inside
+                    FormOrdering::IsContainedBy
                 } else if oc_self_in_other.iter().any(|c| other == c) {
                     // side is touching
                     FormOrdering::Touching
@@ -237,7 +239,14 @@ impl Rectangle {
             }
         }
         if ri.is_empty() {
-            None
+            // maybe one rectangle is fully inside the other, so we check if one corner of self is in other and vice versa
+            match self.rectangle_cmp(other) {
+                FormOrdering::Inside | FormOrdering::InsideTouching => Some(*other),
+                FormOrdering::IsContainedBy | FormOrdering::IsContainedByAndTouching => {
+                    Some(*self)
+                }
+                _ => None,
+            }
         } else {
             // find top-left and bottom-right points
             let min_x = ri.iter().map(|p| p.x).min().unwrap();
