@@ -72,6 +72,19 @@ pub fn modpow_i128(mut base: i128, mut exp: i128, modulus: i128) -> Option<i128>
     Some(result)
 }
 
+/// collecting all possible divisors of a number
+pub fn collect_all_divisors(dividend: u64) -> BTreeSet<u64> {
+    let mut divisors: BTreeSet<u64> = BTreeSet::new();
+    let upper_bound = ((dividend as f64).sqrt().round() as u64) + 1;
+    for divisor in 1..=upper_bound {
+        if dividend.is_multiple_of(divisor) {
+            divisors.insert(divisor);
+            divisors.insert(dividend / divisor);
+        }
+    }
+    divisors
+}
+
 /// collecting all possible sub groups with n elements of a group with m elements and m > n
 use std::cmp::Ordering;
 
@@ -131,7 +144,7 @@ fn recursive_collection_of_elements<T: Clone>(
 }
 
 /// get all possible combinations of a range of numbers as iterator
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 pub struct RangeCombinations {
     start: i64,
     end: i64,
