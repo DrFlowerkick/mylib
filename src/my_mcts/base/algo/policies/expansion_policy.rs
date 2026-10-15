@@ -12,11 +12,7 @@ where
     H: Heuristic<G>,
     Config: MCTSConfig<G::Player>,
 {
-    fn new(
-        _state: &G::State,
-        _heuristic_cache: &mut H::Cache,
-        _heuristic_config: &H::Config,
-    ) -> Self {
+    fn new(_state: &G::State, _heuristic_config: &H::Config) -> Self {
         ExpandAll {}
     }
     fn expandable_moves(
@@ -65,11 +61,7 @@ where
     H: Heuristic<G>,
     Config: MCTSConfig<G::Player>,
 {
-    fn new(
-        state: &G::State,
-        _heuristic_cache: &mut H::Cache,
-        _heuristic_config: &H::Config,
-    ) -> Self {
+    fn new(state: &G::State, _heuristic_config: &H::Config) -> Self {
         let is_terminal = G::evaluate(state).is_some();
         if is_terminal {
             return ProgressiveWidening {
@@ -157,7 +149,7 @@ where
     H: Heuristic<G>,
     Config: MCTSConfig<G::Player>,
 {
-    fn new(state: &G::State, heuristic_cache: &mut H::Cache, heuristic_config: &H::Config) -> Self {
+    fn new(state: &G::State, heuristic_config: &H::Config) -> Self {
         let is_terminal = G::evaluate(state).is_some();
         if is_terminal {
             return HeuristicProgressiveWidening {
@@ -166,8 +158,7 @@ where
             };
         }
         let unexpanded_moves = G::available_moves(state).collect::<Vec<_>>();
-        let unexpanded_moves =
-            H::sort_moves(state, unexpanded_moves, heuristic_cache, heuristic_config);
+        let unexpanded_moves = H::sort_moves(state, unexpanded_moves, heuristic_config);
         HeuristicProgressiveWidening {
             unexpanded_moves,
             phantom: std::marker::PhantomData,

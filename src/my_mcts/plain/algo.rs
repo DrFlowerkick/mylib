@@ -1,9 +1,8 @@
 // Plain implementation of MCTS
 
 use super::{
-    ExpansionPolicy, Heuristic, HeuristicCache, MCTSAlgo, MCTSConfig, MCTSGame, MCTSNode, MCTSTree,
-    PlainNode, PlainTree, SimulationPolicy, TranspositionHashMap, TranspositionTable, UCTPolicy,
-    UTCCache,
+    ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSNode, MCTSTree, PlainNode,
+    PlainTree, SimulationPolicy, TranspositionHashMap, TranspositionTable, UCTPolicy, UTCCache,
 };
 use rand::{prelude::IteratorRandom, rng};
 
@@ -26,7 +25,6 @@ where
     pub tree: PlainTree<G, H, Self, UC>,
     pub mcts_config: MC,
     pub heuristic_config: H::Config,
-    pub heuristic_cache: H::Cache,
     pub transposition_table: TT,
     phantom: std::marker::PhantomData<()>,
 }
@@ -47,7 +45,6 @@ where
             tree: PlainTree::new(expected_num_nodes),
             mcts_config,
             heuristic_config,
-            heuristic_cache: H::Cache::new(),
             transposition_table: TT::new(expected_num_nodes),
             phantom: std::marker::PhantomData,
         }
@@ -121,7 +118,7 @@ where
     }
 
     fn reset_root(&mut self, state: &<G as MCTSGame>::State) {
-        let expansion_policy = EP::new(state, &mut self.heuristic_cache, &self.heuristic_config);
+        let expansion_policy = EP::new(state, &self.heuristic_config);
         let new_root = PlainNode::new(state.clone(), expansion_policy);
         let root_id = self.tree.init_root(new_root);
         self.transposition_table.clear();
@@ -130,11 +127,10 @@ where
 
     fn iterate(&mut self) {
         // separate parameters of PlainMCTS to satisfy borrow checker
-        let (tree, mcts_config, heuristic_config, heuristic_cache, transposition_table) = (
+        let (tree, mcts_config, heuristic_config, transposition_table) = (
             &mut self.tree,
             &self.mcts_config,
             &self.heuristic_config,
-            &mut self.heuristic_cache,
             &mut self.transposition_table,
         );
 
@@ -258,7 +254,7 @@ where
                         }
                         continue;
                     }
-                    let expansion_policy = EP::new(&new_state, heuristic_cache, heuristic_config);
+                    let expansion_policy = EP::new(&new_state, heuristic_config);
                     let new_node = PlainNode::new(new_state.clone(), expansion_policy);
                     let new_child_id = tree.add_child(current_id, mv, new_node);
                     transposition_table.insert(new_state, new_child_id);
@@ -291,7 +287,6 @@ where
             if let Some(heuristic) = SP::should_cutoff(
                 &current_state,
                 depth,
-                heuristic_cache,
                 Some(G::perspective_player()),
                 mcts_config,
                 heuristic_config,

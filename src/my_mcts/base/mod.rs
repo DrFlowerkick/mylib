@@ -15,6 +15,6 @@ pub use game::*;
 pub use heuristic::*;
 
 use super::{
-    ExpansionPolicy, GamePlayer, Heuristic, HeuristicCache, HeuristicConfig, MCTSConfig, MCTSGame,
+    ExpansionPolicy, GamePlayer, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame,
     RecursiveHeuristicConfig, SimulationPolicy, TranspositionTable, UCTPolicy, UTCCache,
 };
