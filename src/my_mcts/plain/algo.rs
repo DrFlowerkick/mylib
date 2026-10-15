@@ -22,10 +22,9 @@ where
     EP: ExpansionPolicy<G, H, MC>,
     SP: SimulationPolicy<G, H, MC>,
 {
-    pub tree: PlainTree<G, H, Self, UC>,
+    pub tree: PlainTree<G, H, Self, UC, TT>,
     pub mcts_config: MC,
     pub heuristic_config: H::Config,
-    pub transposition_table: TT,
     phantom: std::marker::PhantomData<()>,
 }
 
@@ -45,7 +44,6 @@ where
             tree: PlainTree::new(expected_num_nodes),
             mcts_config,
             heuristic_config,
-            transposition_table: TT::new(expected_num_nodes),
             phantom: std::marker::PhantomData,
         }
     }
@@ -62,10 +60,8 @@ where
     EP: ExpansionPolicy<G, H, MC>,
     SP: SimulationPolicy<G, H, MC>,
 {
-    type Tree = PlainTree<G, H, Self, UC>;
-    type NodeID = usize;
+    type Tree = PlainTree<G, H, Self, UC, TT>;
     type Config = MC;
-    type TranspositionTable = TT;
     type UTC = UP;
     type Expansion = EP;
     type Simulation = SP;
@@ -74,7 +70,7 @@ where
         // tree is empty, if PlainMCTS was just created
         if let Some(root_id) = self.tree.root_id() {
             // search for node with state in transposition table
-            if let Some(node_of_state_id) = self.transposition_table.get(state) {
+            if let Some(node_of_state_id) = self.tree.transposition_table.get(state) {
                 self.tree.set_root(*node_of_state_id);
                 return true;
             }
@@ -121,25 +117,22 @@ where
         let expansion_policy = EP::new(state, &self.heuristic_config);
         let new_root = PlainNode::new(state.clone(), expansion_policy);
         let root_id = self.tree.init_root(new_root);
-        self.transposition_table.clear();
-        self.transposition_table.insert(state.clone(), root_id);
+        self.tree.transposition_table.clear();
+        self.tree.transposition_table.insert(state.clone(), root_id);
     }
 
     fn iterate(&mut self) {
         // separate parameters of PlainMCTS to satisfy borrow checker
-        let (tree, mcts_config, heuristic_config, transposition_table) = (
-            &mut self.tree,
-            &self.mcts_config,
-            &self.heuristic_config,
-            &mut self.transposition_table,
-        );
+        let (tree, mcts_config, heuristic_config) =
+            (&mut self.tree, &self.mcts_config, &self.heuristic_config);
 
         let root_id = tree
             .root_id()
             .expect("Tree root must be initialized before iterate.");
         let mut path = vec![root_id];
         let mut current_id = root_id;
-        let mut new_children: Vec<Self::NodeID> = Vec::new();
+        // We can use usize here as type for NodeID, since we know that PlainTree uses usize as NodeID.
+        let mut new_children: Vec<usize> = Vec::new();
 
         // select and expand until at least one new child is created or a leaf without children is found
         // We need to place the selection and expansion in a loop, because it can happen that we reach a
@@ -232,7 +225,7 @@ where
                     // To as much flexible as possible, we will use traits for exploitation and exploration, which may
                     // be used by node and/ or edge. We although add a "coordination" trait, which implementations
                     // decide, how to use the exploitation and exploration traits from node and edge.
-                    if let Some(&cached_node_id) = transposition_table.get(&new_state) {
+                    if let Some(&cached_node_id) = tree.transposition_table.get(&new_state) {
                         tree.link_child(current_id, mv, cached_node_id);
                         let visits = tree.get_node(cached_node_id).get_visits();
                         if visits == 0 {
@@ -257,7 +250,7 @@ where
                     let expansion_policy = EP::new(&new_state, heuristic_config);
                     let new_node = PlainNode::new(new_state.clone(), expansion_policy);
                     let new_child_id = tree.add_child(current_id, mv, new_node);
-                    transposition_table.insert(new_state, new_child_id);
+                    tree.transposition_table.insert(new_state, new_child_id);
                     new_children.push(new_child_id);
                 }
                 // Just take the first newly added child if any.
@@ -322,7 +315,7 @@ where
     }
 }
 
-fn back_propagation<G, H, A, T>(tree: &mut T, path: &[A::NodeID], result: f32)
+fn back_propagation<G, H, A, T>(tree: &mut T, path: &[T::NodeID], result: f32)
 where
     G: MCTSGame,
     H: Heuristic<G>,

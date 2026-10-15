@@ -9,15 +9,12 @@
 // NoHeuristic can be used if ho heuristic is required or feasible.
 
 use super::{
-    ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, MCTSTree, SimulationPolicy,
-    TranspositionTable, UCTPolicy,
+    ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, MCTSTree, SimulationPolicy, UCTPolicy,
 };
 
 pub trait MCTSAlgo<G: MCTSGame, H: Heuristic<G>>: Sized + Clone + Sync + Send {
     type Tree: MCTSTree<G, H, Self>;
-    type NodeID: Copy + Eq + std::fmt::Debug;
     type Config: MCTSConfig<G::Player>;
-    type TranspositionTable: TranspositionTable<G::State, Self::NodeID>;
     type UTC: UCTPolicy<G, Self::Config>;
     type Expansion: ExpansionPolicy<G, H, Self::Config>;
     type Simulation: SimulationPolicy<G, H, Self::Config>;

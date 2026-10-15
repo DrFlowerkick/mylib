@@ -4,27 +4,29 @@ use super::{Heuristic, MCTSAlgo, MCTSGame, MCTSTree};
 use std::collections::HashSet;
 
 // iterative DFS over NodeIDs, Tree is extern.
-pub struct DfsWalker<G, H, A>
+pub struct DfsWalker<G, H, A, T>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
-    A::NodeID: std::hash::Hash,
+    T: MCTSTree<G, H, A>,
+    T::NodeID: std::hash::Hash,
 {
-    stack: Vec<A::NodeID>,
-    skip: HashSet<A::NodeID>,
-    visited: HashSet<A::NodeID>, // required because of transposition table
-    _phantom: std::marker::PhantomData<(G, H, A)>,
+    stack: Vec<T::NodeID>,
+    skip: HashSet<T::NodeID>,
+    visited: HashSet<T::NodeID>, // required because of transposition table
+    _phantom: std::marker::PhantomData<(G, H, A, T)>,
 }
 
-impl<G, H, A> DfsWalker<G, H, A>
+impl<G, H, A, T> DfsWalker<G, H, A, T>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
-    A::NodeID: std::hash::Hash,
+    T: MCTSTree<G, H, A>,
+    T::NodeID: std::hash::Hash,
 {
-    pub fn new(start: A::NodeID, skip: impl IntoIterator<Item = A::NodeID>) -> Self {
+    pub fn new(start: T::NodeID, skip: impl IntoIterator<Item = T::NodeID>) -> Self {
         let stack = vec![start];
         Self {
             stack,
@@ -34,7 +36,7 @@ where
         }
     }
 
-    pub fn next(&mut self, tree: &A::Tree) -> Option<A::NodeID> {
+    pub fn next(&mut self, tree: &T) -> Option<T::NodeID> {
         let node_id = self.stack.pop()?;
         for (child_id, _) in tree.get_children(node_id).iter().rev() {
             if !self.skip.contains(child_id) && self.visited.insert(*child_id) {
@@ -48,30 +50,32 @@ where
         self.stack.is_empty()
     }
 
-    pub fn into_iter(self, tree: &A::Tree) -> DfsIterator<'_, G, H, A> {
+    pub fn into_iter(self, tree: &T) -> DfsIterator<'_, G, H, A, T> {
         DfsIterator { walker: self, tree }
     }
 }
 
-pub struct DfsIterator<'a, G, H, A>
+pub struct DfsIterator<'a, G, H, A, T>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
-    A::NodeID: std::hash::Hash,
+    T: MCTSTree<G, H, A>,
+    T::NodeID: std::hash::Hash,
 {
-    walker: DfsWalker<G, H, A>,
-    tree: &'a A::Tree,
+    walker: DfsWalker<G, H, A, T>,
+    tree: &'a T,
 }
 
-impl<G, H, A> Iterator for DfsIterator<'_, G, H, A>
+impl<G, H, A, T> Iterator for DfsIterator<'_, G, H, A, T>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
-    A::NodeID: std::hash::Hash,
+    T: MCTSTree<G, H, A>,
+    T::NodeID: std::hash::Hash,
 {
-    type Item = A::NodeID;
+    type Item = T::NodeID;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.walker.next(self.tree)
