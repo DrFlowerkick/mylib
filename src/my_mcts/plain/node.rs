@@ -60,6 +60,8 @@ where
             G::perspective_player(),
         );
     }
+    // ToDo: this must be placed into the UTC Policy, which than although allows variations
+    // like progressive bias.
     fn calc_utc(&mut self, parent_visits: usize, mcts_config: &MC) -> f32 {
         if self.visits == 0 {
             return f32::INFINITY;

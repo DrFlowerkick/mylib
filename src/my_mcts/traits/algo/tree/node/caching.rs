@@ -1,5 +1,9 @@
 // caching traits for mcts including TranspositionTable
 
+// ToDo: total refactoring. We will add Edge and will separate UTCCache
+// into two traits, one for exploitation and one for exploration. They will not be
+// called Cache anymore. Instead the implementing struct will decide, if it will cache or not. 
+
 use super::{MCTSConfig, MCTSGame, UCTPolicy};
 
 pub trait UTCCache<G, UTC, Config>: Clone + Sync + Send

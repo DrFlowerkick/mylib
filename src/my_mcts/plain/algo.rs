@@ -154,6 +154,12 @@ where
         let mut new_children: Vec<Self::NodeID> = Vec::new();
 
         // select and expand until at least one new child is created or a leaf without children is found
+        // We need to place the selection and expansion in a loop, because it can happen that we reach a
+        // node with no children, but all possible moves lead to states that are already in the
+        // transposition table. In this case we cannot create any new child nodes, but we also cannot
+        // simulate the node, since it has no children. Therefore we need to continue selection from the last
+        // node in the path, which is now linked to one or mode nodes in the transposition table. The selection
+        // can now continue to these newly linked nodes.
         loop {
             // Selection
             while !tree.get_children(current_id).is_empty() {
@@ -210,12 +216,51 @@ where
                 for mv in expandable_moves {
                     let new_state =
                         G::apply_move(tree.get_node(current_id).get_state(), &mv, game_cache);
+                    // ToDo: this is double link to a node in the tree.
+                    // But how do we use double links?
+                    // What happens, if we visit this node again later? Back propagation will only move back
+                    // along the path of the current iteration, the second parent will not be updated, since
+                    // it is not part of the path.
+                    // So why do it at all? Because we reduce the number of nodes and therefore branches
+                    // in the tree. Regarding the back propagation we do not benefit from the double link,
+                    // since we do not update the second parent.
+                    // But we benefit from first time linking to a node that has already been visited, since we
+                    // can use its accumulated value for back propagation, see below. Therefore this path instantly
+                    // gets a value of a branch that has already been explored. This is a good thing, since we do
+                    // not have to explore the same branch again. But see comment below, where I discuss the possibility
+                    // of moving to the already explored node instead of back propagating its value.
+                    //
+                    // The big question is: should we back propagate along multiply parents? What is the
+                    // state of the art in MCTS regarding this? I have to check the literature.
+                    // The answer is: no, we should not back propagate along multiply parents. The reason is that the
+                    // back propagation is based on the path that was taken during the selection and expansion phase.
+                    // Researching this question I realized, that a transposition table changes the way UTC works,
+                    // since now separate parents may visit the same child. UTC is based upon one formula:
+                    // N(Parent) = sum(N(Child)) for all children of Parent.
+                    // To always comply with this formula, we have to separate visits from different parents for the
+                    // exploration_score. These visits should be saved in the edge. On the other hand for the
+                    // exploitation_score we can use the accumulated value and visits of the child, since this is
+                    // independent of the parent. So we have to separate the visits for exploration and exploitation.
+                    // 
+                    // To as much flexible as possible, we will use traits for exploitation and exploration, which may
+                    // be used by node and/ or edge. We although add a "coordination" trait, which implementations
+                    // decide, how to use the exploitation and exploration traits from node and edge.
                     if let Some(&cached_node_id) = transposition_table.get(&new_state) {
                         tree.link_child(current_id, mv, cached_node_id);
                         let visits = tree.get_node(cached_node_id).get_visits();
                         if visits == 0 {
+                            // Node does exist, but has not been visited yet. This can happen, if the node was created
+                            // in a previous iteration, but has not been selected yet.
                             new_children.push(cached_node_id);
                         } else {
+                            // The node has already been visited and hence explored, so we use its accumulated value divided by
+                            // the number of visits to back propagate along the path.
+                            // And since this node has already been explored, we do not add it to the new_children vector,
+                            // since we do not want to select it again in this iteration.
+
+                            // ToDo: instead of back propagating here we could set this node as current node and move to new
+                            // cycle of selection and expansion. This would be more consistent with the MCTS algorithm,
+                            // since we would move along an explored path instead of back propagating some value of a sub tree.
                             let get_accumulated_value =
                                 tree.get_node(cached_node_id).get_accumulated_value();
                             back_propagation(tree, &path, get_accumulated_value / visits as f32);
@@ -229,7 +274,8 @@ where
                     transposition_table.insert(new_state, new_child_id);
                     new_children.push(new_child_id);
                 }
-                // take the first newly added child
+                // Just take the first newly added child if any.
+                // They are all equivalent, since they have not been visited yet.
                 let Some(child_index) = new_children.first() else {
                     continue;
                 };
