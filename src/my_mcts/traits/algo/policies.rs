@@ -32,12 +32,7 @@ pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig<G::Player>>: Clone + Sync + 
 pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Player>>:
     Clone + Sync + Send
 {
-    fn new(
-        state: &G::State,
-        game_cache: &mut G::Cache,
-        heuristic_cache: &mut H::Cache,
-        heuristic_config: &H::Config,
-    ) -> Self;
+    fn new(state: &G::State, heuristic_cache: &mut H::Cache, heuristic_config: &H::Config) -> Self;
     fn should_expand(
         &self,
         _visits: usize,
@@ -64,7 +59,6 @@ pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::P
     fn should_cutoff(
         _state: &G::State,
         _depth: usize,
-        _game_cache: &mut G::Cache,
         _heuristic_cache: &mut H::Cache,
         _perspective_player: Option<G::Player>,
         _mcts_config: &Config,

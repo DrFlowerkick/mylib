@@ -123,11 +123,13 @@ impl Circle {
             .abs()
             .cmp(&(self.center.distance(other.center) as i64))
         {
-            Ordering::Greater => if self.radius > other.radius {
-                FormOrdering::Inside
-            } else {
-                FormOrdering::IsContainedBy
-            },
+            Ordering::Greater => {
+                if self.radius > other.radius {
+                    FormOrdering::Inside
+                } else {
+                    FormOrdering::IsContainedBy
+                }
+            }
             Ordering::Equal => {
                 if self.center == other.center {
                     FormOrdering::Identical

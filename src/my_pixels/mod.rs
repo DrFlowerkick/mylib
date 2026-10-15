@@ -3,5 +3,5 @@
 //! A single pixel is represented as Point or Point3D from my_geometry
 
 pub mod my_box;
-pub mod my_pixel_rectangle;
 pub mod my_diamond;
+pub mod my_pixel_rectangle;

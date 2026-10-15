@@ -1,6 +1,6 @@
 // implementations of ExpansionPolicy
 
-use super::{ExpansionPolicy, GameCache, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame};
+use super::{ExpansionPolicy, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame};
 use rand::{prelude::SliceRandom, rng};
 
 #[derive(Clone)]
@@ -14,7 +14,6 @@ where
 {
     fn new(
         _state: &G::State,
-        _game_cache: &mut G::Cache,
         _heuristic_cache: &mut H::Cache,
         _heuristic_config: &H::Config,
     ) -> Self {
@@ -68,14 +67,10 @@ where
 {
     fn new(
         state: &G::State,
-        game_cache: &mut G::Cache,
         _heuristic_cache: &mut H::Cache,
         _heuristic_config: &H::Config,
     ) -> Self {
-        let is_terminal = match game_cache.get_terminal_value(state) {
-            Some(status) => status.is_some(),
-            None => G::evaluate(state, game_cache).is_some(),
-        };
+        let is_terminal = G::evaluate(state).is_some();
         if is_terminal {
             return ProgressiveWidening {
                 unexpanded_moves: vec![],
@@ -162,16 +157,8 @@ where
     H: Heuristic<G>,
     Config: MCTSConfig<G::Player>,
 {
-    fn new(
-        state: &G::State,
-        game_cache: &mut G::Cache,
-        heuristic_cache: &mut H::Cache,
-        heuristic_config: &H::Config,
-    ) -> Self {
-        let is_terminal = match game_cache.get_terminal_value(state) {
-            Some(status) => status.is_some(),
-            None => G::evaluate(state, game_cache).is_some(),
-        };
+    fn new(state: &G::State, heuristic_cache: &mut H::Cache, heuristic_config: &H::Config) -> Self {
+        let is_terminal = G::evaluate(state).is_some();
         if is_terminal {
             return HeuristicProgressiveWidening {
                 unexpanded_moves: vec![],
@@ -179,13 +166,8 @@ where
             };
         }
         let unexpanded_moves = G::available_moves(state).collect::<Vec<_>>();
-        let unexpanded_moves = H::sort_moves(
-            state,
-            unexpanded_moves,
-            game_cache,
-            heuristic_cache,
-            heuristic_config,
-        );
+        let unexpanded_moves =
+            H::sort_moves(state, unexpanded_moves, heuristic_cache, heuristic_config);
         HeuristicProgressiveWidening {
             unexpanded_moves,
             phantom: std::marker::PhantomData,

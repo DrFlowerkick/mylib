@@ -14,7 +14,6 @@ pub trait Heuristic<G: MCTSGame>: Clone + Sync + Send {
 
     fn evaluate_state(
         state: &G::State,
-        game_cache: &mut G::Cache,
         heuristic_cache: &mut Self::Cache,
         perspective_player: Option<G::Player>,
         heuristic_config: &Self::Config,
@@ -22,14 +21,12 @@ pub trait Heuristic<G: MCTSGame>: Clone + Sync + Send {
     fn evaluate_move(
         state: &G::State,
         mv: &G::Move,
-        game_cache: &mut G::Cache,
         heuristic_cache: &mut Self::Cache,
         heuristic_config: &Self::Config,
     ) -> f32;
     fn sort_moves(
         state: &G::State,
         moves: Vec<G::Move>,
-        game_cache: &mut G::Cache,
         heuristic_cache: &mut Self::Cache,
         heuristic_config: &Self::Config,
     ) -> Vec<(f32, G::Move)> {
@@ -37,7 +34,7 @@ pub trait Heuristic<G: MCTSGame>: Clone + Sync + Send {
             .into_iter()
             .map(|mv| {
                 (
-                    Self::evaluate_move(state, &mv, game_cache, heuristic_cache, heuristic_config),
+                    Self::evaluate_move(state, &mv, heuristic_cache, heuristic_config),
                     mv,
                 )
             })

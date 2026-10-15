@@ -9,6 +9,5 @@ pub use simulation_policy::*;
 pub use utc_policy::*;
 
 use super::{
-    ExpansionPolicy, GameCache, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame, SimulationPolicy,
-    UCTPolicy,
+    ExpansionPolicy, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame, SimulationPolicy, UCTPolicy,
 };

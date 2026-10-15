@@ -1,9 +1,9 @@
 // Plain implementation of MCTS
 
 use super::{
-    ExpansionPolicy, GameCache, Heuristic, HeuristicCache, MCTSAlgo, MCTSConfig, MCTSGame,
-    MCTSNode, MCTSTree, PlainNode, PlainTree, SimulationPolicy, TranspositionHashMap,
-    TranspositionTable, UCTPolicy, UTCCache,
+    ExpansionPolicy, Heuristic, HeuristicCache, MCTSAlgo, MCTSConfig, MCTSGame, MCTSNode, MCTSTree,
+    PlainNode, PlainTree, SimulationPolicy, TranspositionHashMap, TranspositionTable, UCTPolicy,
+    UTCCache,
 };
 use rand::{prelude::IteratorRandom, rng};
 
@@ -26,7 +26,6 @@ where
     pub tree: PlainTree<G, H, Self, UC>,
     pub mcts_config: MC,
     pub heuristic_config: H::Config,
-    pub game_cache: G::Cache,
     pub heuristic_cache: H::Cache,
     pub transposition_table: TT,
     phantom: std::marker::PhantomData<()>,
@@ -48,7 +47,6 @@ where
             tree: PlainTree::new(expected_num_nodes),
             mcts_config,
             heuristic_config,
-            game_cache: G::Cache::new(),
             heuristic_cache: H::Cache::new(),
             transposition_table: TT::new(expected_num_nodes),
             phantom: std::marker::PhantomData,
@@ -123,12 +121,7 @@ where
     }
 
     fn reset_root(&mut self, state: &<G as MCTSGame>::State) {
-        let expansion_policy = EP::new(
-            state,
-            &mut self.game_cache,
-            &mut self.heuristic_cache,
-            &self.heuristic_config,
-        );
+        let expansion_policy = EP::new(state, &mut self.heuristic_cache, &self.heuristic_config);
         let new_root = PlainNode::new(state.clone(), expansion_policy);
         let root_id = self.tree.init_root(new_root);
         self.transposition_table.clear();
@@ -137,11 +130,10 @@ where
 
     fn iterate(&mut self) {
         // separate parameters of PlainMCTS to satisfy borrow checker
-        let (tree, mcts_config, heuristic_config, game_cache, heuristic_cache, transposition_table) = (
+        let (tree, mcts_config, heuristic_config, heuristic_cache, transposition_table) = (
             &mut self.tree,
             &self.mcts_config,
             &self.heuristic_config,
-            &mut self.game_cache,
             &mut self.heuristic_cache,
             &mut self.transposition_table,
         );
@@ -195,7 +187,7 @@ where
 
             // EP; force creation of nodes if current_id is root of tree
             if (tree.get_node(current_id).get_visits() == 0 && current_id != root_id)
-                || G::evaluate(tree.get_node(current_id).get_state(), game_cache).is_some()
+                || G::evaluate(tree.get_node(current_id).get_state()).is_some()
             {
                 // If the node has not been visited yet or is terminal, we need to simulate it.
                 break;
@@ -214,8 +206,7 @@ where
 
                 // generate new children nodes from expandable moves
                 for mv in expandable_moves {
-                    let new_state =
-                        G::apply_move(tree.get_node(current_id).get_state(), &mv, game_cache);
+                    let new_state = G::apply_move(tree.get_node(current_id).get_state(), &mv);
                     // ToDo: this is double link to a node in the tree.
                     // But how do we use double links?
                     // What happens, if we visit this node again later? Back propagation will only move back
@@ -241,7 +232,7 @@ where
                     // exploration_score. These visits should be saved in the edge. On the other hand for the
                     // exploitation_score we can use the accumulated value and visits of the child, since this is
                     // independent of the parent. So we have to separate the visits for exploration and exploitation.
-                    // 
+                    //
                     // To as much flexible as possible, we will use traits for exploitation and exploration, which may
                     // be used by node and/ or edge. We although add a "coordination" trait, which implementations
                     // decide, how to use the exploitation and exploration traits from node and edge.
@@ -267,8 +258,7 @@ where
                         }
                         continue;
                     }
-                    let expansion_policy =
-                        EP::new(&new_state, game_cache, heuristic_cache, heuristic_config);
+                    let expansion_policy = EP::new(&new_state, heuristic_cache, heuristic_config);
                     let new_node = PlainNode::new(new_state.clone(), expansion_policy);
                     let new_child_id = tree.add_child(current_id, mv, new_node);
                     transposition_table.insert(new_state, new_child_id);
@@ -294,14 +284,13 @@ where
         let mut current_state = tree.get_node(current_id).get_state().clone();
         let mut depth = 0;
         let simulation_result = loop {
-            if let Some(final_score) = G::evaluate(&current_state, game_cache) {
+            if let Some(final_score) = G::evaluate(&current_state) {
                 break final_score;
             }
 
             if let Some(heuristic) = SP::should_cutoff(
                 &current_state,
                 depth,
-                game_cache,
                 heuristic_cache,
                 Some(G::perspective_player()),
                 mcts_config,
@@ -315,7 +304,6 @@ where
                 &G::available_moves(&current_state)
                     .choose(&mut rng())
                     .expect("No available moves"),
-                game_cache,
             );
             depth += 1;
         };

@@ -9,16 +9,14 @@ where
 {
     fn evaluate_state_recursive(
         state: &G::State,
-        game_cache: &mut G::Cache,
         heuristic_cache: &mut Self::Cache,
         heuristic_config: &Self::Config,
         depth: usize,
         alpha: f32,
     ) -> f32 {
-        let base_heuristic =
-            Self::evaluate_state(state, game_cache, heuristic_cache, None, heuristic_config);
+        let base_heuristic = Self::evaluate_state(state, heuristic_cache, None, heuristic_config);
 
-        if depth == 0 || G::evaluate(state, game_cache).is_some() {
+        if depth == 0 || G::evaluate(state).is_some() {
             return base_heuristic;
         }
 
@@ -28,11 +26,10 @@ where
         // If no constraint on next move, this will be many moves to consider.
         // Therefore we use early exit to reduce calculation time.
         for next_player_move in G::available_moves(state) {
-            let next_player_state = G::apply_move(state, &next_player_move, game_cache);
+            let next_player_state = G::apply_move(state, &next_player_move);
 
             let response_value = Self::evaluate_state_recursive(
                 &next_player_state,
-                game_cache,
                 heuristic_cache,
                 heuristic_config,
                 depth - 1,
