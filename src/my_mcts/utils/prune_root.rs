@@ -2,22 +2,18 @@
 
 use super::{Heuristic, MCTSAlgo, MCTSGame, MCTSTree, PlainTree, TranspositionTable, UTCCache};
 
-pub trait PruneToRoot<G, H, A>
-where
-    G: MCTSGame,
-    H: Heuristic<G>,
-    A: MCTSAlgo<G, H, Tree = Self>,
+pub trait PruneToRoot
 {
     fn prune_to_root(&mut self);
 }
 
 // pruning to root is only allowed for PlainTree, if no transposition table is used,
 // since the table would contain old (and therefore wrong) indices after pruning.
-impl<G, H, A, TT, UC> PruneToRoot<G, H, A> for PlainTree<G, H, A, UC, TT>
+impl<G, H, A, TT, UC> PruneToRoot for PlainTree<G, H, A, UC, TT>
 where
     G: MCTSGame,
     H: Heuristic<G>,
-    A: MCTSAlgo<G, H, Tree = Self>,
+    A: MCTSAlgo<G, H>,
     TT: TranspositionTable<G::State, usize>,
     UC: UTCCache<G, A::UTC, A::Config>,
 {

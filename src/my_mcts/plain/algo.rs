@@ -2,46 +2,37 @@
 
 use super::{
     ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSNode, MCTSTree, PlainNode,
-    PlainTree, SimulationPolicy, TranspositionHashMap, TranspositionTable, UCTPolicy, UTCCache,
+    SimulationPolicy, UCTPolicy,
 };
 use rand::{prelude::IteratorRandom, rng};
 
-// plain type of TranspositionHashMap, which works with PlainTree
-pub type PlainTTHashMap<State> = TranspositionHashMap<State, usize>;
-
 // Use PlainMCTS with your specific implementations of the MCTS traits.
 #[derive(Clone)]
-pub struct PlainMCTS<G, H, MC, UC, TT, UP, EP, SP>
+pub struct PlainMCTS<G, H, MC, UP, EP, SP>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     MC: MCTSConfig<G::Player>,
-    UC: UTCCache<G, UP, MC>,
-    TT: TranspositionTable<G::State, usize>,
     UP: UCTPolicy<G, MC>,
     EP: ExpansionPolicy<G, H, MC>,
     SP: SimulationPolicy<G, H, MC>,
 {
-    pub tree: PlainTree<G, H, Self, UC, TT>,
     pub mcts_config: MC,
     pub heuristic_config: H::Config,
-    phantom: std::marker::PhantomData<()>,
+    phantom: std::marker::PhantomData<(UP, EP, SP)>,
 }
 
-impl<G, H, MC, UC, TT, UP, EP, SP> PlainMCTS<G, H, MC, UC, TT, UP, EP, SP>
+impl<G, H, MC, UP, EP, SP> PlainMCTS<G, H, MC, UP, EP, SP>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     MC: MCTSConfig<G::Player>,
-    UC: UTCCache<G, UP, MC>,
-    TT: TranspositionTable<G::State, usize>,
     UP: UCTPolicy<G, MC>,
     EP: ExpansionPolicy<G, H, MC>,
     SP: SimulationPolicy<G, H, MC>,
 {
-    pub fn new(mcts_config: MC, heuristic_config: H::Config, expected_num_nodes: usize) -> Self {
+    pub fn new(mcts_config: MC, heuristic_config: H::Config) -> Self {
         Self {
-            tree: PlainTree::new(expected_num_nodes),
             mcts_config,
             heuristic_config,
             phantom: std::marker::PhantomData,
@@ -49,76 +40,39 @@ where
     }
 }
 
-impl<G, H, MC, UC, TT, UP, EP, SP> MCTSAlgo<G, H> for PlainMCTS<G, H, MC, UC, TT, UP, EP, SP>
+impl<G, H, MC, UP, EP, SP> MCTSAlgo<G, H> for PlainMCTS<G, H, MC, UP, EP, SP>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     MC: MCTSConfig<G::Player>,
-    UC: UTCCache<G, UP, MC>,
-    TT: TranspositionTable<G::State, usize>,
     UP: UCTPolicy<G, MC>,
     EP: ExpansionPolicy<G, H, MC>,
     SP: SimulationPolicy<G, H, MC>,
 {
-    type Tree = PlainTree<G, H, Self, UC, TT>;
     type Config = MC;
     type UTC = UP;
     type Expansion = EP;
     type Simulation = SP;
 
-    fn set_root(&mut self, state: &G::State) -> bool {
-        // tree is empty, if PlainMCTS was just created
-        if let Some(root_id) = self.tree.root_id() {
-            // search for node with state in transposition table
-            if let Some(node_of_state_id) = self.tree.transposition_table.get(state) {
-                self.tree.set_root(*node_of_state_id);
-                return true;
-            }
-
-            // search for node with state in tree. node must be a either child or grand child of root:
-            // children of root: result of my or opponent moves
-            // grand children of root: result of opponent or my moves
-            // unwrap() is safe here because we just checked that root_id exists
-            // ToDo: this is only true for two player games. transposition table is better for multiplayer
-            if let Some((new_root_id, _)) =
-                self.tree
-                    .get_children(root_id)
-                    .iter()
-                    .map(|&(my_move_node_id, _)| {
-                        (
-                            my_move_node_id,
-                            self.tree.get_node(my_move_node_id).get_state(),
-                        )
-                    })
-                    .chain(self.tree.get_children(root_id).iter().flat_map(
-                        |&(my_move_node_id, _)| {
-                            self.tree.get_children(my_move_node_id).iter().map(
-                                |&(opponent_move_node_id, _)| {
-                                    (
-                                        opponent_move_node_id,
-                                        self.tree.get_node(opponent_move_node_id).get_state(),
-                                    )
-                                },
-                            )
-                        },
-                    ))
-                    .find(|(_, move_node_state)| *move_node_state == state)
-            {
-                self.tree.set_root(new_root_id);
-                return true;
-            }
+    fn set_root(
+        &mut self,
+        state: &G::State,
+        tree: &mut impl MCTSTree<G, H, Self>,
+        max_depth: usize,
+    ) -> bool {
+        // check for state in tree limited by max_depth
+        if let Some(node_of_state_id) = tree.get_node_id(state, max_depth) {
+            tree.set_root(node_of_state_id);
+            return true;
         }
         // state not found -> reset root
-        self.reset_root(state);
+        self.reset_root(state, tree);
         false
     }
 
-    fn reset_root(&mut self, state: &<G as MCTSGame>::State) {
+    fn reset_root(&mut self, state: &<G as MCTSGame>::State, tree: &mut impl MCTSTree<G, H, Self>) {
         let expansion_policy = EP::new(state, &self.heuristic_config);
-        let new_root = PlainNode::new(state.clone(), expansion_policy);
-        let root_id = self.tree.init_root(new_root);
-        self.tree.transposition_table.clear();
-        self.tree.transposition_table.insert(state.clone(), root_id);
+        tree.init_root(state.clone(), expansion_policy);
     }
 
     fn iterate(&mut self) {

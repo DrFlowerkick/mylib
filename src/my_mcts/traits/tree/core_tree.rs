@@ -13,9 +13,10 @@ where
     type TranspositionTable: TranspositionTable<G::State, Self::NodeID>;
 
     fn new(expected_num_nodes: usize) -> Self;
-    fn init_root(&mut self, root_value: Self::Node) -> Self::NodeID;
+    fn init_root(&mut self, state: G::State, expansion_policy: A::Expansion) -> Self::NodeID;
     fn set_root(&mut self, new_root_id: Self::NodeID);
     fn root_id(&self) -> Option<Self::NodeID>;
+    fn get_node_id(&self, state: &G::State, max_depth: usize) -> Option<Self::NodeID>;
     fn get_node(&self, id: Self::NodeID) -> &Self::Node;
     fn get_node_mut(&mut self, id: Self::NodeID) -> &mut Self::Node;
     fn add_child(

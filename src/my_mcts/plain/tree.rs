@@ -1,6 +1,14 @@
 // plain implementation of MCTSTree
 
-use super::{Heuristic, MCTSAlgo, MCTSGame, MCTSTree, PlainNode, TranspositionTable, UTCCache};
+use crate::my_mcts::MCTSNode;
+
+use super::{
+    super::utils::BfsWalker, Heuristic, MCTSAlgo, MCTSGame, MCTSTree, PlainNode,
+    TranspositionHashMap, TranspositionTable, UTCCache,
+};
+
+// plain type of TranspositionHashMap, which works with PlainTree
+pub type PlainTTHashMap<State> = TranspositionHashMap<State, usize>;
 
 // use type definition to keep clippy happy :)
 type Node<G, H, A, UC> = PlainNode<
@@ -51,13 +59,17 @@ where
         }
     }
 
-    fn init_root(&mut self, root_value: Self::Node) -> Self::NodeID {
+    fn init_root(&mut self, state: G::State, expansion_policy: A::Expansion) -> Self::NodeID {
         // Clear any existing nodes and edges
+        self.root_id = 0;
+        self.transposition_table.clear();
+        self.transposition_table
+            .insert(state.clone(), self.root_id);
         self.nodes.clear();
         self.edges.clear();
-        self.nodes.push(root_value);
+        let root_node = PlainNode::new(state, expansion_policy);
+        self.nodes.push(root_node);
         self.edges.push(vec![]);
-        self.root_id = 0;
         self.root_id
     }
 
@@ -72,6 +84,27 @@ where
         } else {
             Some(self.root_id)
         }
+    }
+
+    fn get_node_id(
+        &self,
+        state: &<G as MCTSGame>::State,
+        max_depth: usize,
+    ) -> Option<Self::NodeID> {
+        // if tree is not initialized, return None
+        if self.root_id().is_none() {
+            return None;
+        }
+
+        // search for node with state in transposition table
+        if let Some(node_of_state_id) = self.transposition_table.get(state) {
+            return Some(*node_of_state_id);
+        }
+
+        // breadth-first search (BFS) for node with given state
+        let bfs = BfsWalker::new(self.root_id, None, max_depth);
+        bfs.into_iter(self)
+            .find(|id| self.get_node(*id).get_state() == state)
     }
 
     fn get_node(&self, id: Self::NodeID) -> &Self::Node {

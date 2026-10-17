@@ -13,14 +13,13 @@ use super::{
 };
 
 pub trait MCTSAlgo<G: MCTSGame, H: Heuristic<G>>: Sized + Clone + Sync + Send {
-    type Tree: MCTSTree<G, H, Self>;
     type Config: MCTSConfig<G::Player>;
     type UTC: UCTPolicy<G, Self::Config>;
     type Expansion: ExpansionPolicy<G, H, Self::Config>;
     type Simulation: SimulationPolicy<G, H, Self::Config>;
 
-    fn set_root(&mut self, state: &G::State) -> bool;
-    fn reset_root(&mut self, state: &G::State);
-    fn iterate(&mut self);
-    fn select_move(&self) -> &G::Move;
+    fn set_root(&mut self, state: &G::State, tree: &mut impl MCTSTree<G, H, Self>, max_depth: usize) -> bool;
+    fn reset_root(&mut self, state: &G::State, tree: &mut impl MCTSTree<G, H, Self>);
+    fn iterate(&mut self, tree: &mut impl MCTSTree<G, H, Self>);
+    fn select_move(&self, tree: &impl MCTSTree<G, H, Self>) -> &G::Move;
 }
