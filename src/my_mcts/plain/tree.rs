@@ -37,6 +37,25 @@ where
     phantom: std::marker::PhantomData<(G, H, UC)>,
 }
 
+impl<G, H, A, UC, TT> PlainTree<G, H, A, UC, TT>
+where
+    G: MCTSGame,
+    H: Heuristic<G>,
+    A: MCTSAlgo<G, H>,
+    UC: UTCCache<G, A::UTC, A::Config>,
+    TT: TranspositionTable<G::State, usize>,
+{
+    pub fn new(expected_num_nodes: usize) -> Self {
+        PlainTree {
+            nodes: Vec::with_capacity(expected_num_nodes),
+            edges: Vec::with_capacity(expected_num_nodes),
+            transposition_table: TranspositionTable::new(expected_num_nodes),
+            root_id: 0,
+            phantom: std::marker::PhantomData,
+        }
+    }
+}
+
 impl<G, H, A, UC, TT> MCTSTree<G, H, A> for PlainTree<G, H, A, UC, TT>
 where
     G: MCTSGame,
@@ -49,22 +68,11 @@ where
     type NodeID = usize;
     type TranspositionTable = TT;
 
-    fn new(expected_num_nodes: usize) -> Self {
-        PlainTree {
-            nodes: Vec::with_capacity(expected_num_nodes),
-            edges: Vec::with_capacity(expected_num_nodes),
-            transposition_table: TranspositionTable::new(expected_num_nodes),
-            root_id: 0,
-            phantom: std::marker::PhantomData,
-        }
-    }
-
     fn init_root(&mut self, state: G::State, expansion_policy: A::Expansion) -> Self::NodeID {
         // Clear any existing nodes and edges
         self.root_id = 0;
         self.transposition_table.clear();
-        self.transposition_table
-            .insert(state.clone(), self.root_id);
+        self.transposition_table.insert(state.clone(), self.root_id);
         self.nodes.clear();
         self.edges.clear();
         let root_node = PlainNode::new(state, expansion_policy);
@@ -89,20 +97,22 @@ where
     fn get_node_id(
         &self,
         state: &<G as MCTSGame>::State,
+        start_node_id: Self::NodeID,
         max_depth: usize,
     ) -> Option<Self::NodeID> {
-        // if tree is not initialized, return None
-        if self.root_id().is_none() {
+        // search for node with state in cache (transposition table)
+        if let Some(node_of_state_id) = self.get_cached_node_id(state) {
+            return Some(node_of_state_id);
+        }
+
+        // if not found, try it with bfs from start_node_id
+        if self.nodes.len() <= start_node_id {
+            // start_node_id is not in the tree
             return None;
         }
 
-        // search for node with state in transposition table
-        if let Some(node_of_state_id) = self.transposition_table.get(state) {
-            return Some(*node_of_state_id);
-        }
-
         // breadth-first search (BFS) for node with given state
-        let bfs = BfsWalker::new(self.root_id, None, max_depth);
+        let bfs = BfsWalker::new(start_node_id, None, max_depth);
         bfs.into_iter(self)
             .find(|id| self.get_node(*id).get_state() == state)
     }
@@ -119,13 +129,20 @@ where
         &mut self,
         parent_id: Self::NodeID,
         mv: G::Move,
-        child_value: Self::Node,
+        state: G::State,
+        expansion_policy: A::Expansion,
     ) -> usize {
         let child_id = self.nodes.len();
-        self.nodes.push(child_value);
+        self.transposition_table.insert(state.clone(), child_id);
+        let child = PlainNode::new(state, expansion_policy);
+        self.nodes.push(child);
         self.edges.push(vec![]);
         self.link_child(parent_id, mv, child_id);
         child_id
+    }
+
+    fn get_cached_node_id(&self, state: &<G as MCTSGame>::State) -> Option<Self::NodeID> {
+        self.transposition_table.get(state).copied()
     }
 
     fn link_child(&mut self, parent_id: Self::NodeID, mv: G::Move, child_id: Self::NodeID) {

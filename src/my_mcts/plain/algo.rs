@@ -1,13 +1,13 @@
 // Plain implementation of MCTS
 
 use super::{
-    ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSNode, MCTSTree, PlainNode,
+    ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSNode, MCTSTree,
     SimulationPolicy, UCTPolicy,
 };
 use rand::{prelude::IteratorRandom, rng};
 
 // Use PlainMCTS with your specific implementations of the MCTS traits.
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct PlainMCTS<G, H, MC, UP, EP, SP>
 where
     G: MCTSGame,
@@ -55,13 +55,15 @@ where
     type Simulation = SP;
 
     fn set_root(
-        &mut self,
+        &self,
         state: &G::State,
         tree: &mut impl MCTSTree<G, H, Self>,
         max_depth: usize,
     ) -> bool {
         // check for state in tree limited by max_depth
-        if let Some(node_of_state_id) = tree.get_node_id(state, max_depth) {
+        if let Some(root_id) = tree.root_id()
+            && let Some(node_of_state_id) = tree.get_node_id(state, root_id, max_depth)
+        {
             tree.set_root(node_of_state_id);
             return true;
         }
@@ -70,25 +72,24 @@ where
         false
     }
 
-    fn reset_root(&mut self, state: &<G as MCTSGame>::State, tree: &mut impl MCTSTree<G, H, Self>) {
+    fn reset_root(&self, state: &<G as MCTSGame>::State, tree: &mut impl MCTSTree<G, H, Self>) {
         let expansion_policy = EP::new(state, &self.heuristic_config);
         tree.init_root(state.clone(), expansion_policy);
     }
 
-    fn iterate(&mut self) {
+    fn iterate(&self, tree: &mut impl MCTSTree<G, H, Self>) {
         // separate parameters of PlainMCTS to satisfy borrow checker
-        let (tree, mcts_config, heuristic_config) =
-            (&mut self.tree, &self.mcts_config, &self.heuristic_config);
+        // ToDo: we can probably delete this
+        //let (mcts_config, heuristic_config) = (&self.mcts_config, &self.heuristic_config);
 
         let root_id = tree
             .root_id()
             .expect("Tree root must be initialized before iterate.");
         let mut path = vec![root_id];
         let mut current_id = root_id;
-        // We can use usize here as type for NodeID, since we know that PlainTree uses usize as NodeID.
-        let mut new_children: Vec<usize> = Vec::new();
 
-        // select and expand until at least one new child is created or a leaf without children is found
+        /* ----------------- Select & Expand ----------------- */
+        // Select and expand until at least one new child is created or a leaf without children is found.
         // We need to place the selection and expansion in a loop, because it can happen that we reach a
         // node with no children, but all possible moves lead to states that are already in the
         // transposition table. In this case we cannot create any new child nodes, but we also cannot
@@ -104,8 +105,8 @@ where
                 if tree.get_node(current_id).should_expand(
                     parent_visits,
                     num_parent_children,
-                    mcts_config,
-                    heuristic_config,
+                    &self.mcts_config,
+                    &self.heuristic_config,
                 ) {
                     break;
                 }
@@ -117,7 +118,7 @@ where
                     let (child_index, _) = tree.get_children(current_id)[vec_index];
                     let utc = tree
                         .get_node_mut(child_index)
-                        .calc_utc(parent_visits, mcts_config);
+                        .calc_utc(parent_visits, &self.mcts_config);
                     if utc > best_utc {
                         best_utc = utc;
                         best_child_index = Some(child_index);
@@ -137,10 +138,22 @@ where
             } else {
                 // If the node has been visited, we need to expand it.
                 let num_parent_children = tree.get_children(current_id).len();
-                let expandable_moves = tree.get_node_mut(current_id).expandable_moves(
+                // Let rust decide on type of NodeID
+                let mut new_children: Vec<_> = Vec::new();
+                // ToDo: refactor expandable moves to next_expandable_move()
+                // I used in the past an array, because basic ExpansionPolicy is to always expand all
+                // possible moves. Therefore I have no need to cache possible moves, which will be
+                // expanded immediately. BUT I change the way how to handle a node, which has already
+                // been visited via another path (using the TranspositionTable trait). Now the strategy is,
+                // that if I stumble during expansion over an existing node, I add this node to path
+                // and go back to selection immediately. This may result in some moves not te be expanded.
+                // Therefore I have to cache moves although for the basic ExpansionPolicy.
+                // A side effect is, that next_expandable_move() is better for dynamic memory,
+                // since I do not have to allocate memory for the vector of expandable_moves.
+                let expandable_moves = tree.get_node_mut(current_id).expandable_moves_s(
                     num_parent_children,
-                    mcts_config,
-                    heuristic_config,
+                    &self.mcts_config,
+                    &self.heuristic_config,
                 );
                 assert!(
                     !expandable_moves.is_empty(),
@@ -179,7 +192,7 @@ where
                     // To as much flexible as possible, we will use traits for exploitation and exploration, which may
                     // be used by node and/ or edge. We although add a "coordination" trait, which implementations
                     // decide, how to use the exploitation and exploration traits from node and edge.
-                    if let Some(&cached_node_id) = tree.transposition_table.get(&new_state) {
+                    if let Some(cached_node_id) = tree.get_cached_node_id(&new_state) {
                         tree.link_child(current_id, mv, cached_node_id);
                         let visits = tree.get_node(cached_node_id).get_visits();
                         if visits == 0 {
@@ -201,15 +214,14 @@ where
                         }
                         continue;
                     }
-                    let expansion_policy = EP::new(&new_state, heuristic_config);
-                    let new_node = PlainNode::new(new_state.clone(), expansion_policy);
-                    let new_child_id = tree.add_child(current_id, mv, new_node);
-                    tree.transposition_table.insert(new_state, new_child_id);
+                    let expansion_policy = EP::new(&new_state, &self.heuristic_config);
+                    let new_child_id = tree.add_child(current_id, mv, new_state, expansion_policy);
                     new_children.push(new_child_id);
                 }
                 // Just take the first newly added child if any.
                 // They are all equivalent, since they have not been visited yet.
                 let Some(child_index) = new_children.first() else {
+                    // ToDo: is this possibly? AND is continue what I want here?
                     continue;
                 };
                 path.push(*child_index);
@@ -235,8 +247,8 @@ where
                 &current_state,
                 depth,
                 Some(G::perspective_player()),
-                mcts_config,
-                heuristic_config,
+                &self.mcts_config,
+                &self.heuristic_config,
             ) {
                 break heuristic;
             }

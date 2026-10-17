@@ -25,7 +25,7 @@ where
         mcts_config: &MC,
         heuristic_config: &H::Config,
     ) -> bool;
-    fn expandable_moves(
+    fn expandable_moves_s(
         &mut self,
         num_parent_children: usize,
         mcts_config: &MC,

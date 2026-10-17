@@ -94,7 +94,7 @@ mod tests {
 
     use crate::my_mcts::{
         BaseConfig, CachedUTC, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo, NoHeuristic,
-        NoTranspositionTable, NoUTCCache, PlainMCTS, ProgressiveWidening, StaticC,
+        NoTranspositionTable, NoUTCCache, PlainMCTS, PlainTree, ProgressiveWidening, StaticC,
         TranspositionHashMap,
     };
 
@@ -102,21 +102,26 @@ mod tests {
         TicTacToeMCTSGame,
         NoHeuristic,
         BaseConfig<TicTacToeStatus>,
-        NoUTCCache,
-        NoTranspositionTable,
         StaticC,
         ExpandAll,
         DefaultSimulationPolicy,
     >;
+    type TTTBasicMCTSTree =
+        PlainTree<TicTacToeMCTSGame, NoHeuristic, TTTBasicMCTS, NoUTCCache, NoTranspositionTable>;
     type TTTFullMCTS = PlainMCTS<
         TicTacToeMCTSGame,
         NoHeuristic,
         BaseConfig<TicTacToeStatus>,
-        CachedUTC,
-        TranspositionHashMap<TicTacToeGame, usize>,
         DynamicC,
         ProgressiveWidening<TicTacToeMCTSGame, BaseConfig<TicTacToeStatus>>,
         DefaultSimulationPolicy,
+    >;
+    type TTTFullMCTSTree = PlainTree<
+        TicTacToeMCTSGame,
+        NoHeuristic,
+        TTTFullMCTS,
+        CachedUTC,
+        TranspositionHashMap<TicTacToeGame, usize>,
     >;
 
     use std::time::{Duration, Instant};
@@ -138,8 +143,9 @@ mod tests {
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: TTTBasicMCTS =
-                PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
+            let mcts_tic_tac_toe: TTTBasicMCTS =
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
+            let mut mcts_tree_tic_tac_toe: TTTBasicMCTSTree = PlainTree::new(EXPECTED_NUM_NODES);
             let mut ttt_game_data = TicTacToeGame::new();
             ttt_game_data.set_current_player(TicTacToeStatus::First);
             let mut time_out = TIME_OUT_FIRST_TURN;
@@ -148,12 +154,12 @@ mod tests {
                 match ttt_game_data.current_player {
                     TicTacToeStatus::First => {
                         let start = Instant::now();
-                        mcts_tic_tac_toe.set_root(&ttt_game_data);
+                        mcts_tic_tac_toe.set_root(&ttt_game_data, &mut mcts_tree_tic_tac_toe, 2);
                         while start.elapsed() < time_out {
-                            mcts_tic_tac_toe.iterate();
+                            mcts_tic_tac_toe.iterate(&mut mcts_tree_tic_tac_toe);
                         }
                         time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                        let selected_move = *mcts_tic_tac_toe.select_move();
+                        let selected_move = *mcts_tic_tac_toe.select_move(&mcts_tree_tic_tac_toe);
                         eprintln!("me : {}", selected_move.cell);
                         ttt_game_data =
                             TicTacToeMCTSGame::apply_move(&ttt_game_data, &selected_move);
@@ -197,8 +203,9 @@ mod tests {
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: TTTBasicMCTS =
-                PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
+            let mcts_tic_tac_toe: TTTBasicMCTS =
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
+            let mut mcts_tree_tic_tac_toe: TTTBasicMCTSTree = PlainTree::new(EXPECTED_NUM_NODES);
             let mut ttt_game_data = TicTacToeGame::new();
             ttt_game_data.set_current_player(TicTacToeStatus::First);
             let mut time_out = TIME_OUT_FIRST_TURN;
@@ -207,12 +214,12 @@ mod tests {
                 match ttt_game_data.current_player {
                     TicTacToeStatus::First => {
                         let start = Instant::now();
-                        mcts_tic_tac_toe.set_root(&ttt_game_data);
+                        mcts_tic_tac_toe.set_root(&ttt_game_data, &mut mcts_tree_tic_tac_toe, 2);
                         while start.elapsed() < time_out {
-                            mcts_tic_tac_toe.iterate();
+                            mcts_tic_tac_toe.iterate(&mut mcts_tree_tic_tac_toe);
                         }
                         time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                        let selected_move = *mcts_tic_tac_toe.select_move();
+                        let selected_move = *mcts_tic_tac_toe.select_move(&mcts_tree_tic_tac_toe);
                         eprintln!("me : {}", selected_move.cell);
                         ttt_game_data =
                             TicTacToeMCTSGame::apply_move(&ttt_game_data, &selected_move);
@@ -256,13 +263,17 @@ mod tests {
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut first_mcts_tic_tac_toe: TTTBasicMCTS =
-                PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
+            let first_mcts_tic_tac_toe: TTTBasicMCTS =
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
+            let mut first_mcts_tree_tic_tac_toe: TTTBasicMCTSTree =
+                PlainTree::new(EXPECTED_NUM_NODES);
             let mut first_ttt_game_data = TicTacToeGame::new();
             first_ttt_game_data.set_current_player(TicTacToeStatus::First);
             let mut first_time_out = TIME_OUT_FIRST_TURN;
-            let mut second_mcts_tic_tac_toe: TTTFullMCTS =
-                PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
+            let second_mcts_tic_tac_toe: TTTFullMCTS =
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
+            let mut second_mcts_tree_tic_tac_toe: TTTFullMCTSTree =
+                PlainTree::new(EXPECTED_NUM_NODES);
             let mut second_ttt_game_data = TicTacToeGame::new();
             second_ttt_game_data.set_current_player(TicTacToeStatus::Second);
             let mut second_time_out = TIME_OUT_FIRST_TURN;
@@ -272,13 +283,18 @@ mod tests {
                 let mut iteration_counter: usize = 0;
                 if first {
                     let start = Instant::now();
-                    first_mcts_tic_tac_toe.set_root(&first_ttt_game_data);
+                    first_mcts_tic_tac_toe.set_root(
+                        &first_ttt_game_data,
+                        &mut first_mcts_tree_tic_tac_toe,
+                        2,
+                    );
                     while start.elapsed() < first_time_out {
-                        first_mcts_tic_tac_toe.iterate();
+                        first_mcts_tic_tac_toe.iterate(&mut first_mcts_tree_tic_tac_toe);
                         iteration_counter += 1;
                     }
                     first_time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                    let selected_move = *first_mcts_tic_tac_toe.select_move();
+                    let selected_move =
+                        *first_mcts_tic_tac_toe.select_move(&first_mcts_tree_tic_tac_toe);
                     eprintln!(
                         "first : {} (Iterations: {})",
                         selected_move.cell, iteration_counter
@@ -290,13 +306,18 @@ mod tests {
                     first = false;
                 } else {
                     let start = Instant::now();
-                    second_mcts_tic_tac_toe.set_root(&second_ttt_game_data);
+                    second_mcts_tic_tac_toe.set_root(
+                        &second_ttt_game_data,
+                        &mut second_mcts_tree_tic_tac_toe,
+                        2,
+                    );
                     while start.elapsed() < second_time_out {
-                        second_mcts_tic_tac_toe.iterate();
+                        second_mcts_tic_tac_toe.iterate(&mut second_mcts_tree_tic_tac_toe);
                         iteration_counter += 1;
                     }
                     second_time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                    let selected_move = *second_mcts_tic_tac_toe.select_move();
+                    let selected_move =
+                        *second_mcts_tic_tac_toe.select_move(&second_mcts_tree_tic_tac_toe);
                     eprintln!(
                         "second: {} (Iterations: {}",
                         selected_move.cell, iteration_counter

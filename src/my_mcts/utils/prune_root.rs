@@ -2,8 +2,7 @@
 
 use super::{Heuristic, MCTSAlgo, MCTSGame, MCTSTree, PlainTree, TranspositionTable, UTCCache};
 
-pub trait PruneToRoot
-{
+pub trait PruneToRoot {
     fn prune_to_root(&mut self);
 }
 

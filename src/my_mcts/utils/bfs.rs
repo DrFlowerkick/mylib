@@ -27,7 +27,11 @@ where
     T: MCTSTree<G, H, A>,
     T::NodeID: std::hash::Hash,
 {
-    pub fn new(start: T::NodeID, skip: impl IntoIterator<Item = T::NodeID>, max_depth: usize) -> Self {
+    pub fn new(
+        start: T::NodeID,
+        skip: impl IntoIterator<Item = T::NodeID>,
+        max_depth: usize,
+    ) -> Self {
         let mut queue = VecDeque::new();
         let mut visited = HashSet::new();
         queue.push_back((start, 0));
@@ -46,7 +50,7 @@ where
         let (node_id, depth) = self.queue.pop_front()?;
         if depth + 1 > self.max_depth {
             return Some(node_id);
-        } 
+        }
 
         for (child_id, _) in tree.get_children(node_id) {
             if !self.skip.contains(child_id) && self.visited.insert(*child_id) {
