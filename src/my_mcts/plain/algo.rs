@@ -254,16 +254,14 @@ where
         back_propagation(tree, &path, simulation_result);
     }
 
-    fn select_move(&self) -> &G::Move {
-        let root_id = self
-            .tree
+    fn select_move<'a>(&'a self, tree: &'a impl MCTSTree<G, H, Self>) -> &'a G::Move {
+        let root_id = tree
             .root_id()
             .expect("Root node must be initialized before selecting a move");
-        let (_, mv) = self
-            .tree
+        let (_, mv) = tree
             .get_children(root_id)
             .iter()
-            .max_by_key(|&&(child_id, _)| self.tree.get_node(child_id).get_visits())
+            .max_by_key(|&&(child_id, _)| tree.get_node(child_id).get_visits())
             .expect("could not find move id");
         mv
     }
