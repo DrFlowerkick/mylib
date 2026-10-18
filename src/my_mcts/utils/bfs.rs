@@ -52,9 +52,9 @@ where
             return Some(node_id);
         }
 
-        for (child_id, _) in tree.get_children(node_id) {
-            if !self.skip.contains(child_id) && self.visited.insert(*child_id) {
-                self.queue.push_back((*child_id, depth + 1));
+        for child_id in tree.get_children_ids(node_id) {
+            if !self.skip.contains(&child_id) && self.visited.insert(child_id) {
+                self.queue.push_back((child_id, depth + 1));
             }
         }
 

@@ -18,11 +18,4 @@ where
     fn get_accumulated_value(&self) -> f32;
     fn update_stats(&mut self, result: f32);
     fn calc_utc(&mut self, parent_visits: usize, mcts_config: &MC) -> f32;
-    fn get_expansion_policy(&self) -> &EP;
-    fn pop_expandable_move(
-        &mut self,
-        num_parent_children: usize,
-        mcts_config: &MC,
-        heuristic_config: &H::Config,
-    ) -> Option<G::Move>;
 }

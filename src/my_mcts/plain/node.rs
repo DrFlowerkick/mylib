@@ -86,22 +86,4 @@ where
         );
         exploitation + exploration
     }
-    fn get_expansion_policy(&self) -> &EP {
-        &self.expansion_policy
-    }
-    fn pop_expandable_move(
-        &mut self,
-        num_parent_children: usize,
-        mcts_config: &MC,
-        heuristic_config: &H::Config,
-    ) -> Option<G::Move> {
-        let (state, visits, ep) = (&self.state, self.visits, &mut self.expansion_policy);
-        ep.pop_expandable_move(
-            state,
-            visits,
-            num_parent_children,
-            mcts_config,
-            heuristic_config,
-        )
-    }
 }

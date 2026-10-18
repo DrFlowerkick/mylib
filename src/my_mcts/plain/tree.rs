@@ -1,6 +1,6 @@
 // plain implementation of MCTSTree
 
-use crate::my_mcts::MCTSNode;
+use crate::my_mcts::{ExpansionPolicy, MCTSNode};
 
 use super::{
     super::utils::BfsWalker, Heuristic, MCTSAlgo, MCTSGame, MCTSTree, PlainNode,
@@ -114,15 +114,7 @@ where
         // breadth-first search (BFS) for node with given state
         let bfs = BfsWalker::new(start_node_id, None, max_depth);
         bfs.into_iter(self)
-            .find(|id| self.get_node(*id).get_state() == state)
-    }
-
-    fn get_node(&self, id: Self::NodeID) -> &Self::Node {
-        &self.nodes[id]
-    }
-
-    fn get_node_mut(&mut self, id: Self::NodeID) -> &mut Self::Node {
-        &mut self.nodes[id]
+            .find(|id| self.get_node_state(*id) == state)
     }
 
     fn add_child(&mut self, parent_id: Self::NodeID, mv: G::Move, state: G::State) -> usize {
@@ -146,7 +138,64 @@ where
             .push((child_id, mv));
     }
 
-    fn get_children(&self, id: Self::NodeID) -> &[(Self::NodeID, G::Move)] {
-        &self.edges[id][..]
+    // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
+    fn get_node_visits(&self, id: Self::NodeID) -> usize {
+        self.nodes[id].visits
+    }
+
+    fn get_node_state(&self, id: Self::NodeID) -> &<G as MCTSGame>::State {
+        &self.nodes[id].state
+    }
+
+    fn should_node_expand(
+        &self,
+        id: Self::NodeID,
+        mcts_config: &A::Config,
+        heuristic_config: &H::Config,
+    ) -> bool {
+        let visits = self.get_node_visits(id);
+        let num_children = self.count_children(id);
+        self.nodes[id].expansion_policy.should_expand(
+            visits,
+            num_children,
+            mcts_config,
+            heuristic_config,
+        )
+    }
+
+    fn pop_node_expandable_move(
+        &mut self,
+        id: Self::NodeID,
+        mcts_config: &A::Config,
+        heuristic_config: &H::Config,
+    ) -> Option<G::Move> {
+        let visits = self.get_node_visits(id);
+        let num_children = self.count_children(id);
+        let node = &mut self.nodes[id];
+        let (state, ep) = (&node.state, &mut node.expansion_policy);
+        ep.pop_expandable_move(state, visits, num_children, mcts_config, heuristic_config)
+    }
+
+    fn count_children(&self, id: Self::NodeID) -> usize {
+        self.edges[id].len()
+    }
+
+    fn get_children_ids<'a>(
+        &'a self,
+        id: Self::NodeID,
+    ) -> Box<dyn Iterator<Item = Self::NodeID> + 'a> {
+        Box::new(self.edges[id].iter().map(|(id, _)| *id))
+    }
+
+    fn get_move(&self, parent_id: Self::NodeID, id: Self::NodeID) -> &<G as MCTSGame>::Move {
+        self.edges[parent_id]
+            .iter()
+            .find(|(child_id, _)| *child_id == id)
+            .map(|(_, mv)| mv)
+            .expect("expected valid child id")
+    }
+
+    fn get_node_mut(&mut self, id: Self::NodeID) -> &mut Self::Node {
+        &mut self.nodes[id]
     }
 }

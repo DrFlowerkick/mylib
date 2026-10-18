@@ -97,34 +97,24 @@ where
         // can now continue to these newly linked nodes.
         'selection_and_expansion: loop {
             // Selection
-            while !tree.get_children(current_id).is_empty() {
-                let parent_visits = tree.get_node(current_id).get_visits();
-                let num_parent_children = tree.get_children(current_id).len();
+            while tree.count_children(current_id) > 0 {
+                let parent_visits = tree.get_node_visits(current_id);
                 // check expansion policy
-                if tree
-                    .get_node(current_id)
-                    .get_expansion_policy()
-                    .should_expand(
-                        parent_visits,
-                        num_parent_children,
-                        &self.mcts_config,
-                        &self.heuristic_config,
-                    )
-                {
+                if tree.should_node_expand(current_id, &self.mcts_config, &self.heuristic_config) {
                     break;
                 }
 
                 let mut best_child_index: Option<_> = None;
                 let mut best_utc = f32::NEG_INFINITY;
+                let children_ids: Vec<_> = tree.get_children_ids(current_id).collect();
 
-                for vec_index in 0..num_parent_children {
-                    let (child_index, _) = tree.get_children(current_id)[vec_index];
+                for child_id in children_ids {
                     let utc = tree
-                        .get_node_mut(child_index)
+                        .get_node_mut(child_id)
                         .calc_utc(parent_visits, &self.mcts_config);
                     if utc > best_utc {
                         best_utc = utc;
-                        best_child_index = Some(child_index);
+                        best_child_index = Some(child_id);
                     }
                 }
                 let best_child_index = best_child_index.expect("Could not find best child index.");
@@ -134,26 +124,25 @@ where
 
             // Expansion
             // force creation of nodes if current_id is root of tree
-            if (tree.get_node(current_id).get_visits() == 0 && current_id != root_id)
-                || G::evaluate(tree.get_node(current_id).get_state()).is_some()
+            if (tree.get_node_visits(current_id) == 0 && current_id != root_id)
+                || G::evaluate(tree.get_node_state(current_id)).is_some()
             {
                 // If the node has not been visited yet or is terminal, we need to simulate it.
                 break;
             } else {
                 // If the node has been visited, we need to expand it.
-                let num_parent_children = tree.get_children(current_id).len();
                 let mut selected_child = None;
 
                 // generate new children nodes from expandable moves
-                while let Some(mv) = tree.get_node_mut(current_id).pop_expandable_move(
-                    num_parent_children,
+                while let Some(mv) = tree.pop_node_expandable_move(
+                    current_id,
                     &self.mcts_config,
                     &self.heuristic_config,
                 ) {
-                    let new_state = G::apply_move(tree.get_node(current_id).get_state(), &mv);
+                    let new_state = G::apply_move(tree.get_node_state(current_id), &mv);
                     if let Some(cached_node_id) = tree.get_cached_node_id(&new_state) {
                         tree.link_child(current_id, mv, cached_node_id);
-                        let visits = tree.get_node(cached_node_id).get_visits();
+                        let visits = tree.get_node_visits(cached_node_id);
                         if visits == 0 {
                             // Node does exist, but has not been visited yet. This can happen, if the node was created
                             // in a previous iteration, but has not been selected yet.
@@ -187,7 +176,7 @@ where
         // 0.5: tie
         // 0.0: win for opponent
         // or some heuristic value between 0.0 and 1.0
-        let mut current_state = tree.get_node(current_id).get_state().clone();
+        let mut current_state = tree.get_node_state(current_id).clone();
         let mut depth = 0;
         let simulation_result = loop {
             if let Some(final_score) = G::evaluate(&current_state) {
@@ -221,12 +210,11 @@ where
         let root_id = tree
             .root_id()
             .expect("Root node must be initialized before selecting a move");
-        let (_, mv) = tree
-            .get_children(root_id)
-            .iter()
-            .max_by_key(|&&(child_id, _)| tree.get_node(child_id).get_visits())
+        let most_visited_child_id = tree
+            .get_children_ids(root_id)
+            .max_by_key(|&child_id| tree.get_node_visits(child_id))
             .expect("could not find move id");
-        mv
+        tree.get_move(root_id, most_visited_child_id)
     }
 }
 

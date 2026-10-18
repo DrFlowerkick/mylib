@@ -35,7 +35,7 @@ pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Pl
     fn should_expand(
         &self,
         _visits: usize,
-        _num_parent_children: usize,
+        _num_children: usize,
         _mcts_config: &Config,
         _heuristic_config: &H::Config,
     ) -> bool {
@@ -45,7 +45,7 @@ pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Pl
         &mut self,
         state: &G::State,
         visits: usize,
-        num_parent_children: usize,
+        num_children: usize,
         mcts_config: &Config,
         heuristic_config: &H::Config,
     ) -> Option<G::Move>;

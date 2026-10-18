@@ -31,7 +31,7 @@ where
     fn should_expand(
         &self,
         _visits: usize,
-        _num_parent_children: usize,
+        _num_children: usize,
         _mcts_config: &Config,
         _heuristic_config: &H::Config,
     ) -> bool {
@@ -47,7 +47,7 @@ where
         &mut self,
         state: &G::State,
         _visits: usize,
-        _num_parent_children: usize,
+        _num_children: usize,
         _mcts_config: &Config,
         _heuristic_config: &H::Config,
     ) -> Option<G::Move> {
@@ -111,12 +111,12 @@ where
     fn should_expand(
         &self,
         visits: usize,
-        num_parent_children: usize,
+        num_children: usize,
         mcts_config: &Config,
         _heuristic_config: &H::Config,
     ) -> bool {
         if let Some(moves) = &self.unexpanded_moves
-            && num_parent_children < Self::allowed_children(visits, mcts_config)
+            && num_children < Self::allowed_children(visits, mcts_config)
             && !moves.is_empty()
         {
             true
@@ -128,12 +128,12 @@ where
         &mut self,
         state: &G::State,
         visits: usize,
-        num_parent_children: usize,
+        num_children: usize,
         mcts_config: &Config,
         _heuristic_config: &H::Config,
     ) -> Option<G::Move> {
         if let Some(moves) = &mut self.unexpanded_moves {
-            if num_parent_children < Self::allowed_children(visits, mcts_config) {
+            if num_children < Self::allowed_children(visits, mcts_config) {
                 moves.pop()
             } else {
                 None
@@ -205,13 +205,13 @@ where
     fn should_expand(
         &self,
         visits: usize,
-        num_parent_children: usize,
+        num_children: usize,
         mcts_config: &Config,
         heuristic_config: &H::Config,
     ) -> bool {
         let threshold = Self::threshold(visits, heuristic_config);
         if let Some(moves) = &self.unexpanded_moves
-            && num_parent_children < Self::allowed_children(visits, mcts_config)
+            && num_children < Self::allowed_children(visits, mcts_config)
             && moves.iter().any(|(score, _)| *score >= threshold)
         {
             true
@@ -223,13 +223,13 @@ where
         &mut self,
         state: &G::State,
         visits: usize,
-        num_parent_children: usize,
+        num_children: usize,
         mcts_config: &Config,
         heuristic_config: &H::Config,
     ) -> Option<G::Move> {
         if let Some(moves) = &mut self.unexpanded_moves {
             let threshold = Self::threshold(visits, heuristic_config);
-            if num_parent_children < Self::allowed_children(visits, mcts_config)
+            if num_children < Self::allowed_children(visits, mcts_config)
                 && moves.iter().any(|(score, _)| *score >= threshold)
             {
                 moves.pop().map(|(_, m)| m)
