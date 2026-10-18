@@ -31,13 +31,13 @@ where
 {
     type Cache = UC;
 
-    fn new(state: G::State, expansion_policy: EP) -> Self {
+    fn new(state: G::State) -> Self {
         PlainNode {
             state,
             visits: 0,
             accumulated_value: 0.0,
-            utc_cache: UC::new(),
-            expansion_policy,
+            utc_cache: UC::default(),
+            expansion_policy: EP::default(),
             phantom: std::marker::PhantomData,
         }
     }
@@ -86,30 +86,20 @@ where
         );
         exploitation + exploration
     }
-    fn should_expand(
-        &self,
-        visits: usize,
-        num_parent_children: usize,
-        mcts_config: &MC,
-        heuristic_config: &H::Config,
-    ) -> bool {
-        self.expansion_policy.should_expand(
-            visits,
-            num_parent_children,
-            mcts_config,
-            heuristic_config,
-        )
+    fn get_expansion_policy(&self) -> &EP {
+        &self.expansion_policy
     }
-    fn expandable_moves_s(
+    fn pop_expandable_move(
         &mut self,
         num_parent_children: usize,
         mcts_config: &MC,
         heuristic_config: &H::Config,
-    ) -> Vec<G::Move> {
-        self.expansion_policy.expandable_moves(
-            self.visits,
+    ) -> Option<G::Move> {
+        let (state, visits, ep) = (&self.state, self.visits, &mut self.expansion_policy);
+        ep.pop_expandable_move(
+            state,
+            visits,
             num_parent_children,
-            &self.state,
             mcts_config,
             heuristic_config,
         )

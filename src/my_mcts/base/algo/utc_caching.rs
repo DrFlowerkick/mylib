@@ -2,7 +2,7 @@
 
 use super::{MCTSConfig, MCTSGame, UCTPolicy, UTCCache};
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct NoUTCCache;
 
 impl<G, UTC, Config> UTCCache<G, UTC, Config> for NoUTCCache
@@ -11,10 +11,6 @@ where
     UTC: UCTPolicy<G, Config>,
     Config: MCTSConfig<G::Player>,
 {
-    fn new() -> Self {
-        NoUTCCache
-    }
-
     fn update_exploitation(&mut self, _v: usize, _a: f32, _l: G::Player, _p: G::Player) {}
     fn get_exploitation(
         &self,
@@ -45,7 +41,7 @@ where
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct CachedUTC {
     exploitation: f32,
     exploration: f32,
@@ -58,14 +54,6 @@ where
     UTC: UCTPolicy<G, Config>,
     Config: MCTSConfig<G::Player>,
 {
-    fn new() -> Self {
-        CachedUTC {
-            exploitation: 0.0,
-            exploration: 0.0,
-            last_parent_visits: 0,
-        }
-    }
-
     fn update_exploitation(
         &mut self,
         visits: usize,

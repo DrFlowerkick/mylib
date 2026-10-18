@@ -68,14 +68,14 @@ where
     type NodeID = usize;
     type TranspositionTable = TT;
 
-    fn init_root(&mut self, state: G::State, expansion_policy: A::Expansion) -> Self::NodeID {
+    fn init_root(&mut self, state: G::State) -> Self::NodeID {
         // Clear any existing nodes and edges
         self.root_id = 0;
         self.transposition_table.clear();
         self.transposition_table.insert(state.clone(), self.root_id);
         self.nodes.clear();
         self.edges.clear();
-        let root_node = PlainNode::new(state, expansion_policy);
+        let root_node = PlainNode::new(state);
         self.nodes.push(root_node);
         self.edges.push(vec![]);
         self.root_id
@@ -125,16 +125,10 @@ where
         &mut self.nodes[id]
     }
 
-    fn add_child(
-        &mut self,
-        parent_id: Self::NodeID,
-        mv: G::Move,
-        state: G::State,
-        expansion_policy: A::Expansion,
-    ) -> usize {
+    fn add_child(&mut self, parent_id: Self::NodeID, mv: G::Move, state: G::State) -> usize {
         let child_id = self.nodes.len();
         self.transposition_table.insert(state.clone(), child_id);
-        let child = PlainNode::new(state, expansion_policy);
+        let child = PlainNode::new(state);
         self.nodes.push(child);
         self.edges.push(vec![]);
         self.link_child(parent_id, mv, child_id);

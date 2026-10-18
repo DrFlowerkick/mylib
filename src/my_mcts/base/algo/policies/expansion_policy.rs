@@ -4,28 +4,62 @@ use super::{ExpansionPolicy, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame};
 use rand::{prelude::SliceRandom, rng};
 
 #[derive(Clone)]
-pub struct ExpandAll {}
+pub struct ExpandAll<G>
+where
+    G: MCTSGame,
+{
+    unexpanded_moves: Option<Vec<G::Move>>,
+}
 
-impl<G, H, Config> ExpansionPolicy<G, H, Config> for ExpandAll
+impl<G> Default for ExpandAll<G>
+where
+    G: MCTSGame,
+{
+    fn default() -> Self {
+        Self {
+            unexpanded_moves: None,
+        }
+    }
+}
+
+impl<G, H, Config> ExpansionPolicy<G, H, Config> for ExpandAll<G>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     Config: MCTSConfig<G::Player>,
 {
-    fn new(_state: &G::State, _heuristic_config: &H::Config) -> Self {
-        ExpandAll {}
-    }
-    fn expandable_moves(
-        &mut self,
+    fn should_expand(
+        &self,
         _visits: usize,
         _num_parent_children: usize,
-        state: &G::State,
         _mcts_config: &Config,
         _heuristic_config: &H::Config,
-    ) -> Vec<G::Move> {
-        let mut moves: Vec<_> = G::available_moves(state).collect();
-        moves.shuffle(&mut rng());
-        moves
+    ) -> bool {
+        if let Some(m) = &self.unexpanded_moves
+            && !m.is_empty()
+        {
+            true
+        } else {
+            false
+        }
+    }
+    fn pop_expandable_move(
+        &mut self,
+        state: &G::State,
+        _visits: usize,
+        _num_parent_children: usize,
+        _mcts_config: &Config,
+        _heuristic_config: &H::Config,
+    ) -> Option<G::Move> {
+        if let Some(moves) = &mut self.unexpanded_moves {
+            moves.pop()
+        } else {
+            let mut moves: Vec<_> = G::available_moves(state).collect();
+            moves.shuffle(&mut rng());
+            let mv = moves.pop();
+            self.unexpanded_moves = Some(moves);
+            mv
+        }
     }
 }
 
@@ -35,8 +69,21 @@ where
     G: MCTSGame,
     Config: MCTSConfig<G::Player>,
 {
-    pub unexpanded_moves: Vec<G::Move>,
+    pub unexpanded_moves: Option<Vec<G::Move>>,
     phantom: std::marker::PhantomData<Config>,
+}
+
+impl<G, Config> Default for ProgressiveWidening<G, Config>
+where
+    G: MCTSGame,
+    Config: MCTSConfig<G::Player>,
+{
+    fn default() -> Self {
+        Self {
+            unexpanded_moves: None,
+            phantom: std::marker::PhantomData,
+        }
+    }
 }
 
 impl<G, Config> ProgressiveWidening<G, Config>
@@ -61,21 +108,6 @@ where
     H: Heuristic<G>,
     Config: MCTSConfig<G::Player>,
 {
-    fn new(state: &G::State, _heuristic_config: &H::Config) -> Self {
-        let is_terminal = G::evaluate(state).is_some();
-        if is_terminal {
-            return ProgressiveWidening {
-                unexpanded_moves: vec![],
-                phantom: std::marker::PhantomData,
-            };
-        }
-        let mut unexpanded_moves = G::available_moves(state).collect::<Vec<_>>();
-        unexpanded_moves.shuffle(&mut rng());
-        ProgressiveWidening {
-            unexpanded_moves,
-            phantom: std::marker::PhantomData,
-        }
-    }
     fn should_expand(
         &self,
         visits: usize,
@@ -83,28 +115,35 @@ where
         mcts_config: &Config,
         _heuristic_config: &H::Config,
     ) -> bool {
-        num_parent_children < Self::allowed_children(visits, mcts_config)
-            && !self.unexpanded_moves.is_empty()
+        if let Some(moves) = &self.unexpanded_moves
+            && num_parent_children < Self::allowed_children(visits, mcts_config)
+            && !moves.is_empty()
+        {
+            true
+        } else {
+            false
+        }
     }
-    fn expandable_moves(
+    fn pop_expandable_move(
         &mut self,
+        state: &G::State,
         visits: usize,
         num_parent_children: usize,
-        _state: &G::State,
         mcts_config: &Config,
         _heuristic_config: &H::Config,
-    ) -> Vec<G::Move> {
-        let allowed_children = Self::allowed_children(visits, mcts_config);
-        if allowed_children > num_parent_children && !self.unexpanded_moves.is_empty() {
-            let num_expandable_moves = self
-                .unexpanded_moves
-                .len()
-                .min(allowed_children - num_parent_children);
-            self.unexpanded_moves
-                .drain(..num_expandable_moves)
-                .collect()
+    ) -> Option<G::Move> {
+        if let Some(moves) = &mut self.unexpanded_moves {
+            if num_parent_children < Self::allowed_children(visits, mcts_config) {
+                moves.pop()
+            } else {
+                None
+            }
         } else {
-            vec![]
+            let mut moves = G::available_moves(state).collect::<Vec<_>>();
+            moves.shuffle(&mut rng());
+            let mv = moves.pop();
+            self.unexpanded_moves = Some(moves);
+            mv
         }
     }
 }
@@ -116,8 +155,22 @@ where
     H: Heuristic<G>,
     Config: MCTSConfig<G::Player>,
 {
-    pub unexpanded_moves: Vec<(f32, G::Move)>,
+    pub unexpanded_moves: Option<Vec<(f32, G::Move)>>,
     phantom: std::marker::PhantomData<(H, Config)>,
+}
+
+impl<G, H, Config> Default for HeuristicProgressiveWidening<G, H, Config>
+where
+    G: MCTSGame,
+    H: Heuristic<G>,
+    Config: MCTSConfig<G::Player>,
+{
+    fn default() -> Self {
+        Self {
+            unexpanded_moves: None,
+            phantom: std::marker::PhantomData,
+        }
+    }
 }
 
 impl<G, H, Config> HeuristicProgressiveWidening<G, H, Config>
@@ -149,21 +202,6 @@ where
     H: Heuristic<G>,
     Config: MCTSConfig<G::Player>,
 {
-    fn new(state: &G::State, heuristic_config: &H::Config) -> Self {
-        let is_terminal = G::evaluate(state).is_some();
-        if is_terminal {
-            return HeuristicProgressiveWidening {
-                unexpanded_moves: vec![],
-                phantom: std::marker::PhantomData,
-            };
-        }
-        let unexpanded_moves = G::available_moves(state).collect::<Vec<_>>();
-        let unexpanded_moves = H::sort_moves(state, unexpanded_moves, heuristic_config);
-        HeuristicProgressiveWidening {
-            unexpanded_moves,
-            phantom: std::marker::PhantomData,
-        }
-    }
     fn should_expand(
         &self,
         visits: usize,
@@ -172,42 +210,43 @@ where
         heuristic_config: &H::Config,
     ) -> bool {
         let threshold = Self::threshold(visits, heuristic_config);
-        num_parent_children < Self::allowed_children(visits, mcts_config)
-            && self
-                .unexpanded_moves
-                .iter()
-                .any(|(score, _)| *score >= threshold)
+        if let Some(moves) = &self.unexpanded_moves
+            && num_parent_children < Self::allowed_children(visits, mcts_config)
+            && moves.iter().any(|(score, _)| *score >= threshold)
+        {
+            true
+        } else {
+            false
+        }
     }
-    fn expandable_moves(
+    fn pop_expandable_move(
         &mut self,
+        state: &G::State,
         visits: usize,
         num_parent_children: usize,
-        _state: &G::State,
         mcts_config: &Config,
         heuristic_config: &H::Config,
-    ) -> Vec<G::Move> {
-        let allowed_children = Self::allowed_children(visits, mcts_config);
-        if num_parent_children < allowed_children && !self.unexpanded_moves.is_empty() {
-            let num_expandable_moves = self
-                .unexpanded_moves
-                .len()
-                .min(allowed_children - num_parent_children);
-
+    ) -> Option<G::Move> {
+        if let Some(moves) = &mut self.unexpanded_moves {
             let threshold = Self::threshold(visits, heuristic_config);
-            let cutoff_index = self
-                .unexpanded_moves
-                .iter()
-                .position(|(score, _)| *score < threshold)
-                .unwrap_or(self.unexpanded_moves.len());
-            // max(1) is required, if leaf node with no children is selected and all moves have
-            // a heuristic score below threshold
-            let selected_count = cutoff_index.min(num_expandable_moves).max(1);
-            self.unexpanded_moves
-                .drain(..selected_count)
-                .map(|(_, mv)| mv)
-                .collect()
+            if num_parent_children < Self::allowed_children(visits, mcts_config)
+                && moves.iter().any(|(score, _)| *score >= threshold)
+            {
+                moves.pop().map(|(_, m)| m)
+            } else {
+                None
+            }
         } else {
-            vec![]
+            let mut heuristic_moves = G::available_moves(state)
+                .map(|mv| (H::evaluate_move(state, &mv, heuristic_config), mv))
+                .collect::<Vec<_>>();
+            heuristic_moves.shuffle(&mut rng());
+            heuristic_moves.sort_unstable_by(|a, b| {
+                a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal)
+            });
+            let mv = heuristic_moves.pop().map(|(_, m)| m);
+            self.unexpanded_moves = Some(heuristic_moves);
+            mv
         }
     }
 }

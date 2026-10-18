@@ -23,14 +23,12 @@
 
 use super::{MCTSConfig, MCTSGame, UCTPolicy};
 
-pub trait UTCCache<G, UTC, Config>: Clone + Sync + Send
+pub trait UTCCache<G, UTC, Config>: Clone + Sync + Send + Default
 where
     G: MCTSGame,
     UTC: UCTPolicy<G, Config>,
     Config: MCTSConfig<G::Player>,
 {
-    fn new() -> Self;
-
     fn update_exploitation(
         &mut self,
         visits: usize,

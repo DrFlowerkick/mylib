@@ -30,9 +30,8 @@ pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig<G::Player>>: Clone + Sync + 
 }
 
 pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Player>>:
-    Clone + Sync + Send
+    Clone + Sync + Send + Default
 {
-    fn new(state: &G::State, heuristic_config: &H::Config) -> Self;
     fn should_expand(
         &self,
         _visits: usize,
@@ -42,14 +41,14 @@ pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Pl
     ) -> bool {
         false
     }
-    fn expandable_moves(
+    fn pop_expandable_move(
         &mut self,
-        _visits: usize,
-        _num_parent_children: usize,
         state: &G::State,
-        _mcts_config: &Config,
-        _heuristic_config: &H::Config,
-    ) -> Vec<G::Move>;
+        visits: usize,
+        num_parent_children: usize,
+        mcts_config: &Config,
+        heuristic_config: &H::Config,
+    ) -> Option<G::Move>;
 }
 
 // return value ist heuristic value at cutoff

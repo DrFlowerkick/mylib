@@ -73,8 +73,7 @@ where
     }
 
     fn reset_root(&self, state: &<G as MCTSGame>::State, tree: &mut impl MCTSTree<G, H, Self>) {
-        let expansion_policy = EP::new(state, &self.heuristic_config);
-        tree.init_root(state.clone(), expansion_policy);
+        tree.init_root(state.clone());
     }
 
     fn iterate(&self, tree: &mut impl MCTSTree<G, H, Self>) {
@@ -96,18 +95,22 @@ where
         // simulate the node, since it has no children. Therefore we need to continue selection from the last
         // node in the path, which is now linked to one or mode nodes in the transposition table. The selection
         // can now continue to these newly linked nodes.
-        loop {
+        'selection_and_expansion: loop {
             // Selection
             while !tree.get_children(current_id).is_empty() {
                 let parent_visits = tree.get_node(current_id).get_visits();
                 let num_parent_children = tree.get_children(current_id).len();
                 // check expansion policy
-                if tree.get_node(current_id).should_expand(
-                    parent_visits,
-                    num_parent_children,
-                    &self.mcts_config,
-                    &self.heuristic_config,
-                ) {
+                if tree
+                    .get_node(current_id)
+                    .get_expansion_policy()
+                    .should_expand(
+                        parent_visits,
+                        num_parent_children,
+                        &self.mcts_config,
+                        &self.heuristic_config,
+                    )
+                {
                     break;
                 }
 
@@ -129,7 +132,8 @@ where
                 current_id = best_child_index;
             }
 
-            // EP; force creation of nodes if current_id is root of tree
+            // Expansion
+            // force creation of nodes if current_id is root of tree
             if (tree.get_node(current_id).get_visits() == 0 && current_id != root_id)
                 || G::evaluate(tree.get_node(current_id).get_state()).is_some()
             {
@@ -138,94 +142,41 @@ where
             } else {
                 // If the node has been visited, we need to expand it.
                 let num_parent_children = tree.get_children(current_id).len();
-                // Let rust decide on type of NodeID
-                let mut new_children: Vec<_> = Vec::new();
-                // ToDo: refactor expandable moves to next_expandable_move()
-                // I used in the past an array, because basic ExpansionPolicy is to always expand all
-                // possible moves. Therefore I have no need to cache possible moves, which will be
-                // expanded immediately. BUT I change the way how to handle a node, which has already
-                // been visited via another path (using the TranspositionTable trait). Now the strategy is,
-                // that if I stumble during expansion over an existing node, I add this node to path
-                // and go back to selection immediately. This may result in some moves not te be expanded.
-                // Therefore I have to cache moves although for the basic ExpansionPolicy.
-                // A side effect is, that next_expandable_move() is better for dynamic memory,
-                // since I do not have to allocate memory for the vector of expandable_moves.
-                let expandable_moves = tree.get_node_mut(current_id).expandable_moves_s(
+                let mut selected_child = None;
+
+                // generate new children nodes from expandable moves
+                while let Some(mv) = tree.get_node_mut(current_id).pop_expandable_move(
                     num_parent_children,
                     &self.mcts_config,
                     &self.heuristic_config,
-                );
-                assert!(
-                    !expandable_moves.is_empty(),
-                    "expandable moves should never be empty."
-                );
-
-                // generate new children nodes from expandable moves
-                for mv in expandable_moves {
+                ) {
                     let new_state = G::apply_move(tree.get_node(current_id).get_state(), &mv);
-                    // ToDo: this is double link to a node in the tree.
-                    // But how do we use double links?
-                    // What happens, if we visit this node again later? Back propagation will only move back
-                    // along the path of the current iteration, the second parent will not be updated, since
-                    // it is not part of the path.
-                    // So why do it at all? Because we reduce the number of nodes and therefore branches
-                    // in the tree. Regarding the back propagation we do not benefit from the double link,
-                    // since we do not update the second parent.
-                    // But we benefit from first time linking to a node that has already been visited, since we
-                    // can use its accumulated value for back propagation, see below. Therefore this path instantly
-                    // gets a value of a branch that has already been explored. This is a good thing, since we do
-                    // not have to explore the same branch again. But see comment below, where I discuss the possibility
-                    // of moving to the already explored node instead of back propagating its value.
-                    //
-                    // The big question is: should we back propagate along multiply parents? What is the
-                    // state of the art in MCTS regarding this? I have to check the literature.
-                    // The answer is: no, we should not back propagate along multiply parents. The reason is that the
-                    // back propagation is based on the path that was taken during the selection and expansion phase.
-                    // Researching this question I realized, that a transposition table changes the way UTC works,
-                    // since now separate parents may visit the same child. UTC is based upon one formula:
-                    // N(Parent) = sum(N(Child)) for all children of Parent.
-                    // To always comply with this formula, we have to separate visits from different parents for the
-                    // exploration_score. These visits should be saved in the edge. On the other hand for the
-                    // exploitation_score we can use the accumulated value and visits of the child, since this is
-                    // independent of the parent. So we have to separate the visits for exploration and exploitation.
-                    //
-                    // To as much flexible as possible, we will use traits for exploitation and exploration, which may
-                    // be used by node and/ or edge. We although add a "coordination" trait, which implementations
-                    // decide, how to use the exploitation and exploration traits from node and edge.
                     if let Some(cached_node_id) = tree.get_cached_node_id(&new_state) {
                         tree.link_child(current_id, mv, cached_node_id);
                         let visits = tree.get_node(cached_node_id).get_visits();
                         if visits == 0 {
                             // Node does exist, but has not been visited yet. This can happen, if the node was created
                             // in a previous iteration, but has not been selected yet.
-                            new_children.push(cached_node_id);
+                            selected_child = Some(cached_node_id);
                         } else {
-                            // The node has already been visited and hence explored, so we use its accumulated value divided by
-                            // the number of visits to back propagate along the path.
-                            // And since this node has already been explored, we do not add it to the new_children vector,
-                            // since we do not want to select it again in this iteration.
-
-                            // ToDo: instead of back propagating here we could set this node as current node and move to new
-                            // cycle of selection and expansion. This would be more consistent with the MCTS algorithm,
-                            // since we would move along an explored path instead of back propagating some value of a sub tree.
-                            let get_accumulated_value =
-                                tree.get_node(cached_node_id).get_accumulated_value();
-                            back_propagation(tree, &path, get_accumulated_value / visits as f32);
+                            // The existing node has already been visited. We add this node to path and go back to selection.
+                            path.push(cached_node_id);
+                            current_id = cached_node_id;
+                            continue 'selection_and_expansion;
                         }
-                        continue;
+                    } else {
+                        let new_child_id = tree.add_child(current_id, mv, new_state);
+                        selected_child = Some(new_child_id);
                     }
-                    let expansion_policy = EP::new(&new_state, &self.heuristic_config);
-                    let new_child_id = tree.add_child(current_id, mv, new_state, expansion_policy);
-                    new_children.push(new_child_id);
                 }
-                // Just take the first newly added child if any.
-                // They are all equivalent, since they have not been visited yet.
-                let Some(child_index) = new_children.first() else {
-                    // ToDo: is this possibly? AND is continue what I want here?
-                    continue;
+
+                let Some(child_index) = selected_child else {
+                    panic!(
+                        "if a node is not final, there should always be at least on expandable move."
+                    );
                 };
-                path.push(*child_index);
-                current_id = *child_index;
+                path.push(child_index);
+                current_id = child_index;
                 break;
             };
         }

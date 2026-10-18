@@ -103,7 +103,7 @@ mod tests {
         NoHeuristic,
         BaseConfig<TicTacToeStatus>,
         StaticC,
-        ExpandAll,
+        ExpandAll<TicTacToeMCTSGame>,
         DefaultSimulationPolicy,
     >;
     type TTTBasicMCTSTree =
