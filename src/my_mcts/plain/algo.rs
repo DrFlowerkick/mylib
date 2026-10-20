@@ -1,8 +1,8 @@
 // Plain implementation of MCTS
 
 use super::{
-    ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSNode, MCTSTree,
-    SimulationPolicy, UCTPolicy,
+    ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSTree, SimulationPolicy,
+    UCTPolicy,
 };
 use rand::{prelude::IteratorRandom, rng};
 
@@ -84,7 +84,7 @@ where
         let root_id = tree
             .root_id()
             .expect("Tree root must be initialized before iterate.");
-        let mut path = vec![root_id];
+        let mut path = vec![];
         let mut current_id = root_id;
 
         /* ----------------- Select & Expand ----------------- */
@@ -98,28 +98,25 @@ where
         'selection_and_expansion: loop {
             // Selection
             while tree.count_children(current_id) > 0 {
-                let parent_visits = tree.get_node_visits(current_id);
                 // check expansion policy
                 if tree.should_node_expand(current_id, &self.mcts_config, &self.heuristic_config) {
                     break;
                 }
 
-                let mut best_child_index: Option<_> = None;
+                let mut best_step: Option<_> = None;
                 let mut best_utc = f32::NEG_INFINITY;
-                let children_ids: Vec<_> = tree.get_children_ids(current_id).collect();
+                let children_steps: Vec<_> = tree.get_children_steps(current_id).collect();
 
-                for child_id in children_ids {
-                    let utc = tree
-                        .get_node_mut(child_id)
-                        .calc_utc(parent_visits, &self.mcts_config);
+                for step in children_steps {
+                    let utc = tree.calc_utc(step, &self.mcts_config);
                     if utc > best_utc {
                         best_utc = utc;
-                        best_child_index = Some(child_id);
+                        best_step = Some(step);
                     }
                 }
-                let best_child_index = best_child_index.expect("Could not find best child index.");
-                path.push(best_child_index);
-                current_id = best_child_index;
+                let best_step = best_step.expect("Could not find best child index.");
+                path.push(best_step);
+                current_id = tree.target(best_step);
             }
 
             // Expansion
@@ -131,7 +128,7 @@ where
                 break;
             } else {
                 // If the node has been visited, we need to expand it.
-                let mut selected_child = None;
+                let mut selected_step = None;
 
                 // generate new children nodes from expandable moves
                 while let Some(mv) = tree.pop_node_expandable_move(
@@ -141,36 +138,37 @@ where
                 ) {
                     let new_state = G::apply_move(tree.get_node_state(current_id), &mv);
                     if let Some(cached_node_id) = tree.get_cached_node_id(&new_state) {
-                        tree.link_child(current_id, mv, cached_node_id);
+                        let step = tree.link_child(current_id, mv, cached_node_id);
                         let visits = tree.get_node_visits(cached_node_id);
                         if visits == 0 {
                             // Node does exist, but has not been visited yet. This can happen, if the node was created
                             // in a previous iteration, but has not been selected yet.
-                            selected_child = Some(cached_node_id);
+                            selected_step = Some(step);
                         } else {
-                            // The existing node has already been visited. We add this node to path and go back to selection.
-                            path.push(cached_node_id);
+                            // The existing node has already been visited. We select this node as current_id,
+                            // add step to path, and go back to selection.
+                            path.push(step);
                             current_id = cached_node_id;
                             continue 'selection_and_expansion;
                         }
                     } else {
-                        let new_child_id = tree.add_child(current_id, mv, new_state);
-                        selected_child = Some(new_child_id);
+                        let new_child_step = tree.add_child(current_id, mv, new_state);
+                        selected_step = Some(new_child_step);
                     }
                 }
 
-                let Some(child_index) = selected_child else {
+                let Some(selected_step) = selected_step else {
                     panic!(
                         "if a node is not final, there should always be at least on expandable move."
                     );
                 };
-                path.push(child_index);
-                current_id = child_index;
-                break;
+                path.push(selected_step);
+                current_id = tree.target(selected_step);
+                break 'selection_and_expansion;
             };
         }
 
-        // SP
+        /* ----------------- Simulation ----------------- */
         // simulation result is expected as follows:
         // 1.0: win for me
         // 0.5: tie
@@ -202,30 +200,20 @@ where
             depth += 1;
         };
 
-        // back propagation
-        back_propagation(tree, &path, simulation_result);
+        /* ----------------- Back Propagation ----------------- */
+        for step in path {
+            tree.update_stats(step, simulation_result);
+        }
     }
 
     fn select_move<'a>(&'a self, tree: &'a impl MCTSTree<G, H, Self>) -> &'a G::Move {
         let root_id = tree
             .root_id()
             .expect("Root node must be initialized before selecting a move");
-        let most_visited_child_id = tree
-            .get_children_ids(root_id)
-            .max_by_key(|&child_id| tree.get_node_visits(child_id))
+        let most_visited_child_step = tree
+            .get_children_steps(root_id)
+            .max_by_key(|&step| tree.get_node_visits(tree.target(step)))
             .expect("could not find move id");
-        tree.get_move(root_id, most_visited_child_id)
-    }
-}
-
-fn back_propagation<G, H, A, T>(tree: &mut T, path: &[T::NodeID], result: f32)
-where
-    G: MCTSGame,
-    H: Heuristic<G>,
-    A: MCTSAlgo<G, H>,
-    T: MCTSTree<G, H, A>,
-{
-    for &node_id in path.iter().rev() {
-        tree.get_node_mut(node_id).update_stats(result);
+        tree.get_move(most_visited_child_step)
     }
 }

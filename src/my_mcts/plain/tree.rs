@@ -66,6 +66,7 @@ where
 {
     type Node = Node<G, H, A, UC>;
     type NodeID = usize;
+    type Step = (usize, usize); // (parent node id, edge index)
     type TranspositionTable = TT;
 
     fn init_root(&mut self, state: G::State) -> Self::NodeID {
@@ -117,25 +118,31 @@ where
             .find(|id| self.get_node_state(*id) == state)
     }
 
-    fn add_child(&mut self, parent_id: Self::NodeID, mv: G::Move, state: G::State) -> usize {
+    fn add_child(&mut self, parent_id: Self::NodeID, mv: G::Move, state: G::State) -> Self::Step {
         let child_id = self.nodes.len();
         self.transposition_table.insert(state.clone(), child_id);
         let child = PlainNode::new(state);
         self.nodes.push(child);
         self.edges.push(vec![]);
-        self.link_child(parent_id, mv, child_id);
-        child_id
+        self.link_child(parent_id, mv, child_id)
     }
 
     fn get_cached_node_id(&self, state: &<G as MCTSGame>::State) -> Option<Self::NodeID> {
         self.transposition_table.get(state).copied()
     }
 
-    fn link_child(&mut self, parent_id: Self::NodeID, mv: G::Move, child_id: Self::NodeID) {
+    fn link_child(
+        &mut self,
+        parent_id: Self::NodeID,
+        mv: G::Move,
+        child_id: Self::NodeID,
+    ) -> Self::Step {
+        let edge_idx = self.edges[parent_id].len();
         self.edges
             .get_mut(parent_id)
             .expect("Expected edges of parent.")
             .push((child_id, mv));
+        (parent_id, edge_idx)
     }
 
     // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
@@ -147,6 +154,7 @@ where
         &self.nodes[id].state
     }
 
+    // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
     fn should_node_expand(
         &self,
         id: Self::NodeID,
@@ -180,22 +188,39 @@ where
         self.edges[id].len()
     }
 
-    fn get_children_ids<'a>(
+    fn get_children_steps<'a>(
         &'a self,
-        id: Self::NodeID,
-    ) -> Box<dyn Iterator<Item = Self::NodeID> + 'a> {
-        Box::new(self.edges[id].iter().map(|(id, _)| *id))
+        parent_id: Self::NodeID,
+    ) -> Box<dyn Iterator<Item = Self::Step> + 'a> {
+        Box::new(
+            self.edges[parent_id]
+                .iter()
+                .enumerate()
+                .map(move |(edge_idx, _)| (parent_id, edge_idx)),
+        )
     }
 
-    fn get_move(&self, parent_id: Self::NodeID, id: Self::NodeID) -> &<G as MCTSGame>::Move {
-        self.edges[parent_id]
-            .iter()
-            .find(|(child_id, _)| *child_id == id)
-            .map(|(_, mv)| mv)
-            .expect("expected valid child id")
+    // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
+    fn calc_utc(&mut self, step: Self::Step, mcts_config: &A::Config) -> f32 {
+        let parent_visits = self.get_node_visits(step.0);
+        let child_id = self.target(step);
+        self.nodes[child_id].calc_utc(parent_visits, mcts_config)
     }
 
-    fn get_node_mut(&mut self, id: Self::NodeID) -> &mut Self::Node {
-        &mut self.nodes[id]
+    fn target(&self, step: Self::Step) -> Self::NodeID {
+        self.edges[step.0][step.1].0
+    }
+
+    fn get_move(&self, step: Self::Step) -> &G::Move {
+        &self.edges[step.0][step.1].1
+    }
+
+    // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
+    fn update_stats(&mut self, step: Self::Step, result: f32) {
+        let child_id = self.target(step);
+        self.nodes[child_id].update_stats(result);
+        if step.0 == self.root_id {
+            self.nodes[self.root_id].update_stats(result);
+        }
     }
 }

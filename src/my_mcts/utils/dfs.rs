@@ -38,7 +38,10 @@ where
 
     pub fn next(&mut self, tree: &T) -> Option<T::NodeID> {
         let node_id = self.stack.pop()?;
-        let children_ids: Vec<_> = tree.get_children_ids(node_id).collect();
+        let children_ids: Vec<_> = tree
+            .get_children_steps(node_id)
+            .map(|s| tree.target(s))
+            .collect();
         for child_id in children_ids.into_iter().rev() {
             if !self.skip.contains(&child_id) && self.visited.insert(child_id) {
                 self.stack.push(child_id);
