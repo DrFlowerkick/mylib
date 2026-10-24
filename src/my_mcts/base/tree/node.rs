@@ -3,7 +3,7 @@
 use super::{ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, MCTSNode, UCTPolicy, UTCCache};
 
 #[derive(Clone)]
-pub struct PlainNode<G, H, MC, UC, UP, EP>
+pub struct BaseNode<G, H, MC, UC, UP, EP>
 where
     G: MCTSGame,
     H: Heuristic<G>,
@@ -20,7 +20,7 @@ where
     phantom: std::marker::PhantomData<(H, MC, UP)>,
 }
 
-impl<G, H, MC, UC, UP, EP> MCTSNode<G, H, MC, UP, EP> for PlainNode<G, H, MC, UC, UP, EP>
+impl<G, H, MC, UC, UP, EP> MCTSNode<G, H, MC, UP, EP> for BaseNode<G, H, MC, UC, UP, EP>
 where
     G: MCTSGame,
     H: Heuristic<G>,
@@ -32,7 +32,7 @@ where
     type Cache = UC;
 
     fn new(state: G::State) -> Self {
-        PlainNode {
+        BaseNode {
             state,
             visits: 0,
             accumulated_value: 0.0,

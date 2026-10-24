@@ -14,6 +14,10 @@ where
 
     fn new(state: G::State) -> Self;
     fn get_state(&self) -> &G::State;
+
+
+    // ToDo: handling utc related values and functions will be encapsulated in UTCCache
+    // Node will only provide access to UTCCache
     fn get_visits(&self) -> usize;
     fn get_accumulated_value(&self) -> f32;
     fn update_stats(&mut self, result: f32);

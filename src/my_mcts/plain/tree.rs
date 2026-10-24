@@ -2,7 +2,7 @@
 use crate::my_mcts::{ExpansionPolicy, MCTSNode};
 
 use super::{
-    super::utils::BfsWalker, Heuristic, MCTSAlgo, MCTSGame, MCTSTree, PlainNode,
+    super::utils::BfsWalker, BaseNode, Heuristic, MCTSAlgo, MCTSGame, MCTSTree,
     TranspositionHashMap, TranspositionTable, UTCCache,
 };
 
@@ -10,7 +10,7 @@ use super::{
 pub type PlainTTHashMap<State> = TranspositionHashMap<State, usize>;
 
 // use type definition to keep clippy happy :)
-type Node<G, H, A, UC> = PlainNode<
+type PlainNode<G, H, A, UC> = BaseNode<
     G,
     H,
     <A as MCTSAlgo<G, H>>::Config,
@@ -29,7 +29,7 @@ where
     UC: UTCCache<G, A::UTC, A::Config>,
     TT: TranspositionTable<G::State, usize>,
 {
-    pub nodes: Vec<Node<G, H, A, UC>>,
+    pub nodes: Vec<PlainNode<G, H, A, UC>>,
     pub edges: Vec<Vec<(usize, G::Move)>>,
     pub transposition_table: TT,
     pub root_id: usize,
@@ -69,10 +69,8 @@ where
     UC: UTCCache<G, A::UTC, A::Config>,
     TT: TranspositionTable<G::State, usize>,
 {
-    type Node = Node<G, H, A, UC>;
     type NodeID = usize;
     type PathNode = PlainPathNode;
-    type TranspositionTable = TT;
 
     fn root_id(&self) -> Option<Self::NodeID> {
         if self.nodes.is_empty() {
@@ -90,7 +88,7 @@ where
         self.transposition_table.insert(state.clone(), self.root_id);
         self.nodes.clear();
         self.edges.clear();
-        let root_node = PlainNode::new(state);
+        let root_node = BaseNode::new(state);
         self.nodes.push(root_node);
         self.edges.push(vec![]);
         self.root_id
@@ -140,7 +138,7 @@ where
     ) -> Self::PathNode {
         let child_id = self.nodes.len();
         self.transposition_table.insert(state.clone(), child_id);
-        let child = PlainNode::new(state);
+        let child = BaseNode::new(state);
         self.nodes.push(child);
         self.edges.push(vec![]);
         self.link_child(parent_id, mv, child_id)

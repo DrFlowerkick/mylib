@@ -1,4 +1,7 @@
-// caching traits for mcts including TranspositionTable
+// caching traits used inside tree elements
+
+use super::{MCTSConfig, MCTSGame, UCTPolicy};
+
 
 // ToDo: some refactoring. We will add an Edge trait and struct and UTCCache
 // can be used by both, Node and Edge. We will implement at least 4 times:
@@ -20,8 +23,6 @@
 // It is maybe required to create some marker trait like UTCEdgeOnly, UTCNodeOnly,
 // UTCHybrid for these three use cases. This would allow reuse of code, if you want
 // to implement UTCCache with only the minimal required stats (visits and accumulated_value).
-
-use super::{MCTSConfig, MCTSGame, UCTPolicy};
 
 pub trait UTCCache<G, UTC, Config>: Clone + Sync + Send + Default
 where

@@ -1,11 +1,14 @@
-// MCTSTree defines tree structure of the T in MCTS and of the node, which is used in tree.
+// MCTSTree defines tree structure of the T in MCTS.
 
 mod caching;
 mod core_tree;
-mod node;
+mod elements;
+mod policies;
+
 
 pub use caching::*;
 pub use core_tree::*;
-pub use node::*;
+pub use elements::*;
+pub use policies::*;
 
 use super::{ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, UCTPolicy};

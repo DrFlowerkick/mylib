@@ -1,6 +1,6 @@
 // tree trait of mcts
 
-use super::{Heuristic, MCTSAlgo, MCTSGame, MCTSNode, TranspositionTable};
+use super::{Heuristic, MCTSAlgo, MCTSGame};
 
 // ToDo: This API is kinda "unsafe". We expect proper usage, but it is easily broken, e.g.:
 // - call set_root() with a new_root_id, which does not exist in tree.
@@ -12,10 +12,8 @@ where
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
 {
-    type Node: MCTSNode<G, H, A::Config, A::UTC, A::Expansion>;
     type NodeID: Copy + Eq + std::fmt::Debug;
     type PathNode: Copy + Eq + std::fmt::Debug;
-    type TranspositionTable: TranspositionTable<G::State, Self::NodeID>;
 
     fn root_id(&self) -> Option<Self::NodeID>;
     fn init_root(&mut self, state: G::State) -> Self::NodeID;

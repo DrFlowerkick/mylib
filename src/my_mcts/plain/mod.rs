@@ -6,14 +6,12 @@
 // - a base implementation of MCTSAlgo, using all defined traits of MCTS
 
 mod algo;
-mod node;
 mod tree;
 
 pub use algo::*;
-pub use node::*;
 pub use tree::*;
 
 use super::{
-    ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSNode, MCTSTree,
+    BaseNode, ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSTree,
     SimulationPolicy, TranspositionHashMap, TranspositionTable, UCTPolicy, UTCCache,
 };
