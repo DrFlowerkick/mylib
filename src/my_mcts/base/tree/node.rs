@@ -1,33 +1,29 @@
 // plain implementation of MCTSNode
 
-use super::{ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, MCTSNode, UCTPolicy, UTCCache};
+use super::{Heuristic, MCTSAlgo, MCTSGame, MCTSNode, UTCCache};
 
 #[derive(Clone)]
-pub struct BaseNode<G, H, MC, UC, UP, EP>
+pub struct BaseNode<G, H, A, UC>
 where
     G: MCTSGame,
     H: Heuristic<G>,
-    MC: MCTSConfig<G::Player>,
-    UC: UTCCache<G, UP, MC>,
-    UP: UCTPolicy<G, MC>,
-    EP: ExpansionPolicy<G, H, MC>,
+    A: MCTSAlgo<G, H>,
+    UC: UTCCache<G, A::UTC, A::Config>,
 {
     pub state: G::State,
     pub visits: usize,
     pub accumulated_value: f32,
     pub utc_cache: UC,
-    pub expansion_policy: EP,
-    phantom: std::marker::PhantomData<(H, MC, UP)>,
+    pub expansion_policy: A::Expansion,
+    phantom: std::marker::PhantomData<H>,
 }
 
-impl<G, H, MC, UC, UP, EP> MCTSNode<G, H, MC, UP, EP> for BaseNode<G, H, MC, UC, UP, EP>
+impl<G, H, A, UC> MCTSNode<G, H, A> for BaseNode<G, H, A, UC>
 where
     G: MCTSGame,
     H: Heuristic<G>,
-    MC: MCTSConfig<G::Player>,
-    UC: UTCCache<G, UP, MC>,
-    UP: UCTPolicy<G, MC>,
-    EP: ExpansionPolicy<G, H, MC>,
+    A: MCTSAlgo<G, H>,
+    UC: UTCCache<G, A::UTC, A::Config>,
 {
     type Cache = UC;
 
@@ -37,7 +33,7 @@ where
             visits: 0,
             accumulated_value: 0.0,
             utc_cache: UC::default(),
-            expansion_policy: EP::default(),
+            expansion_policy: A::Expansion::default(),
             phantom: std::marker::PhantomData,
         }
     }
@@ -62,7 +58,7 @@ where
     }
     // ToDo: this must be placed into the UTC Policy, which than although allows variations
     // like progressive bias.
-    fn calc_utc(&mut self, parent_visits: usize, mcts_config: &MC) -> f32 {
+    fn calc_utc(&mut self, parent_visits: usize, mcts_config: &A::Config) -> f32 {
         if self.visits == 0 {
             return f32::INFINITY;
         }

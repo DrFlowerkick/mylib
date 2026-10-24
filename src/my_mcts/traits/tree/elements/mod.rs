@@ -8,4 +8,4 @@ pub use caching::*;
 pub use edge::*;
 pub use node::*;
 
-use super::{ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, UCTPolicy};
+use super::{ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, UCTPolicy};

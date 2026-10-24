@@ -1,24 +1,13 @@
 // plain implementation of MCTSTree
-use crate::my_mcts::{ExpansionPolicy, MCTSNode};
-
 use super::{
-    super::utils::BfsWalker, BaseNode, Heuristic, MCTSAlgo, MCTSGame, MCTSTree,
-    TranspositionHashMap, TranspositionTable, UTCCache,
+    super::utils::BfsWalker, BaseEdge, BaseNode, ExpansionPolicy, Heuristic, MCTSAlgo, MCTSEdge,
+    MCTSGame, MCTSNode, MCTSTree, TranspositionHashMap, TranspositionTable, UTCCache,
 };
 
 // plain type of TranspositionHashMap, which works with PlainTree
 pub type PlainTTHashMap<State> = TranspositionHashMap<State, usize>;
 
-// use type definition to keep clippy happy :)
-type PlainNode<G, H, A, UC> = BaseNode<
-    G,
-    H,
-    <A as MCTSAlgo<G, H>>::Config,
-    UC,
-    <A as MCTSAlgo<G, H>>::UTC,
-    <A as MCTSAlgo<G, H>>::Expansion,
->;
-
+// ToDo: we will probably need separate UC for Node and Edge in the future
 // base implementation of MCTSTree
 #[derive(Clone)]
 pub struct PlainTree<G, H, A, UC, TT>
@@ -29,8 +18,8 @@ where
     UC: UTCCache<G, A::UTC, A::Config>,
     TT: TranspositionTable<G::State, usize>,
 {
-    pub nodes: Vec<PlainNode<G, H, A, UC>>,
-    pub edges: Vec<Vec<(usize, G::Move)>>,
+    pub nodes: Vec<BaseNode<G, H, A, UC>>,
+    pub edges: Vec<Vec<(usize, BaseEdge<G, H, A, UC>)>>,
     pub transposition_table: TT,
     pub root_id: usize,
     phantom: std::marker::PhantomData<(G, H, UC)>,
@@ -154,7 +143,7 @@ where
         self.edges
             .get_mut(parent_id)
             .expect("Expected edges of parent.")
-            .push((child_id, mv));
+            .push((child_id, BaseEdge::new(mv)));
         PlainPathNode::Via {
             parent_id,
             edge_idx,
@@ -257,7 +246,7 @@ where
             PlainPathNode::Via {
                 parent_id,
                 edge_idx,
-            } => Some(&self.edges[parent_id][edge_idx].1),
+            } => Some(self.edges[parent_id][edge_idx].1.get_move()),
         }
     }
 }

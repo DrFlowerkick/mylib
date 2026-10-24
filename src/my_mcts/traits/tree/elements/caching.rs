@@ -2,7 +2,6 @@
 
 use super::{MCTSConfig, MCTSGame, UCTPolicy};
 
-
 // ToDo: some refactoring. We will add an Edge trait and struct and UTCCache
 // can be used by both, Node and Edge. We will implement at least 4 times:
 // NoUTCCache

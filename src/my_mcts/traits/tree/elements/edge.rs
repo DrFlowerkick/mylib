@@ -1,16 +1,14 @@
 // trait for edges of a MCTSTree
 
-use super::{ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, UCTPolicy, UTCCache};
+use super::{Heuristic, MCTSAlgo, MCTSGame, UTCCache};
 
-pub trait MCTSEdge<G, H, MC, UP, EP>: Clone + Sync + Send
+pub trait MCTSEdge<G, H, A>: Clone + Sync + Send
 where
     G: MCTSGame,
     H: Heuristic<G>,
-    MC: MCTSConfig<G::Player>,
-    UP: UCTPolicy<G, MC>,
-    EP: ExpansionPolicy<G, H, MC>,
+    A: MCTSAlgo<G, H>,
 {
-    type Cache: UTCCache<G, UP, MC>;
+    type Cache: UTCCache<G, A::UTC, A::Config>;
 
     fn new(mv: G::Move) -> Self;
     fn get_move(&self) -> &G::Move;
