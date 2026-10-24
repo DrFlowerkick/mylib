@@ -1,5 +1,4 @@
 // plain implementation of MCTSTree
-
 use crate::my_mcts::{ExpansionPolicy, MCTSNode};
 
 use super::{
@@ -56,6 +55,12 @@ where
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlainPathNode {
+    Root(usize),
+    Via { parent_id: usize, edge_idx: usize },
+}
+
 impl<G, H, A, UC, TT> MCTSTree<G, H, A> for PlainTree<G, H, A, UC, TT>
 where
     G: MCTSGame,
@@ -66,8 +71,17 @@ where
 {
     type Node = Node<G, H, A, UC>;
     type NodeID = usize;
-    type Step = (usize, usize); // (parent node id, edge index)
+    type PathNode = PlainPathNode;
     type TranspositionTable = TT;
+
+    fn root_id(&self) -> Option<Self::NodeID> {
+        if self.nodes.is_empty() {
+            // No nodes in the tree
+            None
+        } else {
+            Some(self.root_id)
+        }
+    }
 
     fn init_root(&mut self, state: G::State) -> Self::NodeID {
         // Clear any existing nodes and edges
@@ -84,15 +98,6 @@ where
 
     fn set_root(&mut self, new_root_id: Self::NodeID) {
         self.root_id = new_root_id;
-    }
-
-    fn root_id(&self) -> Option<Self::NodeID> {
-        if self.nodes.is_empty() {
-            // No nodes in the tree
-            None
-        } else {
-            Some(self.root_id)
-        }
     }
 
     fn get_node_id(
@@ -113,12 +118,26 @@ where
         }
 
         // breadth-first search (BFS) for node with given state
-        let bfs = BfsWalker::new(start_node_id, None, max_depth);
+        let bfs = BfsWalker::new(self, None, max_depth);
         bfs.into_iter(self)
+            .map(|pn| self.target(pn))
             .find(|id| self.get_node_state(*id) == state)
     }
 
-    fn add_child(&mut self, parent_id: Self::NodeID, mv: G::Move, state: G::State) -> Self::Step {
+    fn get_cached_node_id(&self, state: &<G as MCTSGame>::State) -> Option<Self::NodeID> {
+        self.transposition_table.get(state).copied()
+    }
+
+    fn get_node_state(&self, id: Self::NodeID) -> &<G as MCTSGame>::State {
+        &self.nodes[id].state
+    }
+
+    fn add_child(
+        &mut self,
+        parent_id: Self::NodeID,
+        mv: G::Move,
+        state: G::State,
+    ) -> Self::PathNode {
         let child_id = self.nodes.len();
         self.transposition_table.insert(state.clone(), child_id);
         let child = PlainNode::new(state);
@@ -127,41 +146,79 @@ where
         self.link_child(parent_id, mv, child_id)
     }
 
-    fn get_cached_node_id(&self, state: &<G as MCTSGame>::State) -> Option<Self::NodeID> {
-        self.transposition_table.get(state).copied()
-    }
-
     fn link_child(
         &mut self,
         parent_id: Self::NodeID,
         mv: G::Move,
         child_id: Self::NodeID,
-    ) -> Self::Step {
+    ) -> Self::PathNode {
         let edge_idx = self.edges[parent_id].len();
         self.edges
             .get_mut(parent_id)
             .expect("Expected edges of parent.")
             .push((child_id, mv));
-        (parent_id, edge_idx)
+        PlainPathNode::Via {
+            parent_id,
+            edge_idx,
+        }
+    }
+
+    fn count_children(&self, id: Self::NodeID) -> usize {
+        self.edges[id].len()
+    }
+
+    fn get_children_path_nodes<'a>(
+        &'a self,
+        parent_id: Self::NodeID,
+    ) -> Box<dyn Iterator<Item = Self::PathNode> + 'a> {
+        Box::new(
+            self.edges[parent_id]
+                .iter()
+                .enumerate()
+                .map(move |(edge_idx, _)| PlainPathNode::Via {
+                    parent_id,
+                    edge_idx,
+                }),
+        )
+    }
+
+    fn root_path_node(&self) -> Self::PathNode {
+        PlainPathNode::Root(self.root_id)
+    }
+
+    fn target(&self, path_node: Self::PathNode) -> Self::NodeID {
+        match path_node {
+            PlainPathNode::Root(root_id) => root_id,
+            PlainPathNode::Via {
+                parent_id,
+                edge_idx,
+            } => self.edges[parent_id][edge_idx].0,
+        }
     }
 
     // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
-    fn get_node_visits(&self, id: Self::NodeID) -> usize {
-        self.nodes[id].visits
-    }
-
-    fn get_node_state(&self, id: Self::NodeID) -> &<G as MCTSGame>::State {
-        &self.nodes[id].state
+    fn get_target_visits(&self, path_node: Self::PathNode) -> usize {
+        self.nodes[self.target(path_node)].visits
     }
 
     // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
-    fn should_node_expand(
+    fn calc_utc(&mut self, path_node: Self::PathNode, mcts_config: &A::Config) -> f32 {
+        let parent_visits = match path_node {
+            PlainPathNode::Root(_) => 0,
+            PlainPathNode::Via { parent_id, .. } => self.nodes[parent_id].visits,
+        };
+        let child_id = self.target(path_node);
+        self.nodes[child_id].calc_utc(parent_visits, mcts_config)
+    }
+
+    fn should_target_expand(
         &self,
-        id: Self::NodeID,
+        path_node: Self::PathNode,
         mcts_config: &A::Config,
         heuristic_config: &H::Config,
     ) -> bool {
-        let visits = self.get_node_visits(id);
+        let visits = self.get_target_visits(path_node);
+        let id = self.target(path_node);
         let num_children = self.count_children(id);
         self.nodes[id].expansion_policy.should_expand(
             visits,
@@ -171,56 +228,38 @@ where
         )
     }
 
-    fn pop_node_expandable_move(
+    fn pop_target_expandable_move(
         &mut self,
-        id: Self::NodeID,
+        path_node: Self::PathNode,
         mcts_config: &A::Config,
         heuristic_config: &H::Config,
     ) -> Option<G::Move> {
-        let visits = self.get_node_visits(id);
+        let visits = self.get_target_visits(path_node);
+        let id = self.target(path_node);
         let num_children = self.count_children(id);
         let node = &mut self.nodes[id];
         let (state, ep) = (&node.state, &mut node.expansion_policy);
         ep.pop_expandable_move(state, visits, num_children, mcts_config, heuristic_config)
     }
 
-    fn count_children(&self, id: Self::NodeID) -> usize {
-        self.edges[id].len()
-    }
-
-    fn get_children_steps<'a>(
-        &'a self,
-        parent_id: Self::NodeID,
-    ) -> Box<dyn Iterator<Item = Self::Step> + 'a> {
-        Box::new(
-            self.edges[parent_id]
-                .iter()
-                .enumerate()
-                .map(move |(edge_idx, _)| (parent_id, edge_idx)),
-        )
-    }
-
     // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
-    fn calc_utc(&mut self, step: Self::Step, mcts_config: &A::Config) -> f32 {
-        let parent_visits = self.get_node_visits(step.0);
-        let child_id = self.target(step);
-        self.nodes[child_id].calc_utc(parent_visits, mcts_config)
+    fn update_stats(&mut self, path_node: Self::PathNode, result: f32) {
+        match path_node {
+            PlainPathNode::Root(root_id) => self.nodes[root_id].update_stats(result),
+            PlainPathNode::Via {
+                parent_id,
+                edge_idx,
+            } => self.nodes[self.edges[parent_id][edge_idx].0].update_stats(result),
+        }
     }
 
-    fn target(&self, step: Self::Step) -> Self::NodeID {
-        self.edges[step.0][step.1].0
-    }
-
-    fn get_move(&self, step: Self::Step) -> &G::Move {
-        &self.edges[step.0][step.1].1
-    }
-
-    // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
-    fn update_stats(&mut self, step: Self::Step, result: f32) {
-        let child_id = self.target(step);
-        self.nodes[child_id].update_stats(result);
-        if step.0 == self.root_id {
-            self.nodes[self.root_id].update_stats(result);
+    fn get_move(&self, path_node: Self::PathNode) -> Option<&G::Move> {
+        match path_node {
+            PlainPathNode::Root(_) => None,
+            PlainPathNode::Via {
+                parent_id,
+                edge_idx,
+            } => Some(&self.edges[parent_id][edge_idx].1),
         }
     }
 }

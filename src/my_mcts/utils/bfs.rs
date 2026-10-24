@@ -12,7 +12,7 @@ where
     T: MCTSTree<G, H, A>,
     T::NodeID: std::hash::Hash,
 {
-    queue: VecDeque<(T::NodeID, usize)>,
+    queue: VecDeque<(T::PathNode, usize)>,
     skip: HashSet<T::NodeID>,
     visited: HashSet<T::NodeID>, // required because of transposition table
     max_depth: usize, // limit search depth to prevent long searches if tree does not contain state
@@ -27,15 +27,12 @@ where
     T: MCTSTree<G, H, A>,
     T::NodeID: std::hash::Hash,
 {
-    pub fn new(
-        start: T::NodeID,
-        skip: impl IntoIterator<Item = T::NodeID>,
-        max_depth: usize,
-    ) -> Self {
+    pub fn new(tree: &T, skip: impl IntoIterator<Item = T::NodeID>, max_depth: usize) -> Self {
         let mut queue = VecDeque::new();
         let mut visited = HashSet::new();
-        queue.push_back((start, 0));
-        visited.insert(start);
+        let path_root = tree.root_path_node();
+        queue.push_back((path_root, 0));
+        visited.insert(tree.target(path_root));
 
         Self {
             queue,
@@ -46,19 +43,20 @@ where
         }
     }
 
-    pub fn next(&mut self, tree: &T) -> Option<T::NodeID> {
-        let (node_id, depth) = self.queue.pop_front()?;
+    pub fn next(&mut self, tree: &T) -> Option<T::PathNode> {
+        let (path_node, depth) = self.queue.pop_front()?;
         if depth + 1 > self.max_depth {
-            return Some(node_id);
+            return Some(path_node);
         }
 
-        for child_id in tree.get_children_steps(node_id).map(|s| tree.target(s)) {
+        for child_path_node in tree.get_children_path_nodes(tree.target(path_node)) {
+            let child_id = tree.target(child_path_node);
             if !self.skip.contains(&child_id) && self.visited.insert(child_id) {
-                self.queue.push_back((child_id, depth + 1));
+                self.queue.push_back((child_path_node, depth + 1));
             }
         }
 
-        Some(node_id)
+        Some(path_node)
     }
 
     pub fn into_iter(self, tree: &T) -> BfsIterator<'_, G, H, A, T> {
@@ -86,7 +84,7 @@ where
     T: MCTSTree<G, H, A>,
     T::NodeID: std::hash::Hash,
 {
-    type Item = T::NodeID;
+    type Item = T::PathNode;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.walker.next(self.tree)

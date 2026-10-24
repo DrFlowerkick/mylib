@@ -12,7 +12,7 @@ where
     T: MCTSTree<G, H, A>,
     T::NodeID: std::hash::Hash,
 {
-    stack: Vec<T::NodeID>,
+    stack: Vec<T::PathNode>,
     skip: HashSet<T::NodeID>,
     visited: HashSet<T::NodeID>, // required because of transposition table
     _phantom: std::marker::PhantomData<(G, H, A, T)>,
@@ -26,8 +26,8 @@ where
     T: MCTSTree<G, H, A>,
     T::NodeID: std::hash::Hash,
 {
-    pub fn new(start: T::NodeID, skip: impl IntoIterator<Item = T::NodeID>) -> Self {
-        let stack = vec![start];
+    pub fn new(tree: &T, skip: impl IntoIterator<Item = T::NodeID>) -> Self {
+        let stack = vec![tree.root_path_node()];
         Self {
             stack,
             skip: skip.into_iter().collect(),
@@ -37,14 +37,13 @@ where
     }
 
     pub fn next(&mut self, tree: &T) -> Option<T::NodeID> {
-        let node_id = self.stack.pop()?;
-        let children_ids: Vec<_> = tree
-            .get_children_steps(node_id)
-            .map(|s| tree.target(s))
-            .collect();
-        for child_id in children_ids.into_iter().rev() {
+        let path_node: <T as MCTSTree<G, H, A>>::PathNode = self.stack.pop()?;
+        let node_id = tree.target(path_node);
+        let children_path_nodes: Vec<_> = tree.get_children_path_nodes(node_id).collect();
+        for child_path_node in children_path_nodes.into_iter().rev() {
+            let child_id = tree.target(path_node);
             if !self.skip.contains(&child_id) && self.visited.insert(child_id) {
-                self.stack.push(child_id);
+                self.stack.push(child_path_node);
             }
         }
         Some(node_id)
