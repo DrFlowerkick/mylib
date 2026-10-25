@@ -50,7 +50,7 @@ where
     SP: SimulationPolicy<G, H, MC>,
 {
     type Config = MC;
-    type UTC = UP;
+    type UCT = UP;
     type Expansion = EP;
     type Simulation = SP;
 
@@ -105,15 +105,15 @@ where
                 }
 
                 let mut best_path_node: Option<_> = None;
-                let mut best_utc = f32::NEG_INFINITY;
+                let mut best_uct = f32::NEG_INFINITY;
                 let children_steps: Vec<_> = tree
                     .get_children_path_nodes(tree.target(current_path_node))
                     .collect();
 
                 for path_node in children_steps {
-                    let utc = tree.calc_utc(path_node, &self.mcts_config);
-                    if utc > best_utc {
-                        best_utc = utc;
+                    let uct = tree.calc_uct(path_node, &self.mcts_config);
+                    if uct > best_uct {
+                        best_uct = uct;
                         best_path_node = Some(path_node);
                     }
                 }
@@ -215,7 +215,7 @@ where
             .expect("Root node must be initialized before selecting a move");
         let most_visited_child_step = tree
             .get_children_path_nodes(root_id)
-            .max_by_key(|&pn| tree.get_target_visits(pn))
+            .max_by_key(|&pn| tree.get_visits_from_parent(pn))
             .expect("could not identify max visited child");
         tree.get_move(most_visited_child_step)
             .expect("could not find move")

@@ -13,6 +13,6 @@ pub use node::*;
 pub use policies::*;
 
 use super::{
-    Heuristic, MCTSAlgo, MCTSConfig, MCTSEdge, MCTSGame, MCTSNode, TranspositionTable, UCTPolicy,
-    UTCCache,
+    Heuristic, MCTSAlgo, MCTSConfig, MCTSEdge, MCTSGame, MCTSNode, TranspositionTable, UCTCache,
+    UCTPolicy,
 };

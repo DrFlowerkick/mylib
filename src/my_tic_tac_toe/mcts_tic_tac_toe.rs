@@ -93,8 +93,8 @@ mod tests {
     use rand::{prelude::*, rng};
 
     use crate::my_mcts::{
-        BaseConfig, CachedUTC, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo, NoHeuristic,
-        NoTranspositionTable, NoUTCCache, PlainMCTS, PlainTree, ProgressiveWidening, StaticC,
+        BaseConfig, Cacheduct, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo, NoHeuristic,
+        NoTranspositionTable, NouctCache, PlainMCTS, PlainTree, ProgressiveWidening, StaticC,
         TranspositionHashMap,
     };
 
@@ -107,7 +107,7 @@ mod tests {
         DefaultSimulationPolicy,
     >;
     type TTTBasicMCTSTree =
-        PlainTree<TicTacToeMCTSGame, NoHeuristic, TTTBasicMCTS, NoUTCCache, NoTranspositionTable>;
+        PlainTree<TicTacToeMCTSGame, NoHeuristic, TTTBasicMCTS, NouctCache, NoTranspositionTable>;
     type TTTFullMCTS = PlainMCTS<
         TicTacToeMCTSGame,
         NoHeuristic,
@@ -120,7 +120,7 @@ mod tests {
         TicTacToeMCTSGame,
         NoHeuristic,
         TTTFullMCTS,
-        CachedUTC,
+        Cacheduct,
         TranspositionHashMap<TicTacToeGame, usize>,
     >;
 

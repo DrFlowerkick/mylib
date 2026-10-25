@@ -1,14 +1,14 @@
-// base implementation of UTCCache
+// base implementation of UCTCache
 
-use super::{MCTSConfig, MCTSGame, UCTPolicy, UTCCache};
+use super::{MCTSConfig, MCTSGame, UCTCache, UCTPolicy};
 
 #[derive(Clone, Default)]
-pub struct NoUTCCache;
+pub struct NouctCache;
 
-impl<G, UTC, Config> UTCCache<G, UTC, Config> for NoUTCCache
+impl<G, UCT, Config> UCTCache<G, UCT, Config> for NouctCache
 where
     G: MCTSGame,
-    UTC: UCTPolicy<G, Config>,
+    UCT: UCTPolicy<G, Config>,
     Config: MCTSConfig<G::Player>,
 {
     fn update_exploitation(&mut self, _v: usize, _a: f32, _l: G::Player, _p: G::Player) {}
@@ -19,7 +19,7 @@ where
         last_player: G::Player,
         perspective_player: G::Player,
     ) -> f32 {
-        UTC::exploitation_score(accumulated_value, visits, last_player, perspective_player)
+        UCT::exploitation_score(accumulated_value, visits, last_player, perspective_player)
     }
 
     fn update_exploration(
@@ -37,21 +37,21 @@ where
         mcts_config: &Config,
         last_player: G::Player,
     ) -> f32 {
-        UTC::exploration_score(visits, parent_visits, mcts_config, last_player)
+        UCT::exploration_score(visits, parent_visits, mcts_config, last_player)
     }
 }
 
 #[derive(Clone, Default)]
-pub struct CachedUTC {
+pub struct Cacheduct {
     exploitation: f32,
     exploration: f32,
     last_parent_visits: usize,
 }
 
-impl<G, UTC, Config> UTCCache<G, UTC, Config> for CachedUTC
+impl<G, UCT, Config> UCTCache<G, UCT, Config> for Cacheduct
 where
     G: MCTSGame,
-    UTC: UCTPolicy<G, Config>,
+    UCT: UCTPolicy<G, Config>,
     Config: MCTSConfig<G::Player>,
 {
     fn update_exploitation(
@@ -62,7 +62,7 @@ where
         perspective_player: G::Player,
     ) {
         self.exploitation =
-            UTC::exploitation_score(accumulated_value, visits, last_player, perspective_player);
+            UCT::exploitation_score(accumulated_value, visits, last_player, perspective_player);
     }
 
     fn get_exploitation(
@@ -84,7 +84,7 @@ where
     ) {
         if self.last_parent_visits != parent_visits {
             self.exploration =
-                UTC::exploration_score(visits, parent_visits, mcts_config, last_player);
+                UCT::exploration_score(visits, parent_visits, mcts_config, last_player);
             self.last_parent_visits = parent_visits;
         }
     }

@@ -1,4 +1,4 @@
-// base implementation of MCTSConfig, which supports UTC, ProgressiveWidening and EarlyCutOff
+// base implementation of MCTSConfig, which supports UCT, ProgressiveWidening and EarlyCutOff
 
 use std::collections::HashMap;
 

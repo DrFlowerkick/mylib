@@ -3,12 +3,12 @@
 mod config;
 mod expansion_policy;
 mod simulation_policy;
-mod utc_policy;
+mod uct_policy;
 
 pub use config::*;
 pub use expansion_policy::*;
 pub use simulation_policy::*;
-pub use utc_policy::*;
+pub use uct_policy::*;
 
 use super::{
     ExpansionPolicy, GamePlayer, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame,

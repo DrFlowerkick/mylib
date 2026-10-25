@@ -2,6 +2,8 @@
 
 use super::{Heuristic, MCTSConfig, MCTSGame};
 
+// ToDo: add a SelectMovePolicy trait
+
 pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig<G::Player>>: Clone + Sync + Send {
     // calculates the exploitation score from the view of the perspective player
     fn exploitation_score(

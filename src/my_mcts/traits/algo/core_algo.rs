@@ -14,7 +14,7 @@ use super::{
 
 pub trait MCTSAlgo<G: MCTSGame, H: Heuristic<G>>: Sized + Clone + Sync + Send {
     type Config: MCTSConfig<G::Player>;
-    type UTC: UCTPolicy<G, Self::Config>;
+    type UCT: UCTPolicy<G, Self::Config>;
     type Expansion: ExpansionPolicy<G, H, Self::Config>;
     type Simulation: SimulationPolicy<G, H, Self::Config>;
 

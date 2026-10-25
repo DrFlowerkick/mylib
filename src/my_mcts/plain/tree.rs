@@ -1,7 +1,7 @@
 // plain implementation of MCTSTree
 use super::{
     super::utils::BfsWalker, BaseEdge, BaseNode, ExpansionPolicy, Heuristic, MCTSAlgo, MCTSEdge,
-    MCTSGame, MCTSNode, MCTSTree, TranspositionHashMap, TranspositionTable, UTCCache,
+    MCTSGame, MCTSNode, MCTSTree, TranspositionHashMap, TranspositionTable, UCTCache,
 };
 
 // plain type of TranspositionHashMap, which works with PlainTree
@@ -15,7 +15,7 @@ where
     G: MCTSGame,
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
-    UC: UTCCache<G, A::UTC, A::Config>,
+    UC: UCTCache<G, A::UCT, A::Config>,
     TT: TranspositionTable<G::State, usize>,
 {
     pub nodes: Vec<BaseNode<G, H, A, UC>>,
@@ -30,7 +30,7 @@ where
     G: MCTSGame,
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
-    UC: UTCCache<G, A::UTC, A::Config>,
+    UC: UCTCache<G, A::UCT, A::Config>,
     TT: TranspositionTable<G::State, usize>,
 {
     pub fn new(expected_num_nodes: usize) -> Self {
@@ -55,7 +55,7 @@ where
     G: MCTSGame,
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
-    UC: UTCCache<G, A::UTC, A::Config>,
+    UC: UCTCache<G, A::UCT, A::Config>,
     TT: TranspositionTable<G::State, usize>,
 {
     type NodeID = usize;
@@ -186,16 +186,33 @@ where
     // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
     fn get_target_visits(&self, path_node: Self::PathNode) -> usize {
         self.nodes[self.target(path_node)].visits
+        // ToDo: rework this to be able to work with node-only, edge-only and hybrid:
+        // 1.) check if target node uct_cache returns visits (Option<usize>)
+        // 2.) if none, nodes do not contain visits -> check if edge exists
+        // 3.) yes: edge uct_cache returns visits (Option<usize>) -> expect Some(usize)
+        // 4.) no: call fn get_parent_visits() ToDo: add fn get_parent_visits() to PlainTree
+        // description fn get_parent_visits()
+        // 1.) check if node uct_cache returns visits (Option<usize>)
+        // 2.) if none, nodes do not contain visits -> edge based, but no incoming edge available
+        // 3.) iter edges and return sum visits of uct_cache from each edge
     }
 
     // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
-    fn calc_utc(&mut self, path_node: Self::PathNode, mcts_config: &A::Config) -> f32 {
+    fn get_visits_from_parent(&self, path_node: Self::PathNode) -> usize {
+        self.nodes[self.target(path_node)].visits
+        // ToDo: rework this to be able to work with node-only, edge-only and hybrid:
+        // 1.) check if edge uct_cache returns visits (Option<usize>)
+        // 2.) if None, target node uct_cache returns visits (Option<usize>) -> expect Some(usize)
+    }
+
+    // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
+    fn calc_uct(&mut self, path_node: Self::PathNode, mcts_config: &A::Config) -> f32 {
         let parent_visits = match path_node {
             PlainPathNode::Root(_) => 0,
             PlainPathNode::Via { parent_id, .. } => self.nodes[parent_id].visits,
         };
         let child_id = self.target(path_node);
-        self.nodes[child_id].calc_utc(parent_visits, mcts_config)
+        self.nodes[child_id].calc_uct(parent_visits, mcts_config)
     }
 
     fn should_target_expand(
@@ -236,7 +253,14 @@ where
             PlainPathNode::Via {
                 parent_id,
                 edge_idx,
-            } => self.nodes[self.edges[parent_id][edge_idx].0].update_stats(result),
+            } => {
+                // ToDo: This can be used for handling data in tree (NodeOnly, EdgeOnly, Hybrid)
+                // example on how to get &mut on all 3 elements of a path node:
+                /*let child_id = self.edges[parent_id][edge_idx].0;
+                let edge = &mut self.edges[parent_id][edge_idx].1;
+                let [parent_node, child_node] = self.nodes.get_disjoint_mut([parent_id, child_id]).unwrap();*/
+                self.nodes[self.edges[parent_id][edge_idx].0].update_stats(result)
+            }
         }
     }
 

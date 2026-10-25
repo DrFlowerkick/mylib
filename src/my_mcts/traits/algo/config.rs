@@ -1,4 +1,4 @@
-// Configuration trait for MCTS, which supports base implementation of UTC, expansion,
+// Configuration trait for MCTS, which supports base implementation of UCT, expansion,
 // and simulation policies.
 
 use super::GamePlayer;

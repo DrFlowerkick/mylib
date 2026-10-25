@@ -46,7 +46,8 @@ where
     fn root_path_node(&self) -> Self::PathNode;
     fn target(&self, path_node: Self::PathNode) -> Self::NodeID;
     fn get_target_visits(&self, path_node: Self::PathNode) -> usize;
-    fn calc_utc(&mut self, path_node: Self::PathNode, mcts_config: &A::Config) -> f32;
+    fn get_visits_from_parent(&self, path_node: Self::PathNode) -> usize;
+    fn calc_uct(&mut self, path_node: Self::PathNode, mcts_config: &A::Config) -> f32;
     fn should_target_expand(
         &self,
         path_node: Self::PathNode,

@@ -1,4 +1,4 @@
-// base implementation of UTCPolicy
+// base implementation of uctPolicy
 
 use super::{MCTSConfig, MCTSGame, UCTPolicy};
 

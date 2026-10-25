@@ -285,7 +285,7 @@ impl<N: PartialEq> TreeNode<N> {
         *self.max_level.borrow()
     }
     pub fn iter_self(&self) -> impl Iterator<Item = Rc<TreeNode<N>>> {
-        IterSelf::new(self.get_self().unwrap()) // iterator over single node; useful for functions, which have an iterator as output and you want to be able to iterate over different outcomes
+        IterSelf::new(self.get_self().unwrap()) // iterator over single node; useful for functions, which have an iterator as output and you want to be able to iterate over different ouctomes
     }
     pub fn iter_children(&self) -> impl Iterator<Item = Rc<TreeNode<N>>> {
         IterChildren::new(self.get_self().unwrap())
