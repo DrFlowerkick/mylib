@@ -10,4 +10,4 @@ pub use core_tree::*;
 pub use elements::*;
 pub use policies::*;
 
-use super::{ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, UCTPolicy};
+use super::{Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, UCTPolicy};

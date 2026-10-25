@@ -19,5 +19,5 @@ pub use tree::*;
 use super::{
     ExpansionPolicy, GamePlayer, Heuristic, HeuristicConfig, MCTSAlgo, MCTSConfig, MCTSEdge,
     MCTSGame, MCTSNode, RecursiveHeuristicConfig, SimulationPolicy, TranspositionTable, UCTCache,
-    UCTPolicy,
+    UCTPolicy, UCTStatsPolicy,
 };

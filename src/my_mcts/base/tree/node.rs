@@ -15,7 +15,6 @@ where
     pub accumulated_value: f32,
     pub uct_cache: UC,
     pub expansion_policy: A::Expansion,
-    phantom: std::marker::PhantomData<H>,
 }
 
 impl<G, H, A, UC> MCTSNode<G, H, A> for BaseNode<G, H, A, UC>
@@ -34,7 +33,6 @@ where
             accumulated_value: 0.0,
             uct_cache: UC::default(),
             expansion_policy: A::Expansion::default(),
-            phantom: std::marker::PhantomData,
         }
     }
     fn get_state(&self) -> &G::State {

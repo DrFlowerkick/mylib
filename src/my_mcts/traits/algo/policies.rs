@@ -1,6 +1,7 @@
 // policy traits of mcts
 
 use super::{Heuristic, MCTSConfig, MCTSGame};
+use std::f32::INFINITY;
 
 // ToDo: add a SelectMovePolicy trait
 
@@ -12,6 +13,9 @@ pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig<G::Player>>: Clone + Sync + 
         last_player: G::Player,
         perspective_player: G::Player,
     ) -> f32 {
+        if visits == 0 {
+            return 0.0;
+        }
         let raw = accumulated_value / visits as f32;
         // this works only for 2 player games
         if last_player == perspective_player {
@@ -27,6 +31,9 @@ pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig<G::Player>>: Clone + Sync + 
         mcts_config: &Config,
         _last_player: G::Player,
     ) -> f32 {
+        if visits == 0 {
+            return INFINITY;
+        }
         mcts_config.exploration_constant() * ((parent_visits as f32).ln() / visits as f32).sqrt()
     }
 }

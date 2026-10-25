@@ -2,17 +2,17 @@
 
 mod caching;
 mod edge;
-mod elements_caching;
 mod node;
 mod policies;
+mod uct_caching;
 
 pub use caching::*;
 pub use edge::*;
-pub use elements_caching::*;
 pub use node::*;
 pub use policies::*;
+pub use uct_caching::*;
 
 use super::{
     Heuristic, MCTSAlgo, MCTSConfig, MCTSEdge, MCTSGame, MCTSNode, TranspositionTable, UCTCache,
-    UCTPolicy,
+    UCTPolicy, UCTStatsPolicy,
 };

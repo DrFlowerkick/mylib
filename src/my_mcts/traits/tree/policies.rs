@@ -54,8 +54,3 @@ where
     type Node: UCTCache<G, A::UCT, A::Config>;
     type Edge: UCTCache<G, A::UCT, A::Config>;
 }
-// ToDo: move the following to implementation, when new UCTCache implementations ar finished.
-//struct NodeOnly; impl StatsStrategy for NodeOnly { type Node = ExploitationAndExploration; type Edge = NoCache; }
-// Hybrid: Node = OnlyExploitation, Edge = OnlyExploration;
-// EdgeOnly: Node = NoCache, Edge = ExploitationAndExploration;
-// And add although implementations for UCTCache with caching exploitation and exploration score, too.

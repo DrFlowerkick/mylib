@@ -22,7 +22,6 @@ where
     pub edges: Vec<Vec<(usize, BaseEdge<G, H, A, UC>)>>,
     pub transposition_table: TT,
     pub root_id: usize,
-    phantom: std::marker::PhantomData<(G, H, UC)>,
 }
 
 impl<G, H, A, UC, TT> PlainTree<G, H, A, UC, TT>
@@ -39,7 +38,6 @@ where
             edges: Vec::with_capacity(expected_num_nodes),
             transposition_table: TranspositionTable::new(expected_num_nodes),
             root_id: 0,
-            phantom: std::marker::PhantomData,
         }
     }
 }
