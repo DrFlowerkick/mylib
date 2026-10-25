@@ -11,8 +11,6 @@ where
     UC: UCTCache<G, A::UCT, A::Config>,
 {
     pub state: G::State,
-    pub visits: usize,
-    pub accumulated_value: f32,
     pub uct_cache: UC,
     pub expansion_policy: A::Expansion,
 }
@@ -24,62 +22,33 @@ where
     A: MCTSAlgo<G, H>,
     UC: UCTCache<G, A::UCT, A::Config>,
 {
-    type Cache = UC;
-
     fn new(state: G::State) -> Self {
         BaseNode {
             state,
-            visits: 0,
-            accumulated_value: 0.0,
             uct_cache: UC::default(),
             expansion_policy: A::Expansion::default(),
         }
     }
+
     fn get_state(&self) -> &G::State {
         &self.state
     }
-    fn get_visits(&self) -> usize {
-        self.visits
-    }
-    fn get_accumulated_value(&self) -> f32 {
-        self.accumulated_value
-    }
-    // ToDo: this must be placed into the UCT Policy, which than although allows variations
-    // like progressive bias.
-    fn update_stats(&mut self, result: f32) {
-        self.visits += 1;
-        self.accumulated_value += result;
-        self.uct_cache.update_exploitation(
-            self.visits,
-            self.accumulated_value,
-            G::last_player(&self.state),
-            G::perspective_player(),
-        );
-    }
-    // ToDo: this must be placed into the UCT Policy, which than although allows variations
-    // like progressive bias.
+
     fn calc_uct(&mut self, parent_visits: usize, mcts_config: &A::Config) -> f32 {
-        if self.visits == 0 {
-            return f32::INFINITY;
-        }
-        let exploitation = self.uct_cache.get_exploitation(
-            self.visits,
-            self.accumulated_value,
-            G::last_player(&self.state),
-            G::perspective_player(),
-        );
-        self.uct_cache.update_exploration(
-            self.visits,
-            parent_visits,
-            mcts_config,
-            G::last_player(&self.state),
-        );
-        let exploration = self.uct_cache.get_exploration(
-            self.visits,
-            parent_visits,
-            mcts_config,
-            G::last_player(&self.state),
-        );
-        exploitation + exploration
+        self.uct_cache
+            .calc_uct(parent_visits, mcts_config, G::last_player(&self.state))
+    }
+
+    fn update_stats(&mut self, result: f32) {
+        self.uct_cache
+            .update_stats(result, G::last_player(&self.state));
+    }
+
+    fn get_visits(&self) -> Option<usize> {
+        self.uct_cache.get_visits()
+    }
+
+    fn get_accumulated_value(&self) -> Option<f32> {
+        self.uct_cache.get_accumulated_value()
     }
 }

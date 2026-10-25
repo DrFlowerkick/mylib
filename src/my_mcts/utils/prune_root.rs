@@ -1,6 +1,8 @@
 // if root of tree is set to new root, this util removes all nodes before new root
 
-use super::{Heuristic, MCTSAlgo, MCTSGame, MCTSTree, PlainTree, TranspositionTable, UCTCache};
+use super::{
+    Heuristic, MCTSAlgo, MCTSGame, MCTSTree, PlainTree, TranspositionTable, UCTStatsPolicy,
+};
 
 pub trait PruneToRoot {
     fn prune_to_root(&mut self);
@@ -8,13 +10,13 @@ pub trait PruneToRoot {
 
 // pruning to root is only allowed for PlainTree, if no transposition table is used,
 // since the table would contain old (and therefore wrong) indices after pruning.
-impl<G, H, A, TT, UC> PruneToRoot for PlainTree<G, H, A, UC, TT>
+impl<G, H, A, USP, TT> PruneToRoot for PlainTree<G, H, A, USP, TT>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
+    USP: UCTStatsPolicy<G, H, A>,
     TT: TranspositionTable<G::State, usize>,
-    UC: UCTCache<G, A::UCT, A::Config>,
 {
     fn prune_to_root(&mut self) {
         let Some(root_id) = self.root_id() else {

@@ -1,6 +1,6 @@
 // trait for edges of a MCTSTree
 
-use super::{Heuristic, MCTSAlgo, MCTSGame, UCTCache};
+use super::{Heuristic, MCTSAlgo, MCTSGame};
 
 pub trait MCTSEdge<G, H, A>: Clone + Sync + Send
 where
@@ -8,12 +8,10 @@ where
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
 {
-    type Cache: UCTCache<G, A::UCT, A::Config>;
-
     fn new(mv: G::Move) -> Self;
     fn get_move(&self) -> &G::Move;
-
-    // ToDo: handling uct related values and functions will be encapsulated in UCTCache
-    // Edge will only provide access to UCTCache
-    // Or perhaps not. I will think about it
+    fn calc_uct(&mut self, state: &G::State, parent_visits: usize, mcts_config: &A::Config) -> f32;
+    fn update_stats(&mut self, state: &G::State, result: f32);
+    fn get_visits(&self) -> Option<usize>;
+    fn get_accumulated_value(&self) -> Option<f32>;
 }

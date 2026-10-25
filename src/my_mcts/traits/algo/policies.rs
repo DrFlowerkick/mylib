@@ -1,7 +1,6 @@
 // policy traits of mcts
 
 use super::{Heuristic, MCTSConfig, MCTSGame};
-use std::f32::INFINITY;
 
 // ToDo: add a SelectMovePolicy trait
 
@@ -32,7 +31,7 @@ pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig<G::Player>>: Clone + Sync + 
         _last_player: G::Player,
     ) -> f32 {
         if visits == 0 {
-            return INFINITY;
+            return f32::INFINITY;
         }
         mcts_config.exploration_constant() * ((parent_visits as f32).ln() / visits as f32).sqrt()
     }

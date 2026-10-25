@@ -1,7 +1,6 @@
 // base implementation of uctPolicy
 
 use super::{MCTSConfig, MCTSGame, UCTPolicy};
-use std::f32::INFINITY;
 
 #[derive(Clone)]
 pub struct StaticC {}
@@ -28,7 +27,7 @@ where
         last_player: G::Player,
     ) -> f32 {
         if visits == 0 {
-            return INFINITY;
+            return f32::INFINITY;
         }
         let factor = mcts_config.exploration_boost(last_player);
         mcts_config.exploration_constant()
@@ -52,7 +51,7 @@ where
         _last_player: G::Player,
     ) -> f32 {
         if visits == 0 {
-            return INFINITY;
+            return f32::INFINITY;
         }
         let dynamic_c = mcts_config.exploration_constant() / (1.0 + (visits as f32).sqrt());
         dynamic_c * ((parent_visits as f32).ln() / visits as f32).sqrt()
@@ -74,7 +73,7 @@ where
         last_player: G::Player,
     ) -> f32 {
         if visits == 0 {
-            return INFINITY;
+            return f32::INFINITY;
         }
         let factor = mcts_config.exploration_boost(last_player);
         let dynamic_c =

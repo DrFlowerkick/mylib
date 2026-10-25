@@ -8,4 +8,6 @@ pub use bfs::*;
 pub use dfs::*;
 pub use prune_root::*;
 
-use super::{Heuristic, MCTSAlgo, MCTSGame, MCTSTree, PlainTree, TranspositionTable, UCTCache};
+use super::{
+    Heuristic, MCTSAlgo, MCTSGame, MCTSTree, PlainTree, TranspositionTable, UCTStatsPolicy,
+};

@@ -12,7 +12,7 @@ where
 {
     pub mv: G::Move,
     pub uct_cache: UC,
-    phantom: std::marker::PhantomData<(A, H)>,
+    phantom: std::marker::PhantomData<(H, A)>,
 }
 
 impl<G, H, A, UC> MCTSEdge<G, H, A> for BaseEdge<G, H, A, UC>
@@ -22,8 +22,6 @@ where
     A: MCTSAlgo<G, H>,
     UC: UCTCache<G, A::UCT, A::Config>,
 {
-    type Cache = UC;
-
     fn new(mv: G::Move) -> Self {
         Self {
             mv,
@@ -34,5 +32,22 @@ where
 
     fn get_move(&self) -> &G::Move {
         &self.mv
+    }
+
+    fn calc_uct(&mut self, state: &G::State, parent_visits: usize, mcts_config: &A::Config) -> f32 {
+        self.uct_cache
+            .calc_uct(parent_visits, mcts_config, G::last_player(state))
+    }
+
+    fn update_stats(&mut self, state: &G::State, result: f32) {
+        self.uct_cache.update_stats(result, G::last_player(state));
+    }
+
+    fn get_visits(&self) -> Option<usize> {
+        self.uct_cache.get_visits()
+    }
+
+    fn get_accumulated_value(&self) -> Option<f32> {
+        self.uct_cache.get_accumulated_value()
     }
 }

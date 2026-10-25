@@ -1,35 +1,35 @@
 // plain implementation of MCTSTree
 use super::{
     super::utils::BfsWalker, BaseEdge, BaseNode, ExpansionPolicy, Heuristic, MCTSAlgo, MCTSEdge,
-    MCTSGame, MCTSNode, MCTSTree, TranspositionHashMap, TranspositionTable, UCTCache,
+    MCTSGame, MCTSNode, MCTSTree, TranspositionHashMap, TranspositionTable, UCTStatsPolicy,
 };
 
 // plain type of TranspositionHashMap, which works with PlainTree
 pub type PlainTTHashMap<State> = TranspositionHashMap<State, usize>;
 
-// ToDo: we will probably need separate UC for Node and Edge in the future
-// base implementation of MCTSTree
+type Edges<G, H, A, UC> = Vec<Vec<(usize, BaseEdge<G, H, A, UC>)>>;
+
 #[derive(Clone)]
-pub struct PlainTree<G, H, A, UC, TT>
+pub struct PlainTree<G, H, A, USP, TT>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
-    UC: UCTCache<G, A::UCT, A::Config>,
+    USP: UCTStatsPolicy<G, H, A>,
     TT: TranspositionTable<G::State, usize>,
 {
-    pub nodes: Vec<BaseNode<G, H, A, UC>>,
-    pub edges: Vec<Vec<(usize, BaseEdge<G, H, A, UC>)>>,
+    pub nodes: Vec<BaseNode<G, H, A, USP::Node>>,
+    pub edges: Edges<G, H, A, USP::Edge>,
     pub transposition_table: TT,
     pub root_id: usize,
 }
 
-impl<G, H, A, UC, TT> PlainTree<G, H, A, UC, TT>
+impl<G, H, A, USP, TT> PlainTree<G, H, A, USP, TT>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
-    UC: UCTCache<G, A::UCT, A::Config>,
+    USP: UCTStatsPolicy<G, H, A>,
     TT: TranspositionTable<G::State, usize>,
 {
     pub fn new(expected_num_nodes: usize) -> Self {
@@ -40,6 +40,20 @@ where
             root_id: 0,
         }
     }
+
+    fn get_parent_visits(&self, id: usize) -> usize {
+        // 1.) check if node returns visits (Option<usize>)
+        // 2.) if none, nodes do not contain visits -> edge based, but no incoming edge available
+        // 3.) iter edges and return sum visits of each edge
+        if let Some(visits) = self.nodes[id].get_visits() {
+            visits
+        } else {
+            self.edges[id]
+                .iter()
+                .filter_map(|(_, e)| e.get_visits())
+                .sum()
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,12 +62,12 @@ pub enum PlainPathNode {
     Via { parent_id: usize, edge_idx: usize },
 }
 
-impl<G, H, A, UC, TT> MCTSTree<G, H, A> for PlainTree<G, H, A, UC, TT>
+impl<G, H, A, USP, TT> MCTSTree<G, H, A> for PlainTree<G, H, A, USP, TT>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
-    UC: UCTCache<G, A::UCT, A::Config>,
+    USP: UCTStatsPolicy<G, H, A>,
     TT: TranspositionTable<G::State, usize>,
 {
     type NodeID = usize;
@@ -181,36 +195,73 @@ where
         }
     }
 
-    // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
     fn get_target_visits(&self, path_node: Self::PathNode) -> usize {
-        self.nodes[self.target(path_node)].visits
-        // ToDo: rework this to be able to work with node-only, edge-only and hybrid:
-        // 1.) check if target node uct_cache returns visits (Option<usize>)
-        // 2.) if none, nodes do not contain visits -> check if edge exists
-        // 3.) yes: edge uct_cache returns visits (Option<usize>) -> expect Some(usize)
-        // 4.) no: call fn get_parent_visits() ToDo: add fn get_parent_visits() to PlainTree
-        // description fn get_parent_visits()
-        // 1.) check if node uct_cache returns visits (Option<usize>)
-        // 2.) if none, nodes do not contain visits -> edge based, but no incoming edge available
-        // 3.) iter edges and return sum visits of uct_cache from each edge
+        // 1.) check if path_node points to root or some node
+        // 2.) root: call fn get_parent_visits(root_id)
+        // 3.) some node: check if node returns visits (Option<usize>)
+        // 4.) if none, nodes do not contain visits -> check edge visits
+        // 5.) edge returns visits (Option<usize>) -> expect Some(usize)
+        match path_node {
+            PlainPathNode::Root(root_id) => self.get_parent_visits(root_id),
+            PlainPathNode::Via {
+                parent_id,
+                edge_idx,
+            } => {
+                if let Some(visits) = self.nodes[self.target(path_node)].get_visits() {
+                    visits
+                } else {
+                    self.edges[parent_id][edge_idx]
+                        .1
+                        .get_visits()
+                        .expect("node or edge must contain visits.")
+                }
+            }
+        }
     }
 
-    // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
     fn get_visits_from_parent(&self, path_node: Self::PathNode) -> usize {
-        self.nodes[self.target(path_node)].visits
-        // ToDo: rework this to be able to work with node-only, edge-only and hybrid:
-        // 1.) check if edge uct_cache returns visits (Option<usize>)
-        // 2.) if None, target node uct_cache returns visits (Option<usize>) -> expect Some(usize)
+        // 1.) return 0, if path_node points to root, since root has no parent
+        // 2.) check if edge uct_cache returns visits (Option<usize>)
+        // 3.) if None, target node uct_cache returns visits (Option<usize>) -> expect Some(usize)
+        match path_node {
+            PlainPathNode::Root(_) => 0,
+            PlainPathNode::Via {
+                parent_id,
+                edge_idx,
+            } => {
+                if let Some(visits) = self.edges[parent_id][edge_idx].1.get_visits() {
+                    visits
+                } else {
+                    self.nodes[self.edges[parent_id][edge_idx].0]
+                        .get_visits()
+                        .expect("node or edge must contain visits.")
+                }
+            }
+        }
     }
 
-    // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
     fn calc_uct(&mut self, path_node: Self::PathNode, mcts_config: &A::Config) -> f32 {
-        let parent_visits = match path_node {
-            PlainPathNode::Root(_) => 0,
-            PlainPathNode::Via { parent_id, .. } => self.nodes[parent_id].visits,
-        };
-        let child_id = self.target(path_node);
-        self.nodes[child_id].calc_uct(parent_visits, mcts_config)
+        match path_node {
+            PlainPathNode::Root(_) => {
+                // it does not make sense to calc uct of root and in fact this
+                // should never happen
+                panic!("Tried to calc uct of root");
+            }
+            PlainPathNode::Via {
+                parent_id,
+                edge_idx,
+            } => {
+                let parent_visits = self.get_parent_visits(parent_id);
+                let child_id = self.target(path_node);
+                let node_uct = self.nodes[child_id].calc_uct(parent_visits, mcts_config);
+                let state = self.nodes[child_id].get_state();
+                let edge_uct =
+                    self.edges[parent_id][edge_idx]
+                        .1
+                        .calc_uct(state, parent_visits, mcts_config);
+                node_uct + edge_uct
+            }
+        }
     }
 
     fn should_target_expand(
@@ -244,7 +295,6 @@ where
         ep.pop_expandable_move(state, visits, num_children, mcts_config, heuristic_config)
     }
 
-    // ToDo: this must be reworked later, when we add different ways of handling data in tree (NodeOnly, EdgeOnly, Hybrid).
     fn update_stats(&mut self, path_node: Self::PathNode, result: f32) {
         match path_node {
             PlainPathNode::Root(root_id) => self.nodes[root_id].update_stats(result),
@@ -252,12 +302,14 @@ where
                 parent_id,
                 edge_idx,
             } => {
-                // ToDo: This can be used for handling data in tree (NodeOnly, EdgeOnly, Hybrid)
-                // example on how to get &mut on all 3 elements of a path node:
-                /*let child_id = self.edges[parent_id][edge_idx].0;
-                let edge = &mut self.edges[parent_id][edge_idx].1;
-                let [parent_node, child_node] = self.nodes.get_disjoint_mut([parent_id, child_id]).unwrap();*/
-                self.nodes[self.edges[parent_id][edge_idx].0].update_stats(result)
+                // update states of node
+                let child_id = self.edges[parent_id][edge_idx].0;
+                self.nodes[child_id].update_stats(result);
+                // update stats of edge
+                let state = self.nodes[child_id].get_state();
+                self.edges[parent_id][edge_idx]
+                    .1
+                    .update_stats(state, result);
             }
         }
     }
