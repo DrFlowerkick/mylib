@@ -10,7 +10,8 @@ where
 {
     fn new(state: G::State) -> Self;
     fn get_state(&self) -> &G::State;
-    fn calc_uct(&mut self, parent_visits: usize, mcts_config: &A::Config) -> f32;
+    fn calc_exploitation_score(&self) -> f32;
+    fn calc_exploration_score(&mut self, parent_visits: usize, mcts_config: &A::Config) -> f32;
     fn update_stats(&mut self, result: f32);
     fn get_visits(&self) -> Option<usize>;
     fn get_accumulated_value(&self) -> Option<f32>;

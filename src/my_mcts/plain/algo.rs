@@ -67,19 +67,13 @@ where
             tree.set_root(node_of_state_id);
             return true;
         }
-        // state not found -> reset root
-        self.reset_root(state, tree);
-        false
-    }
-
-    fn reset_root(&self, state: &<G as MCTSGame>::State, tree: &mut impl MCTSTree<G, H, Self>) {
+        // state not found -> reinit root
         tree.init_root(state.clone());
+        false
     }
 
     fn iterate(&self, tree: &mut impl MCTSTree<G, H, Self>) {
         // separate parameters of PlainMCTS to satisfy borrow checker
-        // ToDo: we can probably delete this
-        //let (mcts_config, heuristic_config) = (&self.mcts_config, &self.heuristic_config);
 
         let mut current_path_node = tree.root_path_node();
         let mut path = vec![current_path_node];

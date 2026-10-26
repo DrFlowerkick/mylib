@@ -8,13 +8,18 @@ where
     UCT: UCTPolicy<G, Config>,
     Config: MCTSConfig<G::Player>,
 {
-    fn update_stats(&mut self, result: f32, last_player: G::Player);
-    fn calc_uct(
+    fn update_stats(&mut self, _result: f32, _last_player: G::Player) {}
+    fn calc_exploitation_score(&self, _last_player: G::Player) -> f32 {
+        0.0
+    }
+    fn calc_exploration_score(
         &mut self,
-        parent_visits: usize,
-        mcts_config: &Config,
-        last_player: G::Player,
-    ) -> f32;
+        _parent_visits: usize,
+        _mcts_config: &Config,
+        _last_player: G::Player,
+    ) -> f32 {
+        0.0
+    }
     fn get_visits(&self) -> Option<usize> {
         None
     }

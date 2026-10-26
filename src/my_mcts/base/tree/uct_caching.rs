@@ -11,15 +11,6 @@ where
     UCT: UCTPolicy<G, Config>,
     Config: MCTSConfig<G::Player>,
 {
-    fn update_stats(&mut self, _result: f32, _last_player: G::Player) {}
-    fn calc_uct(
-        &mut self,
-        _parent_visits: usize,
-        _mcts_config: &Config,
-        _last_player: G::Player,
-    ) -> f32 {
-        0.0
-    }
 }
 
 #[derive(Clone, Default)]
@@ -34,19 +25,8 @@ where
     UCT: UCTPolicy<G, Config>,
     Config: MCTSConfig<G::Player>,
 {
-    fn calc_uct(
-        &mut self,
-        _parent_visits: usize,
-        _mcts_config: &Config,
-        last_player: G::Player,
-    ) -> f32 {
-        // calc only exploitation score
-        UCT::exploitation_score(
-            self.accumulated_value,
-            self.visits,
-            last_player,
-            G::perspective_player(),
-        )
+    fn calc_exploitation_score(&self, last_player: G::Player) -> f32 {
+        UCT::exploitation_score(self.accumulated_value, self.visits, last_player)
     }
 
     fn update_stats(&mut self, result: f32, _last_player: G::Player) {
@@ -74,13 +54,12 @@ where
     UCT: UCTPolicy<G, Config>,
     Config: MCTSConfig<G::Player>,
 {
-    fn calc_uct(
+    fn calc_exploration_score(
         &mut self,
         parent_visits: usize,
         mcts_config: &Config,
         last_player: G::Player,
     ) -> f32 {
-        // calc only exploration score
         UCT::exploration_score(self.visits, parent_visits, mcts_config, last_player)
     }
 
@@ -105,19 +84,17 @@ where
     UCT: UCTPolicy<G, Config>,
     Config: MCTSConfig<G::Player>,
 {
-    fn calc_uct(
+    fn calc_exploitation_score(&self, last_player: G::Player) -> f32 {
+        UCT::exploitation_score(self.accumulated_value, self.visits, last_player)
+    }
+
+    fn calc_exploration_score(
         &mut self,
         parent_visits: usize,
         mcts_config: &Config,
         last_player: G::Player,
     ) -> f32 {
-        // sum of exploitation and exploration score
-        UCT::exploitation_score(
-            self.accumulated_value,
-            self.visits,
-            last_player,
-            G::perspective_player(),
-        ) + UCT::exploration_score(self.visits, parent_visits, mcts_config, last_player)
+        UCT::exploration_score(self.visits, parent_visits, mcts_config, last_player)
     }
 
     fn update_stats(&mut self, result: f32, _last_player: G::Player) {
@@ -147,25 +124,15 @@ where
     UCT: UCTPolicy<G, Config>,
     Config: MCTSConfig<G::Player>,
 {
-    fn calc_uct(
-        &mut self,
-        _parent_visits: usize,
-        _mcts_config: &Config,
-        _last_player: G::Player,
-    ) -> f32 {
-        // return only exploitation score
+    fn calc_exploitation_score(&self, _last_player: G::Player) -> f32 {
         self.exploitation_score
     }
 
     fn update_stats(&mut self, result: f32, last_player: G::Player) {
         self.visits += 1;
         self.accumulated_value += result;
-        self.exploitation_score = UCT::exploitation_score(
-            self.accumulated_value,
-            self.visits,
-            last_player,
-            G::perspective_player(),
-        );
+        self.exploitation_score =
+            UCT::exploitation_score(self.accumulated_value, self.visits, last_player);
     }
 
     fn get_visits(&self) -> Option<usize> {
@@ -190,11 +157,11 @@ where
     UCT: UCTPolicy<G, Config>,
     Config: MCTSConfig<G::Player>,
 {
-    fn calc_uct(
+    fn calc_exploration_score(
         &mut self,
         parent_visits: usize,
         mcts_config: &Config,
-        last_player: G::Player,
+        last_player: <G as MCTSGame>::Player,
     ) -> f32 {
         // update exploration score, if parent_visits changed
         if self.parent_visits != parent_visits {
@@ -202,7 +169,6 @@ where
                 UCT::exploration_score(self.visits, parent_visits, mcts_config, last_player);
             self.parent_visits = parent_visits;
         }
-        // return only exploration score
         self.exploration_score
     }
 
@@ -230,11 +196,15 @@ where
     UCT: UCTPolicy<G, Config>,
     Config: MCTSConfig<G::Player>,
 {
-    fn calc_uct(
+    fn calc_exploitation_score(&self, _last_player: G::Player) -> f32 {
+        self.exploitation_score
+    }
+
+    fn calc_exploration_score(
         &mut self,
         parent_visits: usize,
         mcts_config: &Config,
-        last_player: G::Player,
+        last_player: <G as MCTSGame>::Player,
     ) -> f32 {
         // update exploration score, if parent_visits changed
         if self.parent_visits != parent_visits {
@@ -242,19 +212,14 @@ where
                 UCT::exploration_score(self.visits, parent_visits, mcts_config, last_player);
             self.parent_visits = parent_visits;
         }
-        // sum of exploitation and exploration score
-        self.exploitation_score + self.exploration_score
+        self.exploration_score
     }
 
     fn update_stats(&mut self, result: f32, last_player: G::Player) {
         self.visits += 1;
         self.accumulated_value += result;
-        self.exploitation_score = UCT::exploitation_score(
-            self.accumulated_value,
-            self.visits,
-            last_player,
-            G::perspective_player(),
-        );
+        self.exploitation_score =
+            UCT::exploitation_score(self.accumulated_value, self.visits, last_player);
     }
 
     fn get_visits(&self) -> Option<usize> {

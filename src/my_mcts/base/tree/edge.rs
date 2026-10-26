@@ -34,9 +34,18 @@ where
         &self.mv
     }
 
-    fn calc_uct(&mut self, state: &G::State, parent_visits: usize, mcts_config: &A::Config) -> f32 {
+    fn calc_exploitation_score(&self, last_player: G::Player) -> f32 {
+        self.uct_cache.calc_exploitation_score(last_player)
+    }
+
+    fn calc_exploration_score(
+        &mut self,
+        last_player: G::Player,
+        parent_visits: usize,
+        mcts_config: &A::Config,
+    ) -> f32 {
         self.uct_cache
-            .calc_uct(parent_visits, mcts_config, G::last_player(state))
+            .calc_exploration_score(parent_visits, mcts_config, last_player)
     }
 
     fn update_stats(&mut self, state: &G::State, result: f32) {

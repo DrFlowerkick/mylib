@@ -253,12 +253,17 @@ where
             } => {
                 let parent_visits = self.get_parent_visits(parent_id);
                 let child_id = self.target(path_node);
-                let node_uct = self.nodes[child_id].calc_uct(parent_visits, mcts_config);
-                let state = self.nodes[child_id].get_state();
-                let edge_uct =
-                    self.edges[parent_id][edge_idx]
-                        .1
-                        .calc_uct(state, parent_visits, mcts_config);
+                let node_uct = self.nodes[child_id].calc_exploitation_score()
+                    + self.nodes[child_id].calc_exploration_score(parent_visits, mcts_config);
+                let last_player = G::last_player(self.nodes[child_id].get_state());
+                let edge_uct = self.edges[parent_id][edge_idx]
+                    .1
+                    .calc_exploitation_score(last_player)
+                    + self.edges[parent_id][edge_idx].1.calc_exploration_score(
+                        last_player,
+                        parent_visits,
+                        mcts_config,
+                    );
                 node_uct + edge_uct
             }
         }
