@@ -9,7 +9,8 @@
 // NoHeuristic can be used if ho heuristic is required or feasible.
 
 use super::{
-    ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, MCTSTree, SimulationPolicy, UCTPolicy,
+    ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, MCTSTree, SelectMovePolicy, SimulationPolicy,
+    UCTPolicy,
 };
 
 pub trait MCTSAlgo<G: MCTSGame, H: Heuristic<G>>: Sized + Clone + Sync + Send {
@@ -17,6 +18,7 @@ pub trait MCTSAlgo<G: MCTSGame, H: Heuristic<G>>: Sized + Clone + Sync + Send {
     type UCT: UCTPolicy<G, Self::Config>;
     type Expansion: ExpansionPolicy<G, H, Self::Config>;
     type Simulation: SimulationPolicy<G, H, Self::Config>;
+    type MoveSelect: SelectMovePolicy<G>;
 
     fn set_root(
         &self,

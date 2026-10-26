@@ -1,14 +1,14 @@
 // Plain implementation of MCTS
 
 use super::{
-    ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSTree, SimulationPolicy,
-    UCTPolicy,
+    ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSTree, MoveStats,
+    SelectMovePolicy, SimulationPolicy, UCTPolicy,
 };
 use rand::{prelude::IteratorRandom, rng};
 
 // Use PlainMCTS with your specific implementations of the MCTS traits.
 #[derive(Clone, Copy)]
-pub struct PlainMCTS<G, H, MC, UP, EP, SP>
+pub struct PlainMCTS<G, H, MC, UP, EP, SP, MP>
 where
     G: MCTSGame,
     H: Heuristic<G>,
@@ -16,13 +16,14 @@ where
     UP: UCTPolicy<G, MC>,
     EP: ExpansionPolicy<G, H, MC>,
     SP: SimulationPolicy<G, H, MC>,
+    MP: SelectMovePolicy<G>,
 {
     pub mcts_config: MC,
     pub heuristic_config: H::Config,
-    phantom: std::marker::PhantomData<(UP, EP, SP)>,
+    phantom: std::marker::PhantomData<(UP, EP, SP, MP)>,
 }
 
-impl<G, H, MC, UP, EP, SP> PlainMCTS<G, H, MC, UP, EP, SP>
+impl<G, H, MC, UP, EP, SP, MP> PlainMCTS<G, H, MC, UP, EP, SP, MP>
 where
     G: MCTSGame,
     H: Heuristic<G>,
@@ -30,6 +31,7 @@ where
     UP: UCTPolicy<G, MC>,
     EP: ExpansionPolicy<G, H, MC>,
     SP: SimulationPolicy<G, H, MC>,
+    MP: SelectMovePolicy<G>,
 {
     pub fn new(mcts_config: MC, heuristic_config: H::Config) -> Self {
         Self {
@@ -40,7 +42,7 @@ where
     }
 }
 
-impl<G, H, MC, UP, EP, SP> MCTSAlgo<G, H> for PlainMCTS<G, H, MC, UP, EP, SP>
+impl<G, H, MC, UP, EP, SP, MP> MCTSAlgo<G, H> for PlainMCTS<G, H, MC, UP, EP, SP, MP>
 where
     G: MCTSGame,
     H: Heuristic<G>,
@@ -48,11 +50,13 @@ where
     UP: UCTPolicy<G, MC>,
     EP: ExpansionPolicy<G, H, MC>,
     SP: SimulationPolicy<G, H, MC>,
+    MP: SelectMovePolicy<G>,
 {
     type Config = MC;
     type UCT = UP;
     type Expansion = EP;
     type Simulation = SP;
+    type MoveSelect = MP;
 
     fn set_root(
         &self,
@@ -67,7 +71,7 @@ where
             tree.set_root(node_of_state_id);
             return true;
         }
-        // state not found -> reinit root
+        // state not found -> reinitialize root
         tree.init_root(state.clone());
         false
     }
@@ -207,11 +211,19 @@ where
         let root_id = tree
             .root_id()
             .expect("Root node must be initialized before selecting a move");
-        let most_visited_child_step = tree
-            .get_children_path_nodes(root_id)
-            .max_by_key(|&pn| tree.get_visits_from_parent(pn))
-            .expect("could not identify max visited child");
-        tree.get_move(most_visited_child_step)
-            .expect("could not find move")
+        let candidates = tree.get_children_path_nodes(root_id).filter_map(|pn| {
+            let visits_from_parent = tree.get_visits_from_parent(pn);
+            (visits_from_parent > 0).then(|| {
+                (
+                    tree.get_move(pn).expect("expected move"),
+                    MoveStats {
+                        visits_from_parent,
+                        accumulated_value: tree.get_target_accumulated_value(pn),
+                        acc_visits: tree.get_target_visits(pn),
+                    },
+                )
+            })
+        });
+        Self::MoveSelect::select(candidates).expect("expect move")
     }
 }

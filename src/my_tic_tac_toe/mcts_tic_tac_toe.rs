@@ -94,8 +94,8 @@ mod tests {
 
     use crate::my_mcts::{
         BaseConfig, DefaultSimulationPolicy, DynamicC, ExpandAll, HybridWithScoreCache, MCTSAlgo,
-        NoHeuristic, NoTranspositionTable, NodeOnly, PlainMCTS, PlainTree, ProgressiveWidening,
-        StaticC, TranspositionHashMap,
+        MostVisited, MostVisitedAndMaxMean, NoHeuristic, NoTranspositionTable, NodeOnly, PlainMCTS,
+        PlainTree, ProgressiveWidening, StaticC, TranspositionHashMap,
     };
 
     type TTTBasicMCTS = PlainMCTS<
@@ -105,6 +105,7 @@ mod tests {
         StaticC,
         ExpandAll<TicTacToeMCTSGame>,
         DefaultSimulationPolicy,
+        MostVisited,
     >;
     type TTTBasicMCTSTree =
         PlainTree<TicTacToeMCTSGame, NoHeuristic, TTTBasicMCTS, NodeOnly, NoTranspositionTable>;
@@ -115,6 +116,7 @@ mod tests {
         DynamicC,
         ProgressiveWidening<TicTacToeMCTSGame, BaseConfig<TicTacToeStatus>>,
         DefaultSimulationPolicy,
+        MostVisitedAndMaxMean,
     >;
     type TTTFullMCTSTree = PlainTree<
         TicTacToeMCTSGame,

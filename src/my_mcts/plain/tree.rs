@@ -56,6 +56,20 @@ where
                 .sum()
         }
     }
+
+    fn get_parent_accumulated_value(&self, id: usize) -> f32 {
+        // 1.) check if node returns accumulated value (Option<f32>)
+        // 2.) if none, nodes do not contain visits -> edge based, but no incoming edge available
+        // 3.) iter edges and return sum accumulated value of each edge
+        if let Some(acc) = self.nodes[id].get_accumulated_value() {
+            acc
+        } else {
+            self.edges[id]
+                .iter()
+                .filter_map(|(_, e)| e.get_accumulated_value())
+                .sum()
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -216,6 +230,30 @@ where
                         .1
                         .get_visits()
                         .expect("node or edge must contain visits.")
+                }
+            }
+        }
+    }
+
+    fn get_target_accumulated_value(&self, path_node: Self::PathNode) -> f32 {
+        // 1.) check if path_node points to root or some node
+        // 2.) root: call fn get_parent_accumulated_value(root_id)
+        // 3.) some node: check if node returns accumulated value (Option<f32>)
+        // 4.) if none, nodes do not contain accumulated vale -> check edge accumulated value
+        // 5.) edge returns accumulated value (Option<f32>) -> expect Some(f32)
+        match path_node {
+            PlainPathNode::Root(root_id) => self.get_parent_accumulated_value(root_id),
+            PlainPathNode::Via {
+                parent_id,
+                edge_idx,
+            } => {
+                if let Some(acc) = self.nodes[self.target(path_node)].get_accumulated_value() {
+                    acc
+                } else {
+                    self.edges[parent_id][edge_idx]
+                        .1
+                        .get_accumulated_value()
+                        .expect("node or edge must contain accumulated value.")
                 }
             }
         }

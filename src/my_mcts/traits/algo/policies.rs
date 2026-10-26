@@ -67,6 +67,15 @@ pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::P
     }
 }
 
-// ToDo: add a SelectMovePolicy trait
-// inputs are tree and path_node of corresponding move, returns Ordering,
-// which can be used by max_by_key()
+#[derive(Clone, Copy)]
+pub struct MoveStats {
+    pub visits_from_parent: usize,
+    pub accumulated_value: f32,
+    pub acc_visits: usize,
+}
+
+pub trait SelectMovePolicy<G: MCTSGame>: Clone + Sync + Send {
+    fn select<'a, I>(candidates: I) -> Option<&'a G::Move>
+    where
+        I: Iterator<Item = (&'a G::Move, MoveStats)>;
+}
