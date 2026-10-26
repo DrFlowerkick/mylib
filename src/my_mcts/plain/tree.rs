@@ -1,3 +1,5 @@
+use crate::my_mcts::UCTCache;
+
 // plain implementation of MCTSTree
 use super::{
     super::utils::BfsWalker, BaseEdge, BaseNode, ExpansionPolicy, Heuristic, MCTSAlgo, MCTSEdge,
@@ -240,12 +242,27 @@ where
         }
     }
 
+    fn get_win_probability(&self) -> f32 {
+        if self.nodes[self.root_id].get_accumulated_value().is_some() {
+            // node contains exploitation stats
+            self.nodes[self.root_id].calc_exploitation_score()
+        } else {
+            // edges only -> total uct is some of children edges
+            // last_player for exploitation score is current player of root
+            let last_player = G::current_player(self.nodes[self.root_id].get_state());
+            self.edges[self.root_id]
+                .iter()
+                .map(|(_, e)| e.uct_cache.calc_exploitation_score(last_player))
+                .sum()
+        }
+    }
+
     fn calc_uct(&mut self, path_node: Self::PathNode, mcts_config: &A::Config) -> f32 {
         match path_node {
             PlainPathNode::Root(_) => {
-                // it does not make sense to calc uct of root and in fact this
-                // should never happen
-                panic!("Tried to calc uct of root");
+                // for root we only calc exploitation score, which is equal to the expected
+                // win probability of the current tree
+                self.get_win_probability()
             }
             PlainPathNode::Via {
                 parent_id,

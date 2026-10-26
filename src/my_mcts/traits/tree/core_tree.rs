@@ -47,6 +47,7 @@ where
     fn target(&self, path_node: Self::PathNode) -> Self::NodeID;
     fn get_target_visits(&self, path_node: Self::PathNode) -> usize;
     fn get_visits_from_parent(&self, path_node: Self::PathNode) -> usize;
+    fn get_win_probability(&self) -> f32;
     fn calc_uct(&mut self, path_node: Self::PathNode, mcts_config: &A::Config) -> f32;
     fn should_target_expand(
         &self,
