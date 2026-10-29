@@ -85,6 +85,10 @@ where
 
         let mut current_path_node = tree.root_path_node();
         let mut path = vec![current_path_node];
+        // ToDo: if root is solved, iteration is solved! -> iterate requires return value
+        if let Some(outcome) = tree.get_target_solved(current_path_node) {
+            //return Some(outcome);
+        }
 
         /* ----------------- Select & Expand ----------------- */
         // Select and expand until at least one new child is created or a leaf without children is found.
@@ -94,6 +98,8 @@ where
         // simulate the node, since it has no children. Therefore we need to continue selection from the last
         // node in the path, which is now linked to one or mode nodes in the transposition table. The selection
         // can now continue to these newly linked nodes.
+
+        // ToDo: update usage of solver in selection and expansion
         'selection_and_expansion: loop {
             // Selection
             while tree.count_children(tree.target(current_path_node)) > 0 {
@@ -181,30 +187,41 @@ where
         // or some heuristic value between 0.0 and 1.0
         // WinDrawLoss implementation of GameOutcome provides these values with fn to_score()
         let mut current_state = tree.get_node_state(tree.target(current_path_node)).clone();
-        let mut depth = 0;
-        let simulation_result = loop {
-            if let Some(outcome) = G::evaluate(&current_state) {
-                tree.set_node_outcome(tree.target(current_path_node), outcome);
-                break outcome.to_score();
-            }
+        if let Some(outcome) = G::evaluate(&current_state) {
+            // leaf is terminal -> set outcome of leaf
+            tree.set_node_outcome(tree.target(current_path_node), outcome);
+        }
+        let simulation_result = if let Some(outcome) = tree.get_target_solved(current_path_node) {
+            // node is already solved -> use solved score
+            outcome.to_score()
+        } else {
+            let mut depth = 0;
+            loop {
+                // check for heuristic cutoff
+                if let Some(heuristic) = SP::should_cutoff(
+                    &current_state,
+                    depth,
+                    Some(G::perspective_player()),
+                    &self.mcts_config,
+                    &self.heuristic_config,
+                ) {
+                    break heuristic;
+                }
 
-            if let Some(heuristic) = SP::should_cutoff(
-                &current_state,
-                depth,
-                Some(G::perspective_player()),
-                &self.mcts_config,
-                &self.heuristic_config,
-            ) {
-                break heuristic;
-            }
+                // choose next state randomly
+                current_state = G::apply_move(
+                    &current_state,
+                    &G::available_moves(&current_state)
+                        .choose(&mut rng())
+                        .expect("No available moves"),
+                );
+                depth += 1;
 
-            current_state = G::apply_move(
-                &current_state,
-                &G::available_moves(&current_state)
-                    .choose(&mut rng())
-                    .expect("No available moves"),
-            );
-            depth += 1;
+                // check for terminal state
+                if let Some(outcome) = G::evaluate(&current_state) {
+                    break outcome.to_score();
+                }
+            }
         };
 
         /* ----------------- Back Propagation ----------------- */
@@ -214,8 +231,10 @@ where
             previous_solver_changed =
                 tree.update_stats(path_node, simulation_result, previous_solver_changed);
         }
+        //None
     }
 
+    // ToDo: select_move must use solver
     fn select_move<'a>(&'a self, tree: &'a impl MCTSTree<G, H, Self>) -> &'a G::Move {
         let root_id = tree
             .root_id()
