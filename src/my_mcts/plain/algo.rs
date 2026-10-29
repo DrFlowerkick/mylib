@@ -1,7 +1,7 @@
 // Plain implementation of MCTS
 
 use super::{
-    ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSTree, MoveStats,
+    ExpansionPolicy, GameOutcome, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSTree, MoveStats,
     SelectMovePolicy, SimulationPolicy, UCTPolicy,
 };
 use rand::{prelude::IteratorRandom, rng};
@@ -178,8 +178,8 @@ where
         let mut current_state = tree.get_node_state(tree.target(current_path_node)).clone();
         let mut depth = 0;
         let simulation_result = loop {
-            if let Some(final_score) = G::evaluate(&current_state) {
-                break final_score;
+            if let Some(outcome) = G::evaluate(&current_state) {
+                break outcome.to_score();
             }
 
             if let Some(heuristic) = SP::should_cutoff(

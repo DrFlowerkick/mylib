@@ -12,7 +12,7 @@ pub use algo::*;
 pub use tree::*;
 
 use super::{
-    BaseEdge, BaseNode, ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSEdge, MCTSGame,
-    MCTSNode, MCTSTree, MoveStats, SelectMovePolicy, SimulationPolicy, TranspositionHashMap,
-    TranspositionTable, UCTPolicy, UCTStatsPolicy,
+    BaseEdge, BaseNode, ExpansionPolicy, GameOutcome, Heuristic, MCTSAlgo, MCTSConfig, MCTSEdge,
+    MCTSGame, MCTSNode, MCTSTree, MoveStats, SelectMovePolicy, SimulationPolicy,
+    TranspositionHashMap, TranspositionTable, UCTPolicy, UCTStatsPolicy,
 };

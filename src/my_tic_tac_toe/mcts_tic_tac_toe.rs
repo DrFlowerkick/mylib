@@ -1,5 +1,5 @@
 use super::*;
-use crate::my_mcts::{GamePlayer, MCTSGame};
+use crate::my_mcts::{GamePlayer, MCTSGame, WinDrawLoss};
 
 #[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
 pub struct TicTacToePlayerAction {
@@ -52,6 +52,7 @@ impl MCTSGame for TicTacToeMCTSGame {
     type State = TicTacToeGame;
     type Move = TicTacToePlayerAction;
     type Player = TicTacToeStatus;
+    type Outcome = WinDrawLoss;
 
     fn available_moves<'a>(state: &'a Self::State) -> Box<dyn Iterator<Item = Self::Move> + 'a> {
         Box::new(state.ttt.map.iterate().filter_map(|(cell, v)| {
@@ -72,7 +73,7 @@ impl MCTSGame for TicTacToeMCTSGame {
         new_state
     }
 
-    fn evaluate(state: &Self::State) -> Option<f32> {
+    fn evaluate(state: &Self::State) -> Option<WinDrawLoss> {
         state.ttt.get_status().evaluate()
     }
 
@@ -93,9 +94,10 @@ mod tests {
     use rand::{prelude::*, rng};
 
     use crate::my_mcts::{
-        BaseConfig, DefaultSimulationPolicy, DynamicC, ExpandAll, HybridWithScoreCache, MCTSAlgo,
-        MostVisited, MostVisitedAndMaxMean, NoHeuristic, NoTranspositionTable, NodeOnly, PlainMCTS,
-        PlainTree, ProgressiveWidening, StaticC, TranspositionHashMap,
+        BaseConfig, DefaultSimulationPolicy, DynamicC, ExpandAll, GameOutcome,
+        HybridWithScoreCache, MCTSAlgo, MostVisited, MostVisitedAndMaxMean, NoHeuristic,
+        NoTranspositionTable, NodeOnly, PlainMCTS, PlainTree, ProgressiveWidening, StaticC,
+        TranspositionHashMap,
     };
 
     type TTTBasicMCTS = PlainMCTS<
@@ -194,7 +196,9 @@ mod tests {
                     panic!("vacant: Game ended without winner!?");
                 }
             }
-            wins += TicTacToeMCTSGame::evaluate(&ttt_game_data).unwrap();
+            wins += TicTacToeMCTSGame::evaluate(&ttt_game_data)
+                .unwrap()
+                .to_score();
         }
         println!("{} wins out of 50 matches.", wins);
         assert!(wins > 45.0);
@@ -254,7 +258,9 @@ mod tests {
                     panic!("vacant: Game ended without winner!?");
                 }
             }
-            wins += TicTacToeMCTSGame::evaluate(&ttt_game_data).unwrap();
+            wins += TicTacToeMCTSGame::evaluate(&ttt_game_data)
+                .unwrap()
+                .to_score();
         }
         println!("{} wins out of 50 matches.", wins);
         assert!(wins > 45.0);
@@ -348,7 +354,9 @@ mod tests {
                     panic!("vacant: Game ended without winner!?");
                 }
             }
-            wins += TicTacToeMCTSGame::evaluate(&first_ttt_game_data).unwrap();
+            wins += TicTacToeMCTSGame::evaluate(&first_ttt_game_data)
+                .unwrap()
+                .to_score();
         }
         println!("{} wins out of 50 matches.", wins);
         assert_eq!(wins, 25.0);

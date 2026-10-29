@@ -6,6 +6,8 @@ use super::{Heuristic, MCTSAlgo, MCTSGame};
 // - call set_root() with a new_root_id, which does not exist in tree.
 // - call add_child() with a parent_id, which does not exist in tree.
 // These error cases will result in panics. What about error handling to prevent panics?
+// --> Answer: panics are valid, but should be documented in contract. Use AI Agent later
+// to fix this.
 pub trait MCTSTree<G, H, A>
 where
     G: MCTSGame,

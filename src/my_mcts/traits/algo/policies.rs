@@ -79,3 +79,5 @@ pub trait SelectMovePolicy<G: MCTSGame>: Clone + Sync + Send {
     where
         I: Iterator<Item = (&'a G::Move, MoveStats)>;
 }
+
+pub trait SolverPolicy<G: MCTSGame, H: Heuristic<G>>: Clone + Sync + Send + Default {}
