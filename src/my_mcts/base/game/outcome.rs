@@ -1,5 +1,7 @@
 // base implementation of GameOutcome
 
+use std::ops::Neg;
+
 use super::GameOutcome;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -7,6 +9,18 @@ pub enum WinDrawLoss {
     Loss,
     Draw,
     Win,
+}
+
+impl Neg for WinDrawLoss {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            WinDrawLoss::Draw => WinDrawLoss::Draw,
+            WinDrawLoss::Loss => WinDrawLoss::Win,
+            WinDrawLoss::Win => WinDrawLoss::Loss,
+        }
+    }
 }
 
 impl GameOutcome for WinDrawLoss {

@@ -50,6 +50,7 @@ where
     fn target(&self, path_node: Self::PathNode) -> Self::NodeID;
     fn get_target_visits(&self, path_node: Self::PathNode) -> usize;
     fn get_target_accumulated_value(&self, path_node: Self::PathNode) -> f32;
+    fn get_target_solved(&self, path_node: Self::PathNode) -> Option<G::Outcome>;
     fn get_visits_from_parent(&self, path_node: Self::PathNode) -> usize;
     fn get_win_probability(&self) -> f32;
     fn calc_uct(&mut self, path_node: Self::PathNode, mcts_config: &A::Config) -> f32;
@@ -65,6 +66,11 @@ where
         mcts_config: &A::Config,
         heuristic_config: &H::Config,
     ) -> Option<G::Move>;
-    fn update_stats(&mut self, path_node: Self::PathNode, result: f32);
+    fn update_stats(
+        &mut self,
+        path_node: Self::PathNode,
+        result: f32,
+        previous_solver_changed: bool,
+    ) -> bool;
     fn get_move(&self, path_node: Self::PathNode) -> Option<&G::Move>;
 }

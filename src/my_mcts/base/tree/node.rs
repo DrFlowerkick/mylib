@@ -66,15 +66,8 @@ where
     }
 
     // -------------- Expansion --------------
-    fn should_expand(
-        &self,
-        visits: usize,
-        num_children: usize,
-        mcts_config: &A::Config,
-        heuristic_config: &H::Config,
-    ) -> bool {
-        self.expansion_policy
-            .should_expand(visits, num_children, mcts_config, heuristic_config)
+    fn get_expansion_policy(&self) -> &A::Expansion {
+        &self.expansion_policy
     }
 
     fn pop_expandable_move(
@@ -88,12 +81,14 @@ where
         ep.pop_expandable_move(state, visits, num_children, mcts_config, heuristic_config)
     }
 
-    fn fully_expanded(&self) -> bool {
-        self.expansion_policy.fully_expanded()
-    }
-
     // -------------- Solver --------------
+    fn get_solver(&self) -> &A::Solver {
+        &self.solver
+    }
     fn set_outcome(&mut self, outcome: G::Outcome) {
         self.solver.set_solved(outcome);
+    }
+    fn set_solver(&mut self, solver: A::Solver) {
+        self.solver = solver;
     }
 }

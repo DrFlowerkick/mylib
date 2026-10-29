@@ -40,6 +40,6 @@ where
         }
 
         // reset root id
-        self.root_id = 0;
+        self.set_root(0);
     }
 }

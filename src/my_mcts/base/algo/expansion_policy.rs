@@ -59,7 +59,7 @@ where
             mv
         }
     }
-    fn fully_expanded(&self) -> bool {
+    fn is_fully_expanded(&self) -> bool {
         if let Some(m) = &self.unexpanded_moves {
             m.is_empty()
         } else {
@@ -151,7 +151,7 @@ where
             mv
         }
     }
-    fn fully_expanded(&self) -> bool {
+    fn is_fully_expanded(&self) -> bool {
         if let Some(moves) = &self.unexpanded_moves {
             moves.is_empty()
         } else {
@@ -261,7 +261,7 @@ where
             mv
         }
     }
-    fn fully_expanded(&self) -> bool {
+    fn is_fully_expanded(&self) -> bool {
         if let Some(moves) = &self.unexpanded_moves {
             moves.is_empty()
         } else {

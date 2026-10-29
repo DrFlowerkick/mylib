@@ -208,8 +208,11 @@ where
         };
 
         /* ----------------- Back Propagation ----------------- */
-        for step in path {
-            tree.update_stats(step, simulation_result);
+        // unwrap() is save, since path is always at least one element long.
+        let mut previous_solver_changed = tree.get_target_solved(*path.last().unwrap()).is_some();
+        for path_node in path {
+            previous_solver_changed =
+                tree.update_stats(path_node, simulation_result, previous_solver_changed);
         }
     }
 

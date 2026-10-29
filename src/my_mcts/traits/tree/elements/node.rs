@@ -17,13 +17,7 @@ where
     fn get_visits(&self) -> Option<usize>;
     fn get_accumulated_value(&self) -> Option<f32>;
     // expansion
-    fn should_expand(
-        &self,
-        visits: usize,
-        num_children: usize,
-        mcts_config: &A::Config,
-        heuristic_config: &H::Config,
-    ) -> bool;
+    fn get_expansion_policy(&self) -> &A::Expansion;
     fn pop_expandable_move(
         &mut self,
         visits: usize,
@@ -31,7 +25,8 @@ where
         mcts_config: &A::Config,
         heuristic_config: &H::Config,
     ) -> Option<G::Move>;
-    fn fully_expanded(&self) -> bool;
     // solver
+    fn get_solver(&self) -> &A::Solver;
     fn set_outcome(&mut self, outcome: G::Outcome);
+    fn set_solver(&mut self, solver: A::Solver);
 }

@@ -1,7 +1,9 @@
+use crate::my_mcts::SolverPolicy;
+
 // plain implementation of MCTSTree
 use super::{
-    super::utils::BfsWalker, BaseEdge, BaseNode, Heuristic, MCTSAlgo, MCTSEdge, MCTSGame, MCTSNode,
-    MCTSTree, TranspositionHashMap, TranspositionTable, UCTStatsPolicy,
+    super::utils::BfsWalker, BaseEdge, BaseNode, ExpansionPolicy, Heuristic, MCTSAlgo, MCTSEdge,
+    MCTSGame, MCTSNode, MCTSTree, TranspositionHashMap, TranspositionTable, UCTStatsPolicy,
 };
 
 // plain type of TranspositionHashMap, which works with PlainTree
@@ -18,10 +20,11 @@ where
     USP: UCTStatsPolicy<G, H, A>,
     TT: TranspositionTable<G::State, usize>,
 {
+    // ToDo: make all elements private
     pub nodes: Vec<BaseNode<G, H, A, USP::Node>>,
     pub edges: Edges<G, H, A, USP::Edge>,
-    pub transposition_table: TT,
-    pub root_id: usize,
+    transposition_table: TT,
+    root_id: usize,
 }
 
 impl<G, H, A, USP, TT> PlainTree<G, H, A, USP, TT>
@@ -261,6 +264,18 @@ where
         }
     }
 
+    fn get_target_solved(&self, path_node: Self::PathNode) -> Option<G::Outcome> {
+        match path_node {
+            PlainPathNode::Root(root_id) => self.nodes[root_id].get_solver().get_solved(),
+            PlainPathNode::Via {
+                parent_id,
+                edge_idx,
+            } => self.nodes[self.edges[parent_id][edge_idx].0]
+                .get_solver()
+                .get_solved(),
+        }
+    }
+
     fn get_visits_from_parent(&self, path_node: Self::PathNode) -> usize {
         // 1.) return 0, if path_node points to root, since root has no parent
         // 2.) check if edge uct_cache returns visits (Option<usize>)
@@ -335,7 +350,12 @@ where
         let visits = self.get_target_visits(path_node);
         let id = self.target(path_node);
         let num_children = self.count_children(id);
-        self.nodes[id].should_expand(visits, num_children, mcts_config, heuristic_config)
+        self.nodes[id].get_expansion_policy().should_expand(
+            visits,
+            num_children,
+            mcts_config,
+            heuristic_config,
+        )
     }
 
     fn pop_target_expandable_move(
@@ -350,9 +370,17 @@ where
         self.nodes[id].pop_expandable_move(visits, num_children, mcts_config, heuristic_config)
     }
 
-    fn update_stats(&mut self, path_node: Self::PathNode, result: f32) {
+    fn update_stats(
+        &mut self,
+        path_node: Self::PathNode,
+        result: f32,
+        previous_solver_changed: bool,
+    ) -> bool {
         match path_node {
-            PlainPathNode::Root(root_id) => self.nodes[root_id].update_stats(result),
+            PlainPathNode::Root(root_id) => {
+                self.nodes[root_id].update_stats(result);
+                false
+            }
             PlainPathNode::Via {
                 parent_id,
                 edge_idx,
@@ -365,6 +393,29 @@ where
                 self.edges[parent_id][edge_idx]
                     .1
                     .update_stats(state, result);
+                // update solver, if target is solved && parent is fully expanded
+                if previous_solver_changed {
+                    let may_be_unexpanded = if !self.nodes[parent_id]
+                        .get_expansion_policy()
+                        .is_fully_expanded()
+                    {
+                        Some(&A::Solver::default())
+                    } else {
+                        None
+                    };
+                    let children_solver_iter = self
+                        .get_children_path_nodes(parent_id)
+                        .map(|pn| self.target(pn))
+                        .map(|child_id| self.nodes[child_id].get_solver())
+                        .chain(may_be_unexpanded);
+
+                    let solver = A::Solver::new_from_children(children_solver_iter);
+                    let out = &solver != self.nodes[parent_id].get_solver();
+                    self.nodes[parent_id].set_solver(solver);
+                    out
+                } else {
+                    false
+                }
             }
         }
     }

@@ -50,7 +50,7 @@ pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Pl
         mcts_config: &Config,
         heuristic_config: &H::Config,
     ) -> Option<G::Move>;
-    fn fully_expanded(&self) -> bool;
+    fn is_fully_expanded(&self) -> bool;
 }
 
 // return value ist heuristic value at cutoff
@@ -81,9 +81,12 @@ pub trait SelectMovePolicy<G: MCTSGame>: Clone + Sync + Send {
         I: Iterator<Item = (&'a G::Move, MoveStats)>;
 }
 
-pub trait SolverPolicy<G: MCTSGame>: Clone + Sync + Send + Default {
+pub trait SolverPolicy<G: MCTSGame>: Clone + Sync + Send + Default + Eq + PartialEq {
     fn set_solved(&mut self, outcome: G::Outcome);
     fn get_solved(&self) -> Option<G::Outcome> {
         None
     }
+    fn new_from_children<'a>(children: impl IntoIterator<Item = &'a Self>) -> Self
+    where
+        Self: 'a;
 }
