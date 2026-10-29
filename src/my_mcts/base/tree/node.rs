@@ -1,5 +1,7 @@
 // plain implementation of MCTSNode
 
+use crate::my_mcts::{ExpansionPolicy, SolverPolicy};
+
 use super::{Heuristic, MCTSAlgo, MCTSGame, MCTSNode, UCTCache};
 
 #[derive(Clone)]
@@ -10,9 +12,10 @@ where
     A: MCTSAlgo<G, H>,
     UC: UCTCache<G, A::UCT, A::Config>,
 {
-    pub state: G::State,
-    pub uct_cache: UC,
-    pub expansion_policy: A::Expansion,
+    state: G::State,
+    uct_cache: UC,
+    expansion_policy: A::Expansion,
+    solver: A::Solver,
 }
 
 impl<G, H, A, UC> MCTSNode<G, H, A> for BaseNode<G, H, A, UC>
@@ -27,6 +30,7 @@ where
             state,
             uct_cache: UC::default(),
             expansion_policy: A::Expansion::default(),
+            solver: A::Solver::default(),
         }
     }
 
@@ -34,6 +38,7 @@ where
         &self.state
     }
 
+    // -------------- UCT --------------
     fn calc_exploitation_score(&self) -> f32 {
         self.uct_cache
             .calc_exploitation_score(G::last_player(&self.state))
@@ -58,5 +63,37 @@ where
 
     fn get_accumulated_value(&self) -> Option<f32> {
         self.uct_cache.get_accumulated_value()
+    }
+
+    // -------------- Expansion --------------
+    fn should_expand(
+        &self,
+        visits: usize,
+        num_children: usize,
+        mcts_config: &A::Config,
+        heuristic_config: &H::Config,
+    ) -> bool {
+        self.expansion_policy
+            .should_expand(visits, num_children, mcts_config, heuristic_config)
+    }
+
+    fn pop_expandable_move(
+        &mut self,
+        visits: usize,
+        num_children: usize,
+        mcts_config: &A::Config,
+        heuristic_config: &H::Config,
+    ) -> Option<G::Move> {
+        let (state, ep) = (&self.state, &mut self.expansion_policy);
+        ep.pop_expandable_move(state, visits, num_children, mcts_config, heuristic_config)
+    }
+
+    fn fully_expanded(&self) -> bool {
+        self.expansion_policy.fully_expanded()
+    }
+
+    // -------------- Solver --------------
+    fn set_outcome(&mut self, outcome: G::Outcome) {
+        self.solver.set_solved(outcome);
     }
 }

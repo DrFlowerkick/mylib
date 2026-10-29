@@ -35,10 +35,8 @@ where
         _mcts_config: &Config,
         _heuristic_config: &H::Config,
     ) -> bool {
-        if let Some(m) = &self.unexpanded_moves
-            && !m.is_empty()
-        {
-            true
+        if let Some(m) = &self.unexpanded_moves {
+            !m.is_empty()
         } else {
             false
         }
@@ -59,6 +57,13 @@ where
             let mv = moves.pop();
             self.unexpanded_moves = Some(moves);
             mv
+        }
+    }
+    fn fully_expanded(&self) -> bool {
+        if let Some(m) = &self.unexpanded_moves {
+            m.is_empty()
+        } else {
+            false
         }
     }
 }
@@ -144,6 +149,13 @@ where
             let mv = moves.pop();
             self.unexpanded_moves = Some(moves);
             mv
+        }
+    }
+    fn fully_expanded(&self) -> bool {
+        if let Some(moves) = &self.unexpanded_moves {
+            moves.is_empty()
+        } else {
+            false
         }
     }
 }
@@ -247,6 +259,13 @@ where
             let mv = heuristic_moves.pop().map(|(_, m)| m);
             self.unexpanded_moves = Some(heuristic_moves);
             mv
+        }
+    }
+    fn fully_expanded(&self) -> bool {
+        if let Some(moves) = &self.unexpanded_moves {
+            moves.is_empty()
+        } else {
+            false
         }
     }
 }

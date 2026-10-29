@@ -13,6 +13,6 @@ pub use tree::*;
 
 use super::{
     BaseEdge, BaseNode, ExpansionPolicy, GameOutcome, Heuristic, MCTSAlgo, MCTSConfig, MCTSEdge,
-    MCTSGame, MCTSNode, MCTSTree, MoveStats, SelectMovePolicy, SimulationPolicy,
+    MCTSGame, MCTSNode, MCTSTree, MoveStats, SelectMovePolicy, SimulationPolicy, SolverPolicy,
     TranspositionHashMap, TranspositionTable, UCTPolicy, UCTStatsPolicy,
 };

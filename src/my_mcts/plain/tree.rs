@@ -1,9 +1,7 @@
-use crate::my_mcts::UCTCache;
-
 // plain implementation of MCTSTree
 use super::{
-    super::utils::BfsWalker, BaseEdge, BaseNode, ExpansionPolicy, Heuristic, MCTSAlgo, MCTSEdge,
-    MCTSGame, MCTSNode, MCTSTree, TranspositionHashMap, TranspositionTable, UCTStatsPolicy,
+    super::utils::BfsWalker, BaseEdge, BaseNode, Heuristic, MCTSAlgo, MCTSEdge, MCTSGame, MCTSNode,
+    MCTSTree, TranspositionHashMap, TranspositionTable, UCTStatsPolicy,
 };
 
 // plain type of TranspositionHashMap, which works with PlainTree
@@ -139,12 +137,16 @@ where
             .find(|id| self.get_node_state(*id) == state)
     }
 
-    fn get_cached_node_id(&self, state: &<G as MCTSGame>::State) -> Option<Self::NodeID> {
+    fn get_cached_node_id(&self, state: &G::State) -> Option<Self::NodeID> {
         self.transposition_table.get(state).copied()
     }
 
-    fn get_node_state(&self, id: Self::NodeID) -> &<G as MCTSGame>::State {
-        &self.nodes[id].state
+    fn get_node_state(&self, id: Self::NodeID) -> &G::State {
+        self.nodes[id].get_state()
+    }
+
+    fn set_node_outcome(&mut self, id: Self::NodeID, outcome: G::Outcome) {
+        self.nodes[id].set_outcome(outcome);
     }
 
     fn add_child(
@@ -290,7 +292,7 @@ where
             let last_player = G::current_player(self.nodes[self.root_id].get_state());
             self.edges[self.root_id]
                 .iter()
-                .map(|(_, e)| e.uct_cache.calc_exploitation_score(last_player))
+                .map(|(_, e)| e.calc_exploitation_score(last_player))
                 .sum()
         }
     }
@@ -333,12 +335,7 @@ where
         let visits = self.get_target_visits(path_node);
         let id = self.target(path_node);
         let num_children = self.count_children(id);
-        self.nodes[id].expansion_policy.should_expand(
-            visits,
-            num_children,
-            mcts_config,
-            heuristic_config,
-        )
+        self.nodes[id].should_expand(visits, num_children, mcts_config, heuristic_config)
     }
 
     fn pop_target_expandable_move(
@@ -350,9 +347,7 @@ where
         let visits = self.get_target_visits(path_node);
         let id = self.target(path_node);
         let num_children = self.count_children(id);
-        let node = &mut self.nodes[id];
-        let (state, ep) = (&node.state, &mut node.expansion_policy);
-        ep.pop_expandable_move(state, visits, num_children, mcts_config, heuristic_config)
+        self.nodes[id].pop_expandable_move(visits, num_children, mcts_config, heuristic_config)
     }
 
     fn update_stats(&mut self, path_node: Self::PathNode, result: f32) {

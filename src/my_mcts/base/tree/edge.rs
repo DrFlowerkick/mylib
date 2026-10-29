@@ -10,8 +10,8 @@ where
     A: MCTSAlgo<G, H>,
     UC: UCTCache<G, A::UCT, A::Config>,
 {
-    pub mv: G::Move,
-    pub uct_cache: UC,
+    mv: G::Move,
+    uct_cache: UC,
     phantom: std::marker::PhantomData<(H, A)>,
 }
 

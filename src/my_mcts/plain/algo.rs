@@ -2,13 +2,13 @@
 
 use super::{
     ExpansionPolicy, GameOutcome, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSTree, MoveStats,
-    SelectMovePolicy, SimulationPolicy, UCTPolicy,
+    SelectMovePolicy, SimulationPolicy, SolverPolicy, UCTPolicy,
 };
 use rand::{prelude::IteratorRandom, rng};
 
 // Use PlainMCTS with your specific implementations of the MCTS traits.
 #[derive(Clone, Copy)]
-pub struct PlainMCTS<G, H, MC, UP, EP, SP, MP>
+pub struct PlainMCTS<G, H, MC, UP, EP, SP, MP, SO>
 where
     G: MCTSGame,
     H: Heuristic<G>,
@@ -17,13 +17,14 @@ where
     EP: ExpansionPolicy<G, H, MC>,
     SP: SimulationPolicy<G, H, MC>,
     MP: SelectMovePolicy<G>,
+    SO: SolverPolicy<G>,
 {
     pub mcts_config: MC,
     pub heuristic_config: H::Config,
-    phantom: std::marker::PhantomData<(UP, EP, SP, MP)>,
+    phantom: std::marker::PhantomData<(UP, EP, SP, MP, SO)>,
 }
 
-impl<G, H, MC, UP, EP, SP, MP> PlainMCTS<G, H, MC, UP, EP, SP, MP>
+impl<G, H, MC, UP, EP, SP, MP, SO> PlainMCTS<G, H, MC, UP, EP, SP, MP, SO>
 where
     G: MCTSGame,
     H: Heuristic<G>,
@@ -32,6 +33,7 @@ where
     EP: ExpansionPolicy<G, H, MC>,
     SP: SimulationPolicy<G, H, MC>,
     MP: SelectMovePolicy<G>,
+    SO: SolverPolicy<G>,
 {
     pub fn new(mcts_config: MC, heuristic_config: H::Config) -> Self {
         Self {
@@ -42,7 +44,7 @@ where
     }
 }
 
-impl<G, H, MC, UP, EP, SP, MP> MCTSAlgo<G, H> for PlainMCTS<G, H, MC, UP, EP, SP, MP>
+impl<G, H, MC, UP, EP, SP, MP, SO> MCTSAlgo<G, H> for PlainMCTS<G, H, MC, UP, EP, SP, MP, SO>
 where
     G: MCTSGame,
     H: Heuristic<G>,
@@ -51,12 +53,14 @@ where
     EP: ExpansionPolicy<G, H, MC>,
     SP: SimulationPolicy<G, H, MC>,
     MP: SelectMovePolicy<G>,
+    SO: SolverPolicy<G>,
 {
     type Config = MC;
     type UCT = UP;
     type Expansion = EP;
     type Simulation = SP;
     type MoveSelect = MP;
+    type Solver = SO;
 
     fn set_root(
         &self,
@@ -175,10 +179,12 @@ where
         // 0.5: tie
         // 0.0: win for opponent
         // or some heuristic value between 0.0 and 1.0
+        // WinDrawLoss implementation of GameOutcome provides these values with fn to_score()
         let mut current_state = tree.get_node_state(tree.target(current_path_node)).clone();
         let mut depth = 0;
         let simulation_result = loop {
             if let Some(outcome) = G::evaluate(&current_state) {
+                tree.set_node_outcome(tree.target(current_path_node), outcome);
                 break outcome.to_score();
             }
 

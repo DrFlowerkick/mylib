@@ -28,6 +28,7 @@ where
     ) -> Option<Self::NodeID>;
     fn get_cached_node_id(&self, state: &G::State) -> Option<Self::NodeID>;
     fn get_node_state(&self, id: Self::NodeID) -> &G::State;
+    fn set_node_outcome(&mut self, id: Self::NodeID, outcome: G::Outcome);
     fn add_child(
         &mut self,
         parent_id: Self::NodeID,
