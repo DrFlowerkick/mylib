@@ -80,15 +80,13 @@ where
         false
     }
 
-    fn iterate(&self, tree: &mut impl MCTSTree<G, H, Self>) {
-        // separate parameters of PlainMCTS to satisfy borrow checker
-
+    fn iterate(&self, tree: &mut impl MCTSTree<G, H, Self>) -> Option<G::Outcome> {
         let mut current_path_node = tree.root_path_node();
-        let mut path = vec![current_path_node];
-        // ToDo: if root is solved, iteration is solved! -> iterate requires return value
         if let Some(outcome) = tree.get_target_solved(current_path_node) {
-            //return Some(outcome);
+            return Some(outcome);
         }
+
+        let mut path = vec![current_path_node];
 
         /* ----------------- Select & Expand ----------------- */
         // Select and expand until at least one new child is created or a leaf without children is found.
@@ -114,11 +112,11 @@ where
 
                 let mut best_path_node: Option<_> = None;
                 let mut best_uct = f32::NEG_INFINITY;
-                let children_steps: Vec<_> = tree
+                let children_path_nodes: Vec<_> = tree
                     .get_children_path_nodes(tree.target(current_path_node))
                     .collect();
 
-                for path_node in children_steps {
+                for path_node in children_path_nodes {
                     let uct = tree.calc_uct(path_node, &self.mcts_config);
                     if uct > best_uct {
                         best_uct = uct;
@@ -187,12 +185,13 @@ where
         // or some heuristic value between 0.0 and 1.0
         // WinDrawLoss implementation of GameOutcome provides these values with fn to_score()
         let mut current_state = tree.get_node_state(tree.target(current_path_node)).clone();
-        if let Some(outcome) = G::evaluate(&current_state) {
-            // leaf is terminal -> set outcome of leaf
-            tree.set_node_outcome(tree.target(current_path_node), outcome);
-        }
         let simulation_result = if let Some(outcome) = tree.get_target_solved(current_path_node) {
             // node is already solved -> use solved score
+            outcome.to_score()
+        } else if let Some(outcome) = G::evaluate(&current_state) {
+            // leaf is terminal -> set outcome of leaf ...
+            tree.set_node_outcome(tree.target(current_path_node), outcome);
+            // ... and return outcome as score
             outcome.to_score()
         } else {
             let mut depth = 0;
@@ -231,7 +230,7 @@ where
             previous_solver_changed =
                 tree.update_stats(path_node, simulation_result, previous_solver_changed);
         }
-        //None
+        None
     }
 
     // ToDo: select_move must use solver

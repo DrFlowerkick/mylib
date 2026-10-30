@@ -265,15 +265,7 @@ where
     }
 
     fn get_target_solved(&self, path_node: Self::PathNode) -> Option<G::Outcome> {
-        match path_node {
-            PlainPathNode::Root(root_id) => self.nodes[root_id].get_solver().get_solved(),
-            PlainPathNode::Via {
-                parent_id,
-                edge_idx,
-            } => self.nodes[self.edges[parent_id][edge_idx].0]
-                .get_solver()
-                .get_solved(),
-        }
+        self.nodes[self.target(path_node)].get_outcome()
     }
 
     fn get_visits_from_parent(&self, path_node: Self::PathNode) -> usize {
@@ -303,11 +295,11 @@ where
             self.nodes[self.root_id].calc_exploitation_score()
         } else {
             // edges only -> total uct is some of children edges
-            // last_player for exploitation score is current player of root
-            let last_player = G::current_player(self.nodes[self.root_id].get_state());
+            // previous_player for exploitation score is current player of root
+            let previous_player = G::current_player(self.nodes[self.root_id].get_state());
             self.edges[self.root_id]
                 .iter()
-                .map(|(_, e)| e.calc_exploitation_score(last_player))
+                .map(|(_, e)| e.calc_exploitation_score(previous_player))
                 .sum()
         }
     }
@@ -327,12 +319,12 @@ where
                 let child_id = self.target(path_node);
                 let node_uct = self.nodes[child_id].calc_exploitation_score()
                     + self.nodes[child_id].calc_exploration_score(parent_visits, mcts_config);
-                let last_player = G::last_player(self.nodes[child_id].get_state());
+                let previous_player = G::previous_player(self.nodes[child_id].get_state());
                 let edge_uct = self.edges[parent_id][edge_idx]
                     .1
-                    .calc_exploitation_score(last_player)
+                    .calc_exploitation_score(previous_player)
                     + self.edges[parent_id][edge_idx].1.calc_exploration_score(
-                        last_player,
+                        previous_player,
                         parent_visits,
                         mcts_config,
                     );

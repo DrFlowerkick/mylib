@@ -24,12 +24,12 @@ where
         visits: usize,
         parent_visits: usize,
         mcts_config: &Config,
-        last_player: G::Player,
+        previous_player: G::Player,
     ) -> f32 {
         if visits == 0 {
             return f32::INFINITY;
         }
-        let factor = mcts_config.exploration_boost(last_player);
+        let factor = mcts_config.exploration_boost(previous_player);
         mcts_config.exploration_constant()
             * factor
             * ((parent_visits as f32).ln() / visits as f32).sqrt()
@@ -48,7 +48,7 @@ where
         visits: usize,
         parent_visits: usize,
         mcts_config: &Config,
-        _last_player: G::Player,
+        _previous_player: G::Player,
     ) -> f32 {
         if visits == 0 {
             return f32::INFINITY;
@@ -70,12 +70,12 @@ where
         visits: usize,
         parent_visits: usize,
         mcts_config: &Config,
-        last_player: G::Player,
+        previous_player: G::Player,
     ) -> f32 {
         if visits == 0 {
             return f32::INFINITY;
         }
-        let factor = mcts_config.exploration_boost(last_player);
+        let factor = mcts_config.exploration_boost(previous_player);
         let dynamic_c =
             mcts_config.exploration_constant() * factor / (1.0 + (visits as f32).sqrt());
         dynamic_c * ((parent_visits as f32).ln() / visits as f32).sqrt()

@@ -29,6 +29,6 @@ pub trait MCTSAlgo<G: MCTSGame, H: Heuristic<G>>: Sized + Clone + Sync + Send {
         tree: &mut impl MCTSTree<G, H, Self>,
         max_depth: usize,
     ) -> bool;
-    fn iterate(&self, tree: &mut impl MCTSTree<G, H, Self>);
+    fn iterate(&self, tree: &mut impl MCTSTree<G, H, Self>) -> Option<G::Outcome>;
     fn select_move<'a>(&'a self, tree: &'a impl MCTSTree<G, H, Self>) -> &'a G::Move;
 }

@@ -10,10 +10,10 @@ where
 {
     fn new(mv: G::Move) -> Self;
     fn get_move(&self) -> &G::Move;
-    fn calc_exploitation_score(&self, last_player: G::Player) -> f32;
+    fn calc_exploitation_score(&self, previous_player: G::Player) -> f32;
     fn calc_exploration_score(
         &mut self,
-        last_player: G::Player,
+        previous_player: G::Player,
         parent_visits: usize,
         mcts_config: &A::Config,
     ) -> f32;

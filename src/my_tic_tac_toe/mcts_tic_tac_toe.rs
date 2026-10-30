@@ -22,7 +22,7 @@ impl GamePlayer for TicTacToeStatus {
 pub struct TicTacToeGame {
     pub ttt: TicTacToeGameData,
     pub current_player: TicTacToeStatus,
-    pub last_player: TicTacToeStatus,
+    pub previous_player: TicTacToeStatus,
 }
 
 impl TicTacToeGame {
@@ -30,7 +30,7 @@ impl TicTacToeGame {
         TicTacToeGame {
             ttt: TicTacToeGameData::new(),
             current_player: TicTacToeStatus::First,
-            last_player: TicTacToeStatus::First,
+            previous_player: TicTacToeStatus::First,
         }
     }
     pub fn set_current_player(&mut self, player: TicTacToeStatus) {
@@ -40,7 +40,7 @@ impl TicTacToeGame {
         }
     }
     pub fn next_player(&mut self) {
-        self.last_player = self.current_player;
+        self.previous_player = self.current_player;
         self.current_player = self.current_player.next();
     }
 }
@@ -80,8 +80,8 @@ impl MCTSGame for TicTacToeMCTSGame {
     fn current_player(state: &Self::State) -> Self::Player {
         state.current_player
     }
-    fn last_player(state: &Self::State) -> Self::Player {
-        state.last_player
+    fn previous_player(state: &Self::State) -> Self::Player {
+        state.previous_player
     }
     fn perspective_player() -> Self::Player {
         TicTacToeStatus::First
@@ -155,14 +155,18 @@ mod tests {
             let mut ttt_game_data = TicTacToeGame::new();
             ttt_game_data.set_current_player(TicTacToeStatus::First);
             let mut time_out = TIME_OUT_FIRST_TURN;
+            let mut is_solved = None;
 
             while TicTacToeMCTSGame::evaluate(&ttt_game_data).is_none() {
                 match ttt_game_data.current_player {
                     TicTacToeStatus::First => {
                         let start = Instant::now();
                         mcts_tic_tac_toe.set_root(&ttt_game_data, &mut mcts_tree_tic_tac_toe, 2);
-                        while start.elapsed() < time_out {
-                            mcts_tic_tac_toe.iterate(&mut mcts_tree_tic_tac_toe);
+                        while start.elapsed() < time_out && is_solved.is_none() {
+                            is_solved = mcts_tic_tac_toe.iterate(&mut mcts_tree_tic_tac_toe);
+                            if let Some(outcome) = is_solved {
+                                eprintln!("{:?}", outcome);
+                            }
                         }
                         time_out = TIME_OUT_SUCCESSIVE_TURNS;
                         let selected_move = *mcts_tic_tac_toe.select_move(&mcts_tree_tic_tac_toe);
@@ -217,14 +221,18 @@ mod tests {
             let mut ttt_game_data = TicTacToeGame::new();
             ttt_game_data.set_current_player(TicTacToeStatus::First);
             let mut time_out = TIME_OUT_FIRST_TURN;
+            let mut is_solved = None;
 
             while TicTacToeMCTSGame::evaluate(&ttt_game_data).is_none() {
                 match ttt_game_data.current_player {
                     TicTacToeStatus::First => {
                         let start = Instant::now();
                         mcts_tic_tac_toe.set_root(&ttt_game_data, &mut mcts_tree_tic_tac_toe, 2);
-                        while start.elapsed() < time_out {
-                            mcts_tic_tac_toe.iterate(&mut mcts_tree_tic_tac_toe);
+                        while start.elapsed() < time_out && is_solved.is_none() {
+                            is_solved = mcts_tic_tac_toe.iterate(&mut mcts_tree_tic_tac_toe);
+                            if let Some(outcome) = is_solved {
+                                eprintln!("{:?}", outcome);
+                            }
                         }
                         time_out = TIME_OUT_SUCCESSIVE_TURNS;
                         let selected_move = *mcts_tic_tac_toe.select_move(&mcts_tree_tic_tac_toe);
@@ -280,6 +288,7 @@ mod tests {
             let mut first_ttt_game_data = TicTacToeGame::new();
             first_ttt_game_data.set_current_player(TicTacToeStatus::First);
             let mut first_time_out = TIME_OUT_FIRST_TURN;
+            let mut is_solved_first = None;
             let second_mcts_tic_tac_toe: TTTFullMCTS =
                 PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
             let mut second_mcts_tree_tic_tac_toe: TTTFullMCTSTree =
@@ -287,6 +296,7 @@ mod tests {
             let mut second_ttt_game_data = TicTacToeGame::new();
             second_ttt_game_data.set_current_player(TicTacToeStatus::Second);
             let mut second_time_out = TIME_OUT_FIRST_TURN;
+            let mut is_solved_second = None;
 
             let mut first = true;
             while TicTacToeMCTSGame::evaluate(&first_ttt_game_data).is_none() {
@@ -298,9 +308,13 @@ mod tests {
                         &mut first_mcts_tree_tic_tac_toe,
                         2,
                     );
-                    while start.elapsed() < first_time_out {
-                        first_mcts_tic_tac_toe.iterate(&mut first_mcts_tree_tic_tac_toe);
+                    while start.elapsed() < first_time_out && is_solved_first.is_none() {
+                        is_solved_first =
+                            first_mcts_tic_tac_toe.iterate(&mut first_mcts_tree_tic_tac_toe);
                         iteration_counter += 1;
+                        if let Some(outcome) = is_solved_first {
+                            eprintln!("{:?}", outcome);
+                        }
                     }
                     first_time_out = TIME_OUT_SUCCESSIVE_TURNS;
                     let selected_move =
@@ -321,9 +335,13 @@ mod tests {
                         &mut second_mcts_tree_tic_tac_toe,
                         2,
                     );
-                    while start.elapsed() < second_time_out {
-                        second_mcts_tic_tac_toe.iterate(&mut second_mcts_tree_tic_tac_toe);
+                    while start.elapsed() < second_time_out && is_solved_second.is_none() {
+                        is_solved_second =
+                            second_mcts_tic_tac_toe.iterate(&mut second_mcts_tree_tic_tac_toe);
                         iteration_counter += 1;
+                        if let Some(outcome) = is_solved_second {
+                            eprintln!("{:?}", outcome);
+                        }
                     }
                     second_time_out = TIME_OUT_SUCCESSIVE_TURNS;
                     let selected_move =

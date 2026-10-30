@@ -12,6 +12,6 @@ pub trait MCTSGame: Sized + Clone + Sync + Send {
     fn apply_move(state: &Self::State, mv: &Self::Move) -> Self::State;
     fn evaluate(state: &Self::State) -> Option<Self::Outcome>;
     fn current_player(state: &Self::State) -> Self::Player;
-    fn last_player(state: &Self::State) -> Self::Player;
+    fn previous_player(state: &Self::State) -> Self::Player;
     fn perspective_player() -> Self::Player;
 }

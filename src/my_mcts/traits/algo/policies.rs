@@ -4,13 +4,17 @@ use super::{Heuristic, MCTSConfig, MCTSGame};
 
 pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig<G::Player>>: Clone + Sync + Send {
     // calculates the exploitation score from the view of the perspective player
-    fn exploitation_score(accumulated_value: f32, visits: usize, last_player: G::Player) -> f32 {
+    fn exploitation_score(
+        accumulated_value: f32,
+        visits: usize,
+        previous_player: G::Player,
+    ) -> f32 {
         if visits == 0 {
             return 0.0;
         }
         let raw = accumulated_value / visits as f32;
         // this works only for 2 player games
-        if last_player == G::perspective_player() {
+        if previous_player == G::perspective_player() {
             raw
         } else {
             1.0 - raw
@@ -21,7 +25,7 @@ pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig<G::Player>>: Clone + Sync + 
         visits: usize,
         parent_visits: usize,
         mcts_config: &Config,
-        _last_player: G::Player,
+        _previous_player: G::Player,
     ) -> f32 {
         if visits == 0 {
             return f32::INFINITY;
@@ -82,8 +86,10 @@ pub trait SelectMovePolicy<G: MCTSGame>: Clone + Sync + Send {
 }
 
 pub trait SolverPolicy<G: MCTSGame>: Clone + Sync + Send + Default + Eq + PartialEq {
-    fn set_solved(&mut self, outcome: G::Outcome);
-    fn get_solved(&self) -> Option<G::Outcome> {
+    // sets the outcome from the view of the perspective player
+    fn set_solved(&mut self, outcome: G::Outcome, previous_player: G::Player);
+    // gets the outcome (if any) from the view of the perspective player
+    fn get_solved(&self, _previous_player: G::Player) -> Option<G::Outcome> {
         None
     }
     fn new_from_children<'a>(children: impl IntoIterator<Item = &'a Self>) -> Self

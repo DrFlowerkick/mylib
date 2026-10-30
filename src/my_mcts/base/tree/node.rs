@@ -41,20 +41,20 @@ where
     // -------------- UCT --------------
     fn calc_exploitation_score(&self) -> f32 {
         self.uct_cache
-            .calc_exploitation_score(G::last_player(&self.state))
+            .calc_exploitation_score(G::previous_player(&self.state))
     }
 
     fn calc_exploration_score(&mut self, parent_visits: usize, mcts_config: &A::Config) -> f32 {
         self.uct_cache.calc_exploration_score(
             parent_visits,
             mcts_config,
-            G::last_player(&self.state),
+            G::previous_player(&self.state),
         )
     }
 
     fn update_stats(&mut self, result: f32) {
         self.uct_cache
-            .update_stats(result, G::last_player(&self.state));
+            .update_stats(result, G::previous_player(&self.state));
     }
 
     fn get_visits(&self) -> Option<usize> {
@@ -86,7 +86,11 @@ where
         &self.solver
     }
     fn set_outcome(&mut self, outcome: G::Outcome) {
-        self.solver.set_solved(outcome);
+        self.solver
+            .set_solved(outcome, G::previous_player(self.get_state()));
+    }
+    fn get_outcome(&self) -> Option<G::Outcome> {
+        self.solver.get_solved(G::previous_player(self.get_state()))
     }
     fn set_solver(&mut self, solver: A::Solver) {
         self.solver = solver;
