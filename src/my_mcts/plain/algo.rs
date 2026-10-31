@@ -82,7 +82,7 @@ where
 
     fn iterate(&self, tree: &mut impl MCTSTree<G, H, Self>) -> Option<G::Outcome> {
         let mut current_path_node = tree.root_path_node();
-        if let Some(outcome) = tree.get_target_solved(current_path_node) {
+        if let Some(outcome) = tree.get_target_outcome(current_path_node) {
             return Some(outcome);
         }
 
@@ -112,9 +112,20 @@ where
 
                 let mut best_path_node: Option<_> = None;
                 let mut best_uct = f32::NEG_INFINITY;
+                let parent_solver = tree.get_node_solver(tree.target(current_path_node));
                 let children_path_nodes: Vec<_> = tree
                     .get_children_path_nodes(tree.target(current_path_node))
+                    .filter(|pn| {
+                        let child_solver = tree.get_node_solver(tree.target(*pn));
+                        parent_solver.filter_selection(child_solver)
+                    })
                     .collect();
+
+                if children_path_nodes.is_empty() {
+                    todo!(
+                        "check for unexpanded nodes. if any, force expand. if none, update parent. if no update, panic!"
+                    );
+                }
 
                 for path_node in children_path_nodes {
                     let uct = tree.calc_uct(path_node, &self.mcts_config);
@@ -185,7 +196,7 @@ where
         // or some heuristic value between 0.0 and 1.0
         // WinDrawLoss implementation of GameOutcome provides these values with fn to_score()
         let mut current_state = tree.get_node_state(tree.target(current_path_node)).clone();
-        let simulation_result = if let Some(outcome) = tree.get_target_solved(current_path_node) {
+        let simulation_result = if let Some(outcome) = tree.get_target_outcome(current_path_node) {
             // node is already solved -> use solved score
             outcome.to_score()
         } else if let Some(outcome) = G::evaluate(&current_state) {
@@ -225,7 +236,7 @@ where
 
         /* ----------------- Back Propagation ----------------- */
         // unwrap() is save, since path is always at least one element long.
-        let mut previous_solver_changed = tree.get_target_solved(*path.last().unwrap()).is_some();
+        let mut previous_solver_changed = tree.get_target_outcome(*path.last().unwrap()).is_some();
         for path_node in path {
             previous_solver_changed =
                 tree.update_stats(path_node, simulation_result, previous_solver_changed);

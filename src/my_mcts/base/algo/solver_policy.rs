@@ -33,6 +33,15 @@ impl Default for SolverBounds {
     }
 }
 
+impl SolverBounds {
+    fn best_for_parent(&self) -> WinDrawLoss {
+        -self.pessimistic
+    }
+    fn worst_for_parent(&self) -> WinDrawLoss {
+        -self.optimistic
+    }
+}
+
 impl<G> SolverPolicy<G> for SolverBounds
 where
     G: MCTSGame<Outcome = WinDrawLoss>,
@@ -61,16 +70,21 @@ where
     where
         Self: 'a,
     {
-        // pessimistic = max over children of (-child.optimistic)
-        // optimistic  = max over children of (-child.pessimistic)
-        let (pessimistic, optimistic) = children
+        let (optimistic, pessimistic) = children
             .into_iter()
-            .fold((WinDrawLoss::Loss, WinDrawLoss::Loss), |(p, o), c| {
-                (p.max(-c.optimistic), o.max(-c.pessimistic))
+            .fold((WinDrawLoss::Loss, WinDrawLoss::Loss), |(bo, wo), c| {
+                (bo.max(c.best_for_parent()), wo.max(c.worst_for_parent()))
             });
         Self {
             pessimistic,
             optimistic,
         }
+    }
+    fn update(&mut self, update: Self) -> bool {
+        let out = self.optimistic != update.optimistic || self.pessimistic != update.pessimistic;
+        out
+    }
+    fn filter_selection(&self, child: &Self) -> bool {
+        child.best_for_parent() > self.pessimistic
     }
 }

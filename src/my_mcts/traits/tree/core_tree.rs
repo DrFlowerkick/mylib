@@ -29,6 +29,7 @@ where
     fn get_cached_node_id(&self, state: &G::State) -> Option<Self::NodeID>;
     fn get_node_state(&self, id: Self::NodeID) -> &G::State;
     fn set_node_outcome(&mut self, id: Self::NodeID, outcome: G::Outcome);
+    fn get_node_solver(&self, id: Self::NodeID) -> &A::Solver;
     fn add_child(
         &mut self,
         parent_id: Self::NodeID,
@@ -50,7 +51,7 @@ where
     fn target(&self, path_node: Self::PathNode) -> Self::NodeID;
     fn get_target_visits(&self, path_node: Self::PathNode) -> usize;
     fn get_target_accumulated_value(&self, path_node: Self::PathNode) -> f32;
-    fn get_target_solved(&self, path_node: Self::PathNode) -> Option<G::Outcome>;
+    fn get_target_outcome(&self, path_node: Self::PathNode) -> Option<G::Outcome>;
     fn get_visits_from_parent(&self, path_node: Self::PathNode) -> usize;
     fn get_win_probability(&self) -> f32;
     fn calc_uct(&mut self, path_node: Self::PathNode, mcts_config: &A::Config) -> f32;

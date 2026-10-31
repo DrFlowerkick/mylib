@@ -30,7 +30,7 @@ impl TicTacToeGame {
         TicTacToeGame {
             ttt: TicTacToeGameData::new(),
             current_player: TicTacToeStatus::First,
-            previous_player: TicTacToeStatus::First,
+            previous_player: TicTacToeStatus::Second,
         }
     }
     pub fn set_current_player(&mut self, player: TicTacToeStatus) {

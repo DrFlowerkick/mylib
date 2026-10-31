@@ -82,17 +82,17 @@ where
     }
 
     // -------------- Solver --------------
+    fn set_outcome(&mut self, outcome: G::Outcome) {
+        self.solver
+            .set_solved(outcome, G::previous_player(&self.state));
+    }
+    fn get_outcome(&self) -> Option<G::Outcome> {
+        self.solver.get_solved(G::previous_player(&self.state))
+    }
     fn get_solver(&self) -> &A::Solver {
         &self.solver
     }
-    fn set_outcome(&mut self, outcome: G::Outcome) {
-        self.solver
-            .set_solved(outcome, G::previous_player(self.get_state()));
-    }
-    fn get_outcome(&self) -> Option<G::Outcome> {
-        self.solver.get_solved(G::previous_player(self.get_state()))
-    }
-    fn set_solver(&mut self, solver: A::Solver) {
-        self.solver = solver;
+    fn update_solver(&mut self, update: A::Solver) -> bool {
+        self.solver.update(update)
     }
 }

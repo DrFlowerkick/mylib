@@ -26,8 +26,8 @@ where
         heuristic_config: &H::Config,
     ) -> Option<G::Move>;
     // solver
-    fn get_solver(&self) -> &A::Solver;
     fn set_outcome(&mut self, outcome: G::Outcome);
     fn get_outcome(&self) -> Option<G::Outcome>;
-    fn set_solver(&mut self, solver: A::Solver);
+    fn get_solver(&self) -> &A::Solver;
+    fn update_solver(&mut self, update: A::Solver) -> bool;
 }

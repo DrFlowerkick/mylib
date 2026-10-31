@@ -1,9 +1,8 @@
-use crate::my_mcts::SolverPolicy;
-
 // plain implementation of MCTSTree
 use super::{
     super::utils::BfsWalker, BaseEdge, BaseNode, ExpansionPolicy, Heuristic, MCTSAlgo, MCTSEdge,
-    MCTSGame, MCTSNode, MCTSTree, TranspositionHashMap, TranspositionTable, UCTStatsPolicy,
+    MCTSGame, MCTSNode, MCTSTree, SolverPolicy, TranspositionHashMap, TranspositionTable,
+    UCTStatsPolicy,
 };
 
 // plain type of TranspositionHashMap, which works with PlainTree
@@ -148,6 +147,10 @@ where
         self.nodes[id].get_state()
     }
 
+    fn get_node_solver(&self, id: Self::NodeID) -> &A::Solver {
+        self.nodes[id].get_solver()
+    }
+
     fn set_node_outcome(&mut self, id: Self::NodeID, outcome: G::Outcome) {
         self.nodes[id].set_outcome(outcome);
     }
@@ -264,7 +267,7 @@ where
         }
     }
 
-    fn get_target_solved(&self, path_node: Self::PathNode) -> Option<G::Outcome> {
+    fn get_target_outcome(&self, path_node: Self::PathNode) -> Option<G::Outcome> {
         self.nodes[self.target(path_node)].get_outcome()
     }
 
@@ -387,6 +390,7 @@ where
                     .update_stats(state, result);
                 // update solver, if target is solved && parent is fully expanded
                 if previous_solver_changed {
+                    // provide proxy solver for unexpanded nodes
                     let may_be_unexpanded = if !self.nodes[parent_id]
                         .get_expansion_policy()
                         .is_fully_expanded()
@@ -395,16 +399,14 @@ where
                     } else {
                         None
                     };
+                    // get solver of children
                     let children_solver_iter = self
                         .get_children_path_nodes(parent_id)
                         .map(|pn| self.target(pn))
                         .map(|child_id| self.nodes[child_id].get_solver())
                         .chain(may_be_unexpanded);
-
-                    let solver = A::Solver::new_from_children(children_solver_iter);
-                    let out = &solver != self.nodes[parent_id].get_solver();
-                    self.nodes[parent_id].set_solver(solver);
-                    out
+                    let update = A::Solver::new_from_children(children_solver_iter);
+                    self.nodes[parent_id].update_solver(update)
                 } else {
                     false
                 }

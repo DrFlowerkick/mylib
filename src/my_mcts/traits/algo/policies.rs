@@ -95,4 +95,10 @@ pub trait SolverPolicy<G: MCTSGame>: Clone + Sync + Send + Default + Eq + Partia
     fn new_from_children<'a>(children: impl IntoIterator<Item = &'a Self>) -> Self
     where
         Self: 'a;
+    fn update(&mut self, _update: Self) -> bool {
+        false
+    }
+    fn filter_selection(&self, _child: &Self) -> bool {
+        true
+    }
 }
