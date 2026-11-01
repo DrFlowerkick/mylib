@@ -46,6 +46,7 @@ where
         state: &G::State,
         _visits: usize,
         _num_children: usize,
+        _force: bool,
         _mcts_config: &Config,
         _heuristic_config: &H::Config,
     ) -> Option<G::Move> {
@@ -134,11 +135,12 @@ where
         state: &G::State,
         visits: usize,
         num_children: usize,
+        force: bool,
         mcts_config: &Config,
         _heuristic_config: &H::Config,
     ) -> Option<G::Move> {
         if let Some(moves) = &mut self.unexpanded_moves {
-            if num_children < Self::allowed_children(visits, mcts_config) {
+            if force || num_children < Self::allowed_children(visits, mcts_config) {
                 moves.pop()
             } else {
                 None
@@ -236,13 +238,15 @@ where
         state: &G::State,
         visits: usize,
         num_children: usize,
+        force: bool,
         mcts_config: &Config,
         heuristic_config: &H::Config,
     ) -> Option<G::Move> {
         if let Some(moves) = &mut self.unexpanded_moves {
             let threshold = Self::threshold(visits, heuristic_config);
-            if num_children < Self::allowed_children(visits, mcts_config)
-                && moves.iter().any(|(score, _)| *score >= threshold)
+            if force
+                || (num_children < Self::allowed_children(visits, mcts_config)
+                    && moves.iter().any(|(score, _)| *score >= threshold))
             {
                 moves.pop().map(|(_, m)| m)
             } else {

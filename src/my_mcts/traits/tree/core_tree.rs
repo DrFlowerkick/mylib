@@ -29,7 +29,6 @@ where
     fn get_cached_node_id(&self, state: &G::State) -> Option<Self::NodeID>;
     fn get_node_state(&self, id: Self::NodeID) -> &G::State;
     fn set_node_outcome(&mut self, id: Self::NodeID, outcome: G::Outcome);
-    fn get_node_solver(&self, id: Self::NodeID) -> &A::Solver;
     fn add_child(
         &mut self,
         parent_id: Self::NodeID,
@@ -54,7 +53,11 @@ where
     fn get_target_outcome(&self, path_node: Self::PathNode) -> Option<G::Outcome>;
     fn get_visits_from_parent(&self, path_node: Self::PathNode) -> usize;
     fn get_win_probability(&self) -> f32;
-    fn calc_uct(&mut self, path_node: Self::PathNode, mcts_config: &A::Config) -> f32;
+    fn select_child_with_best_uct(
+        &mut self,
+        path_node: Self::PathNode,
+        mcts_config: &A::Config,
+    ) -> Result<Self::PathNode, bool>;
     fn should_target_expand(
         &self,
         path_node: Self::PathNode,
@@ -64,14 +67,11 @@ where
     fn pop_target_expandable_move(
         &mut self,
         path_node: Self::PathNode,
+        force: bool,
         mcts_config: &A::Config,
         heuristic_config: &H::Config,
     ) -> Option<G::Move>;
-    fn update_stats(
-        &mut self,
-        path_node: Self::PathNode,
-        result: f32,
-        previous_solver_changed: bool,
-    ) -> bool;
+    fn update_stats(&mut self, path_node: Self::PathNode, result: f32);
+    fn update_solver(&mut self, path_node: Self::PathNode, previous_solver_changed: bool) -> bool;
     fn get_move(&self, path_node: Self::PathNode) -> Option<&G::Move>;
 }

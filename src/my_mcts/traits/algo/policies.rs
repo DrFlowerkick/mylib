@@ -51,6 +51,7 @@ pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Pl
         state: &G::State,
         visits: usize,
         num_children: usize,
+        force: bool,
         mcts_config: &Config,
         heuristic_config: &H::Config,
     ) -> Option<G::Move>;
@@ -92,13 +93,17 @@ pub trait SolverPolicy<G: MCTSGame>: Clone + Sync + Send + Default + Eq + Partia
     fn get_solved(&self, _previous_player: G::Player) -> Option<G::Outcome> {
         None
     }
+    fn filter_selection(&self, _child: &Self) -> bool {
+        true
+    }
+    fn update(&mut self, _child: &Self, _is_fully_expanded: bool) -> bool {
+        false
+    }
+
     fn new_from_children<'a>(children: impl IntoIterator<Item = &'a Self>) -> Self
     where
         Self: 'a;
-    fn update(&mut self, _update: Self) -> bool {
+    fn update_old(&mut self, _update: Self) -> bool {
         false
-    }
-    fn filter_selection(&self, _child: &Self) -> bool {
-        true
     }
 }

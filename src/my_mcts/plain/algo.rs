@@ -99,8 +99,14 @@ where
 
         // ToDo: update usage of solver in selection and expansion
         'selection_and_expansion: loop {
+            let mut force_expansion = false;
             // Selection
             while tree.count_children(tree.target(current_path_node)) > 0 {
+                // if target is solved, return outcome
+                if tree.get_target_outcome(current_path_node).is_some() {
+                    break 'selection_and_expansion;
+                }
+
                 // check expansion policy
                 if tree.should_target_expand(
                     current_path_node,
@@ -110,33 +116,28 @@ where
                     break;
                 }
 
-                let mut best_path_node: Option<_> = None;
-                let mut best_uct = f32::NEG_INFINITY;
-                let parent_solver = tree.get_node_solver(tree.target(current_path_node));
-                let children_path_nodes: Vec<_> = tree
-                    .get_children_path_nodes(tree.target(current_path_node))
-                    .filter(|pn| {
-                        let child_solver = tree.get_node_solver(tree.target(*pn));
-                        parent_solver.filter_selection(child_solver)
-                    })
-                    .collect();
-
-                if children_path_nodes.is_empty() {
-                    todo!(
-                        "check for unexpanded nodes. if any, force expand. if none, update parent. if no update, panic!"
-                    );
-                }
-
-                for path_node in children_path_nodes {
-                    let uct = tree.calc_uct(path_node, &self.mcts_config);
-                    if uct > best_uct {
-                        best_uct = uct;
-                        best_path_node = Some(path_node);
+                // select child with best uct
+                // There are 3 possible results:
+                // 1.) best uct returned -> extend path and move on with selection
+                // 2.) not fully expanded AND all expanded children filtered by solver -> force expansion
+                // 3.) fully expanded and current_node solver state was not up to date (may happen with
+                //     transposition table) -> parent solver state was updated and is now solved
+                //     -> exit expansion and selection with current_path_node
+                match tree.select_child_with_best_uct(current_path_node, &self.mcts_config) {
+                    Ok(best_path_node) => {
+                        path.push(best_path_node);
+                        current_path_node = best_path_node;
+                    }
+                    Err(true) => {
+                        // Force expansion
+                        force_expansion = true;
+                        break;
+                    }
+                    Err(false) => {
+                        // fully expanded
+                        break 'selection_and_expansion;
                     }
                 }
-                let best_path_node = best_path_node.expect("Could not find best child index.");
-                path.push(best_path_node);
-                current_path_node = best_path_node;
             }
 
             // Expansion
@@ -155,6 +156,7 @@ where
             // generate new children nodes from expandable moves
             while let Some(mv) = tree.pop_target_expandable_move(
                 current_path_node,
+                force_expansion,
                 &self.mcts_config,
                 &self.heuristic_config,
             ) {
@@ -238,8 +240,8 @@ where
         // unwrap() is save, since path is always at least one element long.
         let mut previous_solver_changed = tree.get_target_outcome(*path.last().unwrap()).is_some();
         for path_node in path {
-            previous_solver_changed =
-                tree.update_stats(path_node, simulation_result, previous_solver_changed);
+            tree.update_stats(path_node, simulation_result);
+            previous_solver_changed = tree.update_solver(path_node, previous_solver_changed)
         }
         None
     }

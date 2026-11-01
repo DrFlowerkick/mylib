@@ -66,19 +66,38 @@ where
     }
 
     // -------------- Expansion --------------
-    fn get_expansion_policy(&self) -> &A::Expansion {
-        &self.expansion_policy
+    fn should_expand(
+        &self,
+        visits: usize,
+        num_children: usize,
+        mcts_config: &A::Config,
+        heuristic_config: &H::Config,
+    ) -> bool {
+        self.expansion_policy
+            .should_expand(visits, num_children, mcts_config, heuristic_config)
     }
 
     fn pop_expandable_move(
         &mut self,
         visits: usize,
         num_children: usize,
+        force: bool,
         mcts_config: &A::Config,
         heuristic_config: &H::Config,
     ) -> Option<G::Move> {
         let (state, ep) = (&self.state, &mut self.expansion_policy);
-        ep.pop_expandable_move(state, visits, num_children, mcts_config, heuristic_config)
+        ep.pop_expandable_move(
+            state,
+            visits,
+            num_children,
+            force,
+            mcts_config,
+            heuristic_config,
+        )
+    }
+
+    fn is_fully_expanded(&self) -> bool {
+        self.expansion_policy.is_fully_expanded()
     }
 
     // -------------- Solver --------------
@@ -89,10 +108,18 @@ where
     fn get_outcome(&self) -> Option<G::Outcome> {
         self.solver.get_solved(G::previous_player(&self.state))
     }
+    fn filter_selection(&self, child: &Self) -> bool {
+        self.solver.filter_selection(&child.solver)
+    }
+    fn update_solver(&mut self, child: &Self) -> bool {
+        let is_fully_expanded = self.expansion_policy.is_fully_expanded();
+        self.solver.update(&child.solver, is_fully_expanded)
+    }
+
     fn get_solver(&self) -> &A::Solver {
         &self.solver
     }
-    fn update_solver(&mut self, update: A::Solver) -> bool {
-        self.solver.update(update)
+    fn update_solver_old(&mut self, update: A::Solver) -> bool {
+        self.solver.update_old(update)
     }
 }

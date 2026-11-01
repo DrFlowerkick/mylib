@@ -66,6 +66,22 @@ where
             None
         }
     }
+    fn filter_selection(&self, child: &Self) -> bool {
+        child.best_for_parent() > self.pessimistic
+    }
+    fn update(&mut self, child: &Self, is_fully_expanded: bool) -> bool {
+        let optimistic = if is_fully_expanded {
+            child.best_for_parent()
+        } else {
+            WinDrawLoss::Win
+        };
+        let pessimistic = child.worst_for_parent();
+        let out = self.optimistic != optimistic || self.pessimistic != pessimistic;
+        self.optimistic = optimistic;
+        self.pessimistic = pessimistic;
+        out
+    }
+
     fn new_from_children<'a>(children: impl IntoIterator<Item = &'a Self>) -> Self
     where
         Self: 'a,
@@ -80,11 +96,9 @@ where
             optimistic,
         }
     }
-    fn update(&mut self, update: Self) -> bool {
+    fn update_old(&mut self, update: Self) -> bool {
         let out = self.optimistic != update.optimistic || self.pessimistic != update.pessimistic;
+        *self = update;
         out
-    }
-    fn filter_selection(&self, child: &Self) -> bool {
-        child.best_for_parent() > self.pessimistic
     }
 }

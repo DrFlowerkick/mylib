@@ -1,14 +1,23 @@
 // plain implementation of MCTSTree
 use super::{
-    super::utils::BfsWalker, BaseEdge, BaseNode, ExpansionPolicy, Heuristic, MCTSAlgo, MCTSEdge,
-    MCTSGame, MCTSNode, MCTSTree, SolverPolicy, TranspositionHashMap, TranspositionTable,
-    UCTStatsPolicy,
+    super::utils::BfsWalker, BaseEdge, BaseNode, Heuristic, MCTSAlgo, MCTSEdge, MCTSGame, MCTSNode,
+    MCTSTree, PruneToRoot, TranspositionHashMap, TranspositionTable, UCTStatsPolicy,
 };
 
 // plain type of TranspositionHashMap, which works with PlainTree
 pub type PlainTTHashMap<State> = TranspositionHashMap<State, usize>;
 
 type Edges<G, H, A, UC> = Vec<Vec<(usize, BaseEdge<G, H, A, UC>)>>;
+type ROChildrenIterItem<'a, G, H, A, UN, UE> = (
+    PlainPathNode,
+    &'a BaseNode<G, H, A, UN>,
+    &'a BaseEdge<G, H, A, UE>,
+);
+type MutChildrenIterItem<'a, G, H, A, UN, UE> = (
+    PlainPathNode,
+    &'a mut BaseNode<G, H, A, UN>,
+    &'a mut BaseEdge<G, H, A, UE>,
+);
 
 #[derive(Clone)]
 pub struct PlainTree<G, H, A, USP, TT>
@@ -19,9 +28,8 @@ where
     USP: UCTStatsPolicy<G, H, A>,
     TT: TranspositionTable<G::State, usize>,
 {
-    // ToDo: make all elements private
-    pub nodes: Vec<BaseNode<G, H, A, USP::Node>>,
-    pub edges: Edges<G, H, A, USP::Edge>,
+    nodes: Vec<BaseNode<G, H, A, USP::Node>>,
+    edges: Edges<G, H, A, USP::Edge>,
     transposition_table: TT,
     root_id: usize,
 }
@@ -40,6 +48,115 @@ where
             edges: Vec::with_capacity(expected_num_nodes),
             transposition_table: TranspositionTable::new(expected_num_nodes),
             root_id: 0,
+        }
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn get_mut_parent_and_ro_children<'a>(
+        &'a mut self,
+        parent_id: usize,
+    ) -> (
+        &'a mut BaseNode<G, H, A, USP::Node>,
+        impl Iterator<Item = ROChildrenIterItem<'a, G, H, A, USP::Node, USP::Edge>>,
+    ) {
+        // set references to edges and nodes to enable separate reference handling
+        let (nodes, edges) = (&mut self.nodes, &self.edges);
+        // split nodes to enable separated reference access to parent and children nodes.
+        // since we may have a transposition table, a child may be before it's parent.
+        let (before_parent, rest) = nodes.split_at_mut(parent_id);
+        let (parent, after_parent) = rest.split_first_mut().expect("parent_id in range");
+        // make before_parent and after_parent ro
+        let before_parent = &*before_parent;
+        let after_parent = &*after_parent;
+        // get iter
+        let children_iter =
+            edges[parent_id]
+                .iter()
+                .enumerate()
+                .map(move |(edge_idx, (child_id, edge))| {
+                    let node = if *child_id > parent_id {
+                        &after_parent[child_id - parent_id - 1]
+                    } else {
+                        &before_parent[*child_id]
+                    };
+                    (
+                        PlainPathNode::Via {
+                            parent_id,
+                            edge_idx,
+                        },
+                        node,
+                        edge,
+                    )
+                });
+        (parent, children_iter)
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn get_mut_parent_and_mut_children<'a>(
+        &'a mut self,
+        parent_id: usize,
+    ) -> (
+        &'a mut BaseNode<G, H, A, USP::Node>,
+        impl Iterator<Item = MutChildrenIterItem<'a, G, H, A, USP::Node, USP::Edge>>,
+    ) {
+        let nodes_len = self.nodes.len();
+        // we need raw pointer to nodes to provide &mut in iterator
+        let nodes_ptr = self.nodes.as_mut_ptr();
+        let edges = &mut self.edges[parent_id];
+
+        debug_assert!(parent_id < nodes_len);
+        debug_assert!(
+            edges.iter().enumerate().all(|(i, (id, _))| {
+                *id < nodes_len && *id != parent_id && edges[..i].iter().all(|(o, _)| o != id)
+            }),
+            "child ids must be in range, differ from the parent and be pairwise distinct"
+        );
+
+        // SAFETY: parent_id < nodes_len; all child ids are in range, pairwise distinct and
+        // different from parent_id (invariant, see add_edge and link_edge). Hence all created
+        // &mut references point to distinct elements. The edges live in a separate field, and
+        // `&'a mut self` prevents any other access while the references are alive.
+        let parent = unsafe { &mut *nodes_ptr.add(parent_id) };
+        let children = edges
+            .iter_mut()
+            .enumerate()
+            .map(move |(edge_idx, (child_id, edge))| {
+                let child = unsafe { &mut *nodes_ptr.add(*child_id) };
+                (
+                    PlainPathNode::Via {
+                        parent_id,
+                        edge_idx,
+                    },
+                    child,
+                    edge,
+                )
+            });
+        (parent, children)
+    }
+
+    fn inner_update_solver(&mut self, id: usize) -> bool {
+        let (parent, children_iter) = self.get_mut_parent_and_ro_children(id);
+        let mut out = false;
+        for (_, child, _) in children_iter {
+            out |= parent.update_solver(child);
+        }
+        out
+    }
+
+    fn inner_link_child(
+        &mut self,
+        parent_id: usize,
+        mv: G::Move,
+        child_id: usize,
+    ) -> PlainPathNode {
+        let edge_idx = self.edges[parent_id].len();
+        self.edges
+            .get_mut(parent_id)
+            .expect("Expected edges of parent.")
+            .push((child_id, BaseEdge::new(mv)));
+        PlainPathNode::Via {
+            parent_id,
+            edge_idx,
         }
     }
 
@@ -76,6 +193,15 @@ where
 pub enum PlainPathNode {
     Root(usize),
     Via { parent_id: usize, edge_idx: usize },
+}
+
+impl PlainPathNode {
+    fn get_parent_id(&self) -> usize {
+        match self {
+            PlainPathNode::Root(root_id) => *root_id,
+            PlainPathNode::Via { parent_id, .. } => *parent_id,
+        }
+    }
 }
 
 impl<G, H, A, USP, TT> MCTSTree<G, H, A> for PlainTree<G, H, A, USP, TT>
@@ -147,10 +273,6 @@ where
         self.nodes[id].get_state()
     }
 
-    fn get_node_solver(&self, id: Self::NodeID) -> &A::Solver {
-        self.nodes[id].get_solver()
-    }
-
     fn set_node_outcome(&mut self, id: Self::NodeID, outcome: G::Outcome) {
         self.nodes[id].set_outcome(outcome);
     }
@@ -166,7 +288,7 @@ where
         let child = BaseNode::new(state);
         self.nodes.push(child);
         self.edges.push(vec![]);
-        self.link_child(parent_id, mv, child_id)
+        self.inner_link_child(parent_id, mv, child_id)
     }
 
     fn link_child(
@@ -175,15 +297,11 @@ where
         mv: G::Move,
         child_id: Self::NodeID,
     ) -> Self::PathNode {
-        let edge_idx = self.edges[parent_id].len();
-        self.edges
-            .get_mut(parent_id)
-            .expect("Expected edges of parent.")
-            .push((child_id, BaseEdge::new(mv)));
-        PlainPathNode::Via {
-            parent_id,
-            edge_idx,
-        }
+        // assert valid input for linking
+        assert_ne!(parent_id, child_id);
+        assert!(child_id < self.nodes.len());
+        assert!(self.edges[parent_id].iter().all(|e| e.0 != child_id));
+        self.inner_link_child(parent_id, mv, child_id)
     }
 
     fn count_children(&self, id: Self::NodeID) -> usize {
@@ -307,33 +425,48 @@ where
         }
     }
 
-    fn calc_uct(&mut self, path_node: Self::PathNode, mcts_config: &A::Config) -> f32 {
-        match path_node {
-            PlainPathNode::Root(_) => {
-                // for root we only calc exploitation score, which is equal to the expected
-                // win probability of the current tree
-                self.get_win_probability()
-            }
-            PlainPathNode::Via {
-                parent_id,
-                edge_idx,
-            } => {
-                let parent_visits = self.get_parent_visits(parent_id);
-                let child_id = self.target(path_node);
-                let node_uct = self.nodes[child_id].calc_exploitation_score()
-                    + self.nodes[child_id].calc_exploration_score(parent_visits, mcts_config);
-                let previous_player = G::previous_player(self.nodes[child_id].get_state());
-                let edge_uct = self.edges[parent_id][edge_idx]
-                    .1
-                    .calc_exploitation_score(previous_player)
-                    + self.edges[parent_id][edge_idx].1.calc_exploration_score(
-                        previous_player,
-                        parent_visits,
-                        mcts_config,
-                    );
-                node_uct + edge_uct
+    fn select_child_with_best_uct(
+        &mut self,
+        path_node: Self::PathNode,
+        mcts_config: &A::Config,
+    ) -> Result<Self::PathNode, bool> {
+        // in selection, target of path_node is current node id
+        let parent_visits = self.get_parent_visits(self.target(path_node));
+        let (parent, children_iter) = self.get_mut_parent_and_mut_children(self.target(path_node));
+        let is_fully_expanded = parent.is_fully_expanded();
+        let mut best_path_node: Option<_> = None;
+        let mut best_uct = f32::NEG_INFINITY;
+
+        for (pn, child, edge_to_child) in
+            children_iter.filter(|(_, c, _)| parent.filter_selection(c))
+        {
+            let node_uct = child.calc_exploitation_score()
+                + child.calc_exploration_score(parent_visits, mcts_config);
+            let previous_player = G::previous_player(child.get_state());
+            let edge_uct = edge_to_child.calc_exploitation_score(previous_player)
+                + edge_to_child.calc_exploration_score(previous_player, parent_visits, mcts_config);
+
+            let uct = node_uct + edge_uct;
+            if uct > best_uct {
+                best_uct = uct;
+                best_path_node = Some(pn);
             }
         }
+
+        best_path_node.ok_or_else(|| {
+            if is_fully_expanded {
+                if !self.inner_update_solver(self.target(path_node)) {
+                    // ToDo: dbg -> remove this if
+                    if self.get_target_outcome(path_node).is_none() {
+                        panic!("target should be solved now!");
+                    }
+                    panic!("no path nodes for selection and no update of parent solver.")
+                }
+                false
+            } else {
+                true
+            }
+        })
     }
 
     fn should_target_expand(
@@ -345,36 +478,32 @@ where
         let visits = self.get_target_visits(path_node);
         let id = self.target(path_node);
         let num_children = self.count_children(id);
-        self.nodes[id].get_expansion_policy().should_expand(
-            visits,
-            num_children,
-            mcts_config,
-            heuristic_config,
-        )
+        self.nodes[id].should_expand(visits, num_children, mcts_config, heuristic_config)
     }
 
     fn pop_target_expandable_move(
         &mut self,
         path_node: Self::PathNode,
+        force: bool,
         mcts_config: &A::Config,
         heuristic_config: &H::Config,
     ) -> Option<G::Move> {
         let visits = self.get_target_visits(path_node);
         let id = self.target(path_node);
         let num_children = self.count_children(id);
-        self.nodes[id].pop_expandable_move(visits, num_children, mcts_config, heuristic_config)
+        self.nodes[id].pop_expandable_move(
+            visits,
+            num_children,
+            force,
+            mcts_config,
+            heuristic_config,
+        )
     }
 
-    fn update_stats(
-        &mut self,
-        path_node: Self::PathNode,
-        result: f32,
-        previous_solver_changed: bool,
-    ) -> bool {
+    fn update_stats(&mut self, path_node: Self::PathNode, result: f32) {
         match path_node {
             PlainPathNode::Root(root_id) => {
                 self.nodes[root_id].update_stats(result);
-                false
             }
             PlainPathNode::Via {
                 parent_id,
@@ -388,29 +517,17 @@ where
                 self.edges[parent_id][edge_idx]
                     .1
                     .update_stats(state, result);
-                // update solver, if target is solved && parent is fully expanded
-                if previous_solver_changed {
-                    // provide proxy solver for unexpanded nodes
-                    let may_be_unexpanded = if !self.nodes[parent_id]
-                        .get_expansion_policy()
-                        .is_fully_expanded()
-                    {
-                        Some(&A::Solver::default())
-                    } else {
-                        None
-                    };
-                    // get solver of children
-                    let children_solver_iter = self
-                        .get_children_path_nodes(parent_id)
-                        .map(|pn| self.target(pn))
-                        .map(|child_id| self.nodes[child_id].get_solver())
-                        .chain(may_be_unexpanded);
-                    let update = A::Solver::new_from_children(children_solver_iter);
-                    self.nodes[parent_id].update_solver(update)
-                } else {
-                    false
-                }
             }
+        }
+    }
+
+    fn update_solver(&mut self, path_node: Self::PathNode, previous_solver_changed: bool) -> bool {
+        let node_id = path_node.get_parent_id();
+        // update solver, if previous solver changed and return, if self solver changed
+        if previous_solver_changed {
+            self.inner_update_solver(node_id)
+        } else {
+            false
         }
     }
 
@@ -422,5 +539,42 @@ where
                 edge_idx,
             } => Some(self.edges[parent_id][edge_idx].1.get_move()),
         }
+    }
+}
+
+// pruning to root is only allowed for PlainTree, if no transposition table is used,
+// since the table would contain old (and therefore wrong) indices after pruning.
+// Todo: the above statement is bullshit. Rebuild transposition table.
+impl<G, H, A, USP, TT> PruneToRoot for PlainTree<G, H, A, USP, TT>
+where
+    G: MCTSGame,
+    H: Heuristic<G>,
+    A: MCTSAlgo<G, H>,
+    USP: UCTStatsPolicy<G, H, A>,
+    TT: TranspositionTable<G::State, usize>,
+{
+    fn prune_to_root(&mut self) {
+        let Some(root_id) = self.root_id() else {
+            // uninitialized tree
+            return;
+        };
+        if root_id == 0 {
+            // nothing to prune
+            return;
+        }
+
+        // remove all nodes and edges before root_id
+        self.nodes.drain(..root_id);
+        self.edges.drain(..root_id);
+
+        // reindex all remaining children
+        for edge in self.edges.iter_mut() {
+            for (child_id, _move) in edge.iter_mut() {
+                *child_id -= root_id;
+            }
+        }
+
+        // reset root id
+        self.set_root(0);
     }
 }
