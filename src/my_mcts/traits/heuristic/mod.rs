@@ -2,14 +2,10 @@
 // This includes an optional trait for a recursive heuristic, which is calculated
 // recursively over a configured depth.
 
-mod caching;
 mod config;
 mod core_heuristic;
-mod recursive;
 
-pub use caching::*;
 pub use config::*;
 pub use core_heuristic::*;
-pub use recursive::*;
 
 use super::MCTSGame;

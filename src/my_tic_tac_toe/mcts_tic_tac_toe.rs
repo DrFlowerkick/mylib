@@ -1,6 +1,5 @@
 use super::*;
-use crate::my_mcts::{GameCache, GamePlayer, MCTSGame};
-use std::collections::HashMap;
+use crate::my_mcts::{GamePlayer, MCTSGame, WinDrawLoss};
 
 #[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
 pub struct TicTacToePlayerAction {
@@ -23,7 +22,7 @@ impl GamePlayer for TicTacToeStatus {
 pub struct TicTacToeGame {
     pub ttt: TicTacToeGameData,
     pub current_player: TicTacToeStatus,
-    pub last_player: TicTacToeStatus,
+    pub previous_player: TicTacToeStatus,
 }
 
 impl TicTacToeGame {
@@ -31,7 +30,7 @@ impl TicTacToeGame {
         TicTacToeGame {
             ttt: TicTacToeGameData::new(),
             current_player: TicTacToeStatus::First,
-            last_player: TicTacToeStatus::First,
+            previous_player: TicTacToeStatus::Second,
         }
     }
     pub fn set_current_player(&mut self, player: TicTacToeStatus) {
@@ -41,7 +40,7 @@ impl TicTacToeGame {
         }
     }
     pub fn next_player(&mut self) {
-        self.last_player = self.current_player;
+        self.previous_player = self.current_player;
         self.current_player = self.current_player.next();
     }
 }
@@ -53,7 +52,7 @@ impl MCTSGame for TicTacToeMCTSGame {
     type State = TicTacToeGame;
     type Move = TicTacToePlayerAction;
     type Player = TicTacToeStatus;
-    type Cache = TicTacToeGameCache;
+    type Outcome = WinDrawLoss;
 
     fn available_moves<'a>(state: &'a Self::State) -> Box<dyn Iterator<Item = Self::Move> + 'a> {
         Box::new(state.ttt.map.iterate().filter_map(|(cell, v)| {
@@ -65,61 +64,27 @@ impl MCTSGame for TicTacToeMCTSGame {
         }))
     }
 
-    fn apply_move(
-        state: &Self::State,
-        mv: &Self::Move,
-        game_cache: &mut Self::Cache,
-    ) -> Self::State {
-        if let Some(cached_state) = game_cache.get_applied_state(state, mv) {
-            return *cached_state;
-        }
+    fn apply_move(state: &Self::State, mv: &Self::Move) -> Self::State {
         let mut new_state = *state;
         // apply the move for current player
         new_state.ttt.set_cell_value(mv.cell, state.current_player);
         // set the next player
         new_state.next_player();
-        // insert the new state into the cache
-        game_cache.insert_applied_state(state, mv, new_state);
         new_state
     }
 
-    fn evaluate(state: &Self::State, game_cache: &mut Self::Cache) -> Option<f32> {
-        if let Some(cached_value) = game_cache.get_terminal_value(state) {
-            return *cached_value;
-        }
-        let evaluation = state.ttt.get_status().evaluate();
-        game_cache.insert_terminal_value(state, evaluation);
-        evaluation
+    fn evaluate(state: &Self::State) -> Option<WinDrawLoss> {
+        state.ttt.get_status().evaluate()
     }
 
     fn current_player(state: &Self::State) -> Self::Player {
         state.current_player
     }
-    fn last_player(state: &Self::State) -> Self::Player {
-        state.last_player
+    fn previous_player(state: &Self::State) -> Self::Player {
+        state.previous_player
     }
     fn perspective_player() -> Self::Player {
         TicTacToeStatus::First
-    }
-}
-
-#[derive(Clone)]
-pub struct TicTacToeGameCache {
-    // No move cache, because calc of move is cheaper than caching
-    pub state_cache: HashMap<TicTacToeGameData, Option<f32>>,
-}
-
-impl GameCache<TicTacToeGame, TicTacToePlayerAction> for TicTacToeGameCache {
-    fn new() -> Self {
-        TicTacToeGameCache {
-            state_cache: HashMap::new(),
-        }
-    }
-    fn get_terminal_value(&self, state: &TicTacToeGame) -> Option<&Option<f32>> {
-        self.state_cache.get(&state.ttt)
-    }
-    fn insert_terminal_value(&mut self, state: &TicTacToeGame, value: Option<f32>) {
-        self.state_cache.insert(state.ttt, value);
     }
 }
 
@@ -129,30 +94,40 @@ mod tests {
     use rand::{prelude::*, rng};
 
     use crate::my_mcts::{
-        BaseConfig, CachedUTC, DefaultSimulationPolicy, DynamicC, ExpandAll, MCTSAlgo, NoHeuristic,
-        NoTranspositionTable, NoUTCCache, PlainMCTS, ProgressiveWidening, StaticC,
-        TranspositionHashMap,
+        BaseConfig, DefaultSimulationPolicy, DynamicC, ExpandAll, GameOutcome,
+        HybridWithScoreCache, MCTSAlgo, MostVisited, MostVisitedAndMaxMean, NoHeuristic, NoSolver,
+        NoTranspositionTable, NodeOnly, PlainMCTS, PlainTree, ProgressiveWidening, SolverBounds,
+        StaticC, TranspositionHashMap,
     };
 
     type TTTBasicMCTS = PlainMCTS<
         TicTacToeMCTSGame,
         NoHeuristic,
         BaseConfig<TicTacToeStatus>,
-        NoUTCCache,
-        NoTranspositionTable,
         StaticC,
-        ExpandAll,
+        ExpandAll<TicTacToeMCTSGame>,
         DefaultSimulationPolicy,
+        MostVisited,
+        NoSolver,
     >;
+    type TTTBasicMCTSTree =
+        PlainTree<TicTacToeMCTSGame, NoHeuristic, TTTBasicMCTS, NodeOnly, NoTranspositionTable>;
     type TTTFullMCTS = PlainMCTS<
         TicTacToeMCTSGame,
         NoHeuristic,
         BaseConfig<TicTacToeStatus>,
-        CachedUTC,
-        TranspositionHashMap<TicTacToeGame, usize>,
         DynamicC,
         ProgressiveWidening<TicTacToeMCTSGame, BaseConfig<TicTacToeStatus>>,
         DefaultSimulationPolicy,
+        MostVisitedAndMaxMean,
+        SolverBounds<TicTacToeMCTSGame>,
+    >;
+    type TTTFullMCTSTree = PlainTree<
+        TicTacToeMCTSGame,
+        NoHeuristic,
+        TTTFullMCTS,
+        HybridWithScoreCache,
+        TranspositionHashMap<TicTacToeGame, usize>,
     >;
 
     use std::time::{Duration, Instant};
@@ -174,30 +149,31 @@ mod tests {
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: TTTBasicMCTS =
-                PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
+            let mcts_tic_tac_toe: TTTBasicMCTS =
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
+            let mut mcts_tree_tic_tac_toe: TTTBasicMCTSTree = PlainTree::new(EXPECTED_NUM_NODES);
             let mut ttt_game_data = TicTacToeGame::new();
             ttt_game_data.set_current_player(TicTacToeStatus::First);
             let mut time_out = TIME_OUT_FIRST_TURN;
+            let mut is_solved = None;
 
-            while TicTacToeMCTSGame::evaluate(&ttt_game_data, &mut mcts_tic_tac_toe.game_cache)
-                .is_none()
-            {
+            while TicTacToeMCTSGame::evaluate(&ttt_game_data).is_none() {
                 match ttt_game_data.current_player {
                     TicTacToeStatus::First => {
                         let start = Instant::now();
-                        mcts_tic_tac_toe.set_root(&ttt_game_data);
-                        while start.elapsed() < time_out {
-                            mcts_tic_tac_toe.iterate();
+                        mcts_tic_tac_toe.set_root(&ttt_game_data, &mut mcts_tree_tic_tac_toe, 2);
+                        while start.elapsed() < time_out && is_solved.is_none() {
+                            is_solved = mcts_tic_tac_toe.iterate(&mut mcts_tree_tic_tac_toe);
+                            if let Some(outcome) = is_solved {
+                                eprintln!("{:?} after {:?}", outcome, start.elapsed());
+                            }
                         }
                         time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                        let selected_move = *mcts_tic_tac_toe.select_move();
+                        let selected_move =
+                            *mcts_tic_tac_toe.select_move(&mut mcts_tree_tic_tac_toe);
                         eprintln!("me : {}", selected_move.cell);
-                        ttt_game_data = TicTacToeMCTSGame::apply_move(
-                            &ttt_game_data,
-                            &selected_move,
-                            &mut mcts_tic_tac_toe.game_cache,
-                        );
+                        ttt_game_data =
+                            TicTacToeMCTSGame::apply_move(&ttt_game_data, &selected_move);
                     }
                     TicTacToeStatus::Second => {
                         // let opp act by choosing a random action
@@ -205,11 +181,7 @@ mod tests {
                             .choose(&mut rng())
                             .expect("No available moves");
                         eprintln!("opp: {}", opp_move.cell);
-                        ttt_game_data = TicTacToeMCTSGame::apply_move(
-                            &ttt_game_data,
-                            &opp_move,
-                            &mut mcts_tic_tac_toe.game_cache,
-                        );
+                        ttt_game_data = TicTacToeMCTSGame::apply_move(&ttt_game_data, &opp_move);
                     }
                     _ => {
                         eprintln!("Invalid player");
@@ -231,8 +203,9 @@ mod tests {
                     panic!("vacant: Game ended without winner!?");
                 }
             }
-            wins += TicTacToeMCTSGame::evaluate(&ttt_game_data, &mut mcts_tic_tac_toe.game_cache)
-                .unwrap();
+            wins += TicTacToeMCTSGame::evaluate(&ttt_game_data)
+                .unwrap()
+                .to_score();
         }
         println!("{} wins out of 50 matches.", wins);
         assert!(wins > 45.0);
@@ -243,30 +216,31 @@ mod tests {
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut mcts_tic_tac_toe: TTTBasicMCTS =
-                PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
+            let mcts_tic_tac_toe: TTTBasicMCTS =
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
+            let mut mcts_tree_tic_tac_toe: TTTBasicMCTSTree = PlainTree::new(EXPECTED_NUM_NODES);
             let mut ttt_game_data = TicTacToeGame::new();
             ttt_game_data.set_current_player(TicTacToeStatus::First);
             let mut time_out = TIME_OUT_FIRST_TURN;
+            let mut is_solved = None;
 
-            while TicTacToeMCTSGame::evaluate(&ttt_game_data, &mut mcts_tic_tac_toe.game_cache)
-                .is_none()
-            {
+            while TicTacToeMCTSGame::evaluate(&ttt_game_data).is_none() {
                 match ttt_game_data.current_player {
                     TicTacToeStatus::First => {
                         let start = Instant::now();
-                        mcts_tic_tac_toe.set_root(&ttt_game_data);
-                        while start.elapsed() < time_out {
-                            mcts_tic_tac_toe.iterate();
+                        mcts_tic_tac_toe.set_root(&ttt_game_data, &mut mcts_tree_tic_tac_toe, 2);
+                        while start.elapsed() < time_out && is_solved.is_none() {
+                            is_solved = mcts_tic_tac_toe.iterate(&mut mcts_tree_tic_tac_toe);
+                            if let Some(outcome) = is_solved {
+                                eprintln!("{:?} after {:?}", outcome, start.elapsed());
+                            }
                         }
                         time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                        let selected_move = *mcts_tic_tac_toe.select_move();
+                        let selected_move =
+                            *mcts_tic_tac_toe.select_move(&mut mcts_tree_tic_tac_toe);
                         eprintln!("me : {}", selected_move.cell);
-                        ttt_game_data = TicTacToeMCTSGame::apply_move(
-                            &ttt_game_data,
-                            &selected_move,
-                            &mut mcts_tic_tac_toe.game_cache,
-                        );
+                        ttt_game_data =
+                            TicTacToeMCTSGame::apply_move(&ttt_game_data, &selected_move);
                     }
                     TicTacToeStatus::Second => {
                         // let opp act by choosing a random action
@@ -274,11 +248,7 @@ mod tests {
                             .choose(&mut rng())
                             .expect("No available moves");
                         eprintln!("opp: {}", opp_move.cell);
-                        ttt_game_data = TicTacToeMCTSGame::apply_move(
-                            &ttt_game_data,
-                            &opp_move,
-                            &mut mcts_tic_tac_toe.game_cache,
-                        );
+                        ttt_game_data = TicTacToeMCTSGame::apply_move(&ttt_game_data, &opp_move);
                     }
                     _ => {
                         eprintln!("Invalid player");
@@ -300,8 +270,9 @@ mod tests {
                     panic!("vacant: Game ended without winner!?");
                 }
             }
-            wins += TicTacToeMCTSGame::evaluate(&ttt_game_data, &mut mcts_tic_tac_toe.game_cache)
-                .unwrap();
+            wins += TicTacToeMCTSGame::evaluate(&ttt_game_data)
+                .unwrap()
+                .to_score();
         }
         println!("{} wins out of 50 matches.", wins);
         assert!(wins > 45.0);
@@ -312,72 +283,79 @@ mod tests {
         let mut wins = 0.0;
         for i in 0..50 {
             eprintln!("________match {}________", i + 1);
-            let mut first_mcts_tic_tac_toe: TTTBasicMCTS =
-                PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
+            let first_mcts_tic_tac_toe: TTTBasicMCTS =
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
+            let mut first_mcts_tree_tic_tac_toe: TTTBasicMCTSTree =
+                PlainTree::new(EXPECTED_NUM_NODES);
             let mut first_ttt_game_data = TicTacToeGame::new();
             first_ttt_game_data.set_current_player(TicTacToeStatus::First);
             let mut first_time_out = TIME_OUT_FIRST_TURN;
-            let mut second_mcts_tic_tac_toe: TTTFullMCTS =
-                PlainMCTS::new(BaseConfig::default(), NoHeuristic {}, EXPECTED_NUM_NODES);
+            let mut is_solved_first = None;
+            let second_mcts_tic_tac_toe: TTTFullMCTS =
+                PlainMCTS::new(BaseConfig::default(), NoHeuristic {});
+            let mut second_mcts_tree_tic_tac_toe: TTTFullMCTSTree =
+                PlainTree::new(EXPECTED_NUM_NODES);
             let mut second_ttt_game_data = TicTacToeGame::new();
             second_ttt_game_data.set_current_player(TicTacToeStatus::Second);
             let mut second_time_out = TIME_OUT_FIRST_TURN;
+            let mut is_solved_second = None;
 
             let mut first = true;
-            while TicTacToeMCTSGame::evaluate(
-                &first_ttt_game_data,
-                &mut first_mcts_tic_tac_toe.game_cache,
-            )
-            .is_none()
-            {
+            while TicTacToeMCTSGame::evaluate(&first_ttt_game_data).is_none() {
                 let mut iteration_counter: usize = 0;
                 if first {
                     let start = Instant::now();
-                    first_mcts_tic_tac_toe.set_root(&first_ttt_game_data);
-                    while start.elapsed() < first_time_out {
-                        first_mcts_tic_tac_toe.iterate();
+                    first_mcts_tic_tac_toe.set_root(
+                        &first_ttt_game_data,
+                        &mut first_mcts_tree_tic_tac_toe,
+                        2,
+                    );
+                    while start.elapsed() < first_time_out && is_solved_first.is_none() {
+                        is_solved_first =
+                            first_mcts_tic_tac_toe.iterate(&mut first_mcts_tree_tic_tac_toe);
                         iteration_counter += 1;
+                        if let Some(outcome) = is_solved_first {
+                            eprintln!("first {:?} after {:?}", outcome, start.elapsed());
+                        }
                     }
                     first_time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                    let selected_move = *first_mcts_tic_tac_toe.select_move();
+                    let selected_move =
+                        *first_mcts_tic_tac_toe.select_move(&mut first_mcts_tree_tic_tac_toe);
                     eprintln!(
                         "first : {} (Iterations: {})",
                         selected_move.cell, iteration_counter
                     );
-                    first_ttt_game_data = TicTacToeMCTSGame::apply_move(
-                        &first_ttt_game_data,
-                        &selected_move,
-                        &mut first_mcts_tic_tac_toe.game_cache,
-                    );
-                    second_ttt_game_data = TicTacToeMCTSGame::apply_move(
-                        &second_ttt_game_data,
-                        &selected_move,
-                        &mut second_mcts_tic_tac_toe.game_cache,
-                    );
+                    first_ttt_game_data =
+                        TicTacToeMCTSGame::apply_move(&first_ttt_game_data, &selected_move);
+                    second_ttt_game_data =
+                        TicTacToeMCTSGame::apply_move(&second_ttt_game_data, &selected_move);
                     first = false;
                 } else {
                     let start = Instant::now();
-                    second_mcts_tic_tac_toe.set_root(&second_ttt_game_data);
-                    while start.elapsed() < second_time_out {
-                        second_mcts_tic_tac_toe.iterate();
+                    second_mcts_tic_tac_toe.set_root(
+                        &second_ttt_game_data,
+                        &mut second_mcts_tree_tic_tac_toe,
+                        2,
+                    );
+                    while start.elapsed() < second_time_out && is_solved_second.is_none() {
+                        is_solved_second =
+                            second_mcts_tic_tac_toe.iterate(&mut second_mcts_tree_tic_tac_toe);
                         iteration_counter += 1;
+                        if let Some(outcome) = is_solved_second {
+                            eprintln!("second {:?} after {:?}", outcome, start.elapsed());
+                        }
                     }
                     second_time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                    let selected_move = *second_mcts_tic_tac_toe.select_move();
+                    let selected_move =
+                        *second_mcts_tic_tac_toe.select_move(&mut second_mcts_tree_tic_tac_toe);
                     eprintln!(
                         "second: {} (Iterations: {}",
                         selected_move.cell, iteration_counter
                     );
-                    second_ttt_game_data = TicTacToeMCTSGame::apply_move(
-                        &second_ttt_game_data,
-                        &selected_move,
-                        &mut second_mcts_tic_tac_toe.game_cache,
-                    );
-                    first_ttt_game_data = TicTacToeMCTSGame::apply_move(
-                        &first_ttt_game_data,
-                        &selected_move,
-                        &mut first_mcts_tic_tac_toe.game_cache,
-                    );
+                    second_ttt_game_data =
+                        TicTacToeMCTSGame::apply_move(&second_ttt_game_data, &selected_move);
+                    first_ttt_game_data =
+                        TicTacToeMCTSGame::apply_move(&first_ttt_game_data, &selected_move);
                     first = true;
                 }
             }
@@ -398,11 +376,9 @@ mod tests {
                     panic!("vacant: Game ended without winner!?");
                 }
             }
-            wins += TicTacToeMCTSGame::evaluate(
-                &first_ttt_game_data,
-                &mut first_mcts_tic_tac_toe.game_cache,
-            )
-            .unwrap();
+            wins += TicTacToeMCTSGame::evaluate(&first_ttt_game_data)
+                .unwrap()
+                .to_score();
         }
         println!("{} wins out of 50 matches.", wins);
         assert_eq!(wins, 25.0);

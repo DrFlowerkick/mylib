@@ -242,9 +242,7 @@ impl Rectangle {
             // maybe one rectangle is fully inside the other, so we check if one corner of self is in other and vice versa
             match self.rectangle_cmp(other) {
                 FormOrdering::Inside | FormOrdering::InsideTouching => Some(*other),
-                FormOrdering::IsContainedBy | FormOrdering::IsContainedByAndTouching => {
-                    Some(*self)
-                }
+                FormOrdering::IsContainedBy | FormOrdering::IsContainedByAndTouching => Some(*self),
                 _ => None,
             }
         } else {

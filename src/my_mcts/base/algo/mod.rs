@@ -1,16 +1,20 @@
 // base implementation of all MCTS algorithm traits of caching, configuration, and policies
 
-mod caching;
 mod config;
-mod policies;
-mod utc_caching;
+mod expansion_policy;
+mod select_move_policy;
+mod simulation_policy;
+mod solver_policy;
+mod uct_policy;
 
-pub use caching::*;
 pub use config::*;
-pub use policies::*;
-pub use utc_caching::*;
+pub use expansion_policy::*;
+pub use select_move_policy::*;
+pub use simulation_policy::*;
+pub use solver_policy::*;
+pub use uct_policy::*;
 
 use super::{
-    ExpansionPolicy, GameCache, GamePlayer, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame,
-    SimulationPolicy, TranspositionTable, UCTPolicy, UTCCache,
+    ExpansionPolicy, GameOutcome, GamePlayer, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame,
+    MoveStats, SelectMovePolicy, SimulationPolicy, SolverPolicy, UCTPolicy,
 };

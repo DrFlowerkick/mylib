@@ -8,22 +8,27 @@
 // While MCTSAlgo policies ExpansionPolicy and SimulationsPolicy depend upon Heuristic,
 // NoHeuristic can be used if ho heuristic is required or feasible.
 
+use crate::my_mcts::SolverPolicy;
+
 use super::{
-    ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, MCTSTree, SimulationPolicy,
-    TranspositionTable, UCTPolicy,
+    ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, MCTSTree, SelectMovePolicy, SimulationPolicy,
+    UCTPolicy,
 };
 
 pub trait MCTSAlgo<G: MCTSGame, H: Heuristic<G>>: Sized + Clone + Sync + Send {
-    type Tree: MCTSTree<G, H, Self>;
-    type NodeID: Copy + Eq + std::fmt::Debug;
     type Config: MCTSConfig<G::Player>;
-    type TranspositionTable: TranspositionTable<G::State, Self::NodeID>;
-    type UTC: UCTPolicy<G, Self::Config>;
+    type UCT: UCTPolicy<G, Self::Config>;
     type Expansion: ExpansionPolicy<G, H, Self::Config>;
     type Simulation: SimulationPolicy<G, H, Self::Config>;
+    type MoveSelect: SelectMovePolicy<G>;
+    type Solver: SolverPolicy<G>;
 
-    fn set_root(&mut self, state: &G::State) -> bool;
-    fn reset_root(&mut self, state: &G::State);
-    fn iterate(&mut self);
-    fn select_move(&self) -> &G::Move;
+    fn set_root(
+        &self,
+        state: &G::State,
+        tree: &mut impl MCTSTree<G, H, Self>,
+        max_depth: usize,
+    ) -> bool;
+    fn iterate(&self, tree: &mut impl MCTSTree<G, H, Self>) -> Option<G::Outcome>;
+    fn select_move<'a>(&'a self, tree: &'a mut impl MCTSTree<G, H, Self>) -> &'a G::Move;
 }

@@ -7,12 +7,14 @@ pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig<G::Player>>: Clone + Sync + 
     fn exploitation_score(
         accumulated_value: f32,
         visits: usize,
-        last_player: G::Player,
-        perspective_player: G::Player,
+        previous_player: G::Player,
     ) -> f32 {
+        if visits == 0 {
+            return 0.0;
+        }
         let raw = accumulated_value / visits as f32;
         // this works only for 2 player games
-        if last_player == perspective_player {
+        if previous_player == G::perspective_player() {
             raw
         } else {
             1.0 - raw
@@ -23,38 +25,37 @@ pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig<G::Player>>: Clone + Sync + 
         visits: usize,
         parent_visits: usize,
         mcts_config: &Config,
-        _last_player: G::Player,
+        _previous_player: G::Player,
     ) -> f32 {
+        if visits == 0 {
+            return f32::INFINITY;
+        }
         mcts_config.exploration_constant() * ((parent_visits as f32).ln() / visits as f32).sqrt()
     }
 }
 
 pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Player>>:
-    Clone + Sync + Send
+    Clone + Sync + Send + Default
 {
-    fn new(
-        state: &G::State,
-        game_cache: &mut G::Cache,
-        heuristic_cache: &mut H::Cache,
-        heuristic_config: &H::Config,
-    ) -> Self;
     fn should_expand(
         &self,
         _visits: usize,
-        _num_parent_children: usize,
+        _num_children: usize,
         _mcts_config: &Config,
         _heuristic_config: &H::Config,
     ) -> bool {
         false
     }
-    fn expandable_moves(
+    fn pop_expandable_move(
         &mut self,
-        _visits: usize,
-        _num_parent_children: usize,
         state: &G::State,
-        _mcts_config: &Config,
-        _heuristic_config: &H::Config,
-    ) -> Vec<G::Move>;
+        visits: usize,
+        num_children: usize,
+        force: bool,
+        mcts_config: &Config,
+        heuristic_config: &H::Config,
+    ) -> Option<G::Move>;
+    fn is_fully_expanded(&self) -> bool;
 }
 
 // return value ist heuristic value at cutoff
@@ -64,12 +65,48 @@ pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::P
     fn should_cutoff(
         _state: &G::State,
         _depth: usize,
-        _game_cache: &mut G::Cache,
-        _heuristic_cache: &mut H::Cache,
         _perspective_player: Option<G::Player>,
         _mcts_config: &Config,
         _heuristic_config: &H::Config,
     ) -> Option<f32> {
         None
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct MoveStats {
+    pub visits_from_parent: usize,
+    pub accumulated_value: f32,
+    pub acc_visits: usize,
+}
+
+pub trait SelectMovePolicy<G: MCTSGame>: Clone + Sync + Send {
+    fn select<'a, I>(candidates: I) -> Option<&'a G::Move>
+    where
+        I: Iterator<Item = (&'a G::Move, MoveStats)>;
+}
+
+pub trait SolverPolicy<G: MCTSGame>: Clone + Sync + Send + Default {
+    // sets the outcome from the view of the perspective player
+    fn set_outcome(&mut self, outcome: G::Outcome, current_player: G::Player);
+    // gets the outcome (if any) from the view of the perspective player
+    fn get_outcome(&self, _current_player: G::Player) -> Option<G::Outcome> {
+        None
+    }
+    fn filter_selection(&self, _child: &Self) -> bool {
+        true
+    }
+    fn update<'a>(
+        &'a mut self,
+        _children: impl Iterator<Item = &'a Self>,
+        _is_fully_expanded: bool,
+    ) -> bool {
+        false
+    }
+    fn get_guaranteed_outcome(&self) -> Option<G::Outcome> {
+        None
+    }
+    fn filter_select_move(&self, _child: &Self) -> bool {
+        true
     }
 }

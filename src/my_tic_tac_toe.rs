@@ -3,7 +3,10 @@
 pub mod mcts_tic_tac_toe;
 use std::collections::HashSet;
 
-use crate::my_map_3x3::{CellIndex3x3, MyMap3x3};
+use crate::{
+    my_map_3x3::{CellIndex3x3, MyMap3x3},
+    my_mcts::WinDrawLoss,
+};
 
 // TicTacToeStatus is used for cell and game status of TicTacToe
 #[repr(i8)]
@@ -36,11 +39,11 @@ impl TicTacToeStatus {
     pub fn is_player(&self) -> bool {
         matches!(self, Self::First | Self::Second)
     }
-    pub fn evaluate(&self) -> Option<f32> {
+    pub fn evaluate(&self) -> Option<WinDrawLoss> {
         match self {
-            TicTacToeStatus::First => Some(1.0),
-            TicTacToeStatus::Second => Some(0.0),
-            TicTacToeStatus::Tie => Some(0.5),
+            TicTacToeStatus::First => Some(WinDrawLoss::Win),
+            TicTacToeStatus::Second => Some(WinDrawLoss::Loss),
+            TicTacToeStatus::Tie => Some(WinDrawLoss::Draw),
             TicTacToeStatus::Vacant => None,
         }
     }

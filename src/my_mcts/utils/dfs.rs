@@ -4,28 +4,30 @@ use super::{Heuristic, MCTSAlgo, MCTSGame, MCTSTree};
 use std::collections::HashSet;
 
 // iterative DFS over NodeIDs, Tree is extern.
-pub struct DfsWalker<G, H, A>
+pub struct DfsWalker<G, H, A, T>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
-    A::NodeID: std::hash::Hash,
+    T: MCTSTree<G, H, A>,
+    T::NodeID: std::hash::Hash,
 {
-    stack: Vec<A::NodeID>,
-    skip: HashSet<A::NodeID>,
-    visited: HashSet<A::NodeID>, // required because of transposition table
-    _phantom: std::marker::PhantomData<(G, H, A)>,
+    stack: Vec<T::PathNode>,
+    skip: HashSet<T::NodeID>,
+    visited: HashSet<T::NodeID>, // required because of transposition table
+    _phantom: std::marker::PhantomData<(G, H, A, T)>,
 }
 
-impl<G, H, A> DfsWalker<G, H, A>
+impl<G, H, A, T> DfsWalker<G, H, A, T>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
-    A::NodeID: std::hash::Hash,
+    T: MCTSTree<G, H, A>,
+    T::NodeID: std::hash::Hash,
 {
-    pub fn new(start: A::NodeID, skip: impl IntoIterator<Item = A::NodeID>) -> Self {
-        let stack = vec![start];
+    pub fn new(tree: &T, skip: impl IntoIterator<Item = T::NodeID>) -> Self {
+        let stack = vec![tree.root_path_node()];
         Self {
             stack,
             skip: skip.into_iter().collect(),
@@ -34,11 +36,14 @@ where
         }
     }
 
-    pub fn next(&mut self, tree: &A::Tree) -> Option<A::NodeID> {
-        let node_id = self.stack.pop()?;
-        for (child_id, _) in tree.get_children(node_id).iter().rev() {
-            if !self.skip.contains(child_id) && self.visited.insert(*child_id) {
-                self.stack.push(*child_id);
+    pub fn next(&mut self, tree: &T) -> Option<T::NodeID> {
+        let path_node: <T as MCTSTree<G, H, A>>::PathNode = self.stack.pop()?;
+        let node_id = tree.target(path_node);
+        let children_path_nodes: Vec<_> = tree.get_children_path_nodes(node_id).collect();
+        for child_path_node in children_path_nodes.into_iter().rev() {
+            let child_id = tree.target(path_node);
+            if !self.skip.contains(&child_id) && self.visited.insert(child_id) {
+                self.stack.push(child_path_node);
             }
         }
         Some(node_id)
@@ -48,30 +53,32 @@ where
         self.stack.is_empty()
     }
 
-    pub fn into_iter(self, tree: &A::Tree) -> DfsIterator<'_, G, H, A> {
+    pub fn into_iter(self, tree: &T) -> DfsIterator<'_, G, H, A, T> {
         DfsIterator { walker: self, tree }
     }
 }
 
-pub struct DfsIterator<'a, G, H, A>
+pub struct DfsIterator<'a, G, H, A, T>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
-    A::NodeID: std::hash::Hash,
+    T: MCTSTree<G, H, A>,
+    T::NodeID: std::hash::Hash,
 {
-    walker: DfsWalker<G, H, A>,
-    tree: &'a A::Tree,
+    walker: DfsWalker<G, H, A, T>,
+    tree: &'a T,
 }
 
-impl<G, H, A> Iterator for DfsIterator<'_, G, H, A>
+impl<G, H, A, T> Iterator for DfsIterator<'_, G, H, A, T>
 where
     G: MCTSGame,
     H: Heuristic<G>,
     A: MCTSAlgo<G, H>,
-    A::NodeID: std::hash::Hash,
+    T: MCTSTree<G, H, A>,
+    T::NodeID: std::hash::Hash,
 {
-    type Item = A::NodeID;
+    type Item = T::NodeID;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.walker.next(self.tree)

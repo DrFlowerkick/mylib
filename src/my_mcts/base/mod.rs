@@ -9,12 +9,15 @@
 mod algo;
 mod game;
 mod heuristic;
+mod tree;
 
 pub use algo::*;
 pub use game::*;
 pub use heuristic::*;
+pub use tree::*;
 
 use super::{
-    ExpansionPolicy, GameCache, GamePlayer, Heuristic, HeuristicCache, HeuristicConfig, MCTSConfig,
-    MCTSGame, RecursiveHeuristicConfig, SimulationPolicy, TranspositionTable, UCTPolicy, UTCCache,
+    ExpansionPolicy, GameOutcome, GamePlayer, Heuristic, HeuristicConfig, MCTSAlgo, MCTSConfig,
+    MCTSEdge, MCTSGame, MCTSNode, MoveStats, RecursiveHeuristicConfig, SelectMovePolicy,
+    SimulationPolicy, SolverPolicy, TranspositionTable, UCTCache, UCTPolicy, UCTStatsPolicy,
 };
