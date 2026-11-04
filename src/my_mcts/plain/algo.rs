@@ -97,7 +97,6 @@ where
         // node in the path, which is now linked to one or mode nodes in the transposition table. The selection
         // can now continue to these newly linked nodes.
 
-        // ToDo: update usage of solver in selection and expansion
         'selection_and_expansion: loop {
             let mut force_expansion = false;
             // Selection
@@ -144,6 +143,7 @@ where
             // path.len() > 1 -> path is not at root
             let current_id = tree.target(current_path_node);
             if (tree.get_target_visits(current_path_node) == 0 && path.len() > 1)
+                || tree.get_target_outcome(current_path_node).is_some()
                 || G::evaluate(tree.get_node_state(current_id)).is_some()
             {
                 // If the node is not root and has not been visited yet or is terminal, we need to simulate it.
@@ -239,31 +239,35 @@ where
         /* ----------------- Back Propagation ----------------- */
         // unwrap() is save, since path is always at least one element long.
         let mut previous_solver_changed = tree.get_target_outcome(*path.last().unwrap()).is_some();
-        for path_node in path {
+        for path_node in path.into_iter().rev() {
             tree.update_stats(path_node, simulation_result);
             previous_solver_changed = tree.update_solver(path_node, previous_solver_changed)
         }
         None
     }
 
-    // ToDo: select_move must use solver
-    fn select_move<'a>(&'a self, tree: &'a impl MCTSTree<G, H, Self>) -> &'a G::Move {
+    fn select_move<'a>(&'a self, tree: &'a mut impl MCTSTree<G, H, Self>) -> &'a G::Move {
         let root_id = tree
             .root_id()
             .expect("Root node must be initialized before selecting a move");
-        let candidates = tree.get_children_path_nodes(root_id).filter_map(|pn| {
-            let visits_from_parent = tree.get_visits_from_parent(pn);
-            (visits_from_parent > 0).then(|| {
-                (
-                    tree.get_move(pn).expect("expected move"),
-                    MoveStats {
-                        visits_from_parent,
-                        accumulated_value: tree.get_target_accumulated_value(pn),
-                        acc_visits: tree.get_target_visits(pn),
-                    },
-                )
-            })
-        });
+        // make sure tree solver is up to date
+        tree.update_root_solver();
+        let candidates = tree
+            .get_children_path_nodes(root_id)
+            .filter(|pn| tree.filter_select_move(*pn))
+            .filter_map(|pn| {
+                let visits_from_parent = tree.get_visits_from_parent(pn);
+                (visits_from_parent > 0).then(|| {
+                    (
+                        tree.get_move(pn).expect("expected move"),
+                        MoveStats {
+                            visits_from_parent,
+                            accumulated_value: tree.get_target_accumulated_value(pn),
+                            acc_visits: tree.get_target_visits(pn),
+                        },
+                    )
+                })
+            });
         Self::MoveSelect::select(candidates).expect("expect move")
     }
 }

@@ -86,24 +86,27 @@ pub trait SelectMovePolicy<G: MCTSGame>: Clone + Sync + Send {
         I: Iterator<Item = (&'a G::Move, MoveStats)>;
 }
 
-pub trait SolverPolicy<G: MCTSGame>: Clone + Sync + Send + Default + Eq + PartialEq {
+pub trait SolverPolicy<G: MCTSGame>: Clone + Sync + Send + Default {
     // sets the outcome from the view of the perspective player
-    fn set_solved(&mut self, outcome: G::Outcome, previous_player: G::Player);
+    fn set_outcome(&mut self, outcome: G::Outcome, current_player: G::Player);
     // gets the outcome (if any) from the view of the perspective player
-    fn get_solved(&self, _previous_player: G::Player) -> Option<G::Outcome> {
+    fn get_outcome(&self, _current_player: G::Player) -> Option<G::Outcome> {
         None
     }
     fn filter_selection(&self, _child: &Self) -> bool {
         true
     }
-    fn update(&mut self, _child: &Self, _is_fully_expanded: bool) -> bool {
+    fn update<'a>(
+        &'a mut self,
+        _children: impl Iterator<Item = &'a Self>,
+        _is_fully_expanded: bool,
+    ) -> bool {
         false
     }
-
-    fn new_from_children<'a>(children: impl IntoIterator<Item = &'a Self>) -> Self
-    where
-        Self: 'a;
-    fn update_old(&mut self, _update: Self) -> bool {
-        false
+    fn get_guaranteed_outcome(&self) -> Option<G::Outcome> {
+        None
+    }
+    fn filter_select_move(&self, _child: &Self) -> bool {
+        true
     }
 }

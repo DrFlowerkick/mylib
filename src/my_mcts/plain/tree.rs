@@ -136,11 +136,7 @@ where
 
     fn inner_update_solver(&mut self, id: usize) -> bool {
         let (parent, children_iter) = self.get_mut_parent_and_ro_children(id);
-        let mut out = false;
-        for (_, child, _) in children_iter {
-            out |= parent.update_solver(child);
-        }
-        out
+        parent.update_solver(children_iter.map(|(_, c, _)| c))
     }
 
     fn inner_link_child(
@@ -455,13 +451,12 @@ where
 
         best_path_node.ok_or_else(|| {
             if is_fully_expanded {
-                if !self.inner_update_solver(self.target(path_node)) {
-                    // ToDo: dbg -> remove this if
-                    if self.get_target_outcome(path_node).is_none() {
-                        panic!("target should be solved now!");
-                    }
-                    panic!("no path nodes for selection and no update of parent solver.")
-                }
+                self.inner_update_solver(self.target(path_node));
+                assert!(
+                    self.get_target_outcome(path_node).is_some(),
+                    "no path nodes for selection and update of parent solver did not solve it."
+                );
+
                 false
             } else {
                 true
@@ -531,6 +526,21 @@ where
         }
     }
 
+    fn update_root_solver(&mut self) -> bool {
+        self.inner_update_solver(self.root_id)
+    }
+
+    fn filter_select_move(&self, path_node: Self::PathNode) -> bool {
+        match path_node {
+            PlainPathNode::Root(_) => true,
+            PlainPathNode::Via {
+                parent_id,
+                edge_idx,
+            } => self.nodes[parent_id]
+                .filter_select_move(&self.nodes[self.edges[parent_id][edge_idx].0]),
+        }
+    }
+
     fn get_move(&self, path_node: Self::PathNode) -> Option<&G::Move> {
         match path_node {
             PlainPathNode::Root(_) => None,
@@ -544,7 +554,6 @@ where
 
 // pruning to root is only allowed for PlainTree, if no transposition table is used,
 // since the table would contain old (and therefore wrong) indices after pruning.
-// Todo: the above statement is bullshit. Rebuild transposition table.
 impl<G, H, A, USP, TT> PruneToRoot for PlainTree<G, H, A, USP, TT>
 where
     G: MCTSGame,
@@ -569,12 +578,18 @@ where
 
         // reindex all remaining children
         for edge in self.edges.iter_mut() {
-            for (child_id, _move) in edge.iter_mut() {
+            for (child_id, _) in edge.iter_mut() {
                 *child_id -= root_id;
             }
         }
 
         // reset root id
         self.set_root(0);
+        // refill transposition table
+        self.transposition_table.clear();
+        let (tt, nodes) = (&mut self.transposition_table, &self.nodes);
+        for (id, node) in nodes.iter().enumerate() {
+            tt.insert(node.get_state().clone(), id);
+        }
     }
 }

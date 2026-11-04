@@ -24,6 +24,9 @@ impl Neg for WinDrawLoss {
 }
 
 impl GameOutcome for WinDrawLoss {
+    const BEST_OUTCOME: Self = WinDrawLoss::Win;
+    const WORST_OUTCOME: Self = WinDrawLoss::Loss;
+
     fn to_score(&self) -> f32 {
         match self {
             WinDrawLoss::Loss => 0.0,

@@ -103,23 +103,23 @@ where
     // -------------- Solver --------------
     fn set_outcome(&mut self, outcome: G::Outcome) {
         self.solver
-            .set_solved(outcome, G::previous_player(&self.state));
+            .set_outcome(outcome, G::current_player(&self.state));
     }
     fn get_outcome(&self) -> Option<G::Outcome> {
-        self.solver.get_solved(G::previous_player(&self.state))
+        self.solver.get_outcome(G::current_player(&self.state))
     }
     fn filter_selection(&self, child: &Self) -> bool {
         self.solver.filter_selection(&child.solver)
     }
-    fn update_solver(&mut self, child: &Self) -> bool {
+    fn update_solver<'a>(&'a mut self, children: impl Iterator<Item = &'a Self>) -> bool {
         let is_fully_expanded = self.expansion_policy.is_fully_expanded();
-        self.solver.update(&child.solver, is_fully_expanded)
+        self.solver
+            .update(children.map(|c| &c.solver), is_fully_expanded)
     }
-
-    fn get_solver(&self) -> &A::Solver {
-        &self.solver
+    fn get_guaranteed_outcome(&self) -> Option<G::Outcome> {
+        self.solver.get_guaranteed_outcome()
     }
-    fn update_solver_old(&mut self, update: A::Solver) -> bool {
-        self.solver.update_old(update)
+    fn filter_select_move(&self, child: &Self) -> bool {
+        self.solver.filter_select_move(&child.solver)
     }
 }

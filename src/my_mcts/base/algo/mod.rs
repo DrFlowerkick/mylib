@@ -15,6 +15,6 @@ pub use solver_policy::*;
 pub use uct_policy::*;
 
 use super::{
-    ExpansionPolicy, GamePlayer, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame, MoveStats,
-    SelectMovePolicy, SimulationPolicy, SolverPolicy, UCTPolicy, WinDrawLoss,
+    ExpansionPolicy, GameOutcome, GamePlayer, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame,
+    MoveStats, SelectMovePolicy, SimulationPolicy, SolverPolicy, UCTPolicy,
 };

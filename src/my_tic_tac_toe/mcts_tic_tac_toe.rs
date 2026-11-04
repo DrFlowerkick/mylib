@@ -120,7 +120,7 @@ mod tests {
         ProgressiveWidening<TicTacToeMCTSGame, BaseConfig<TicTacToeStatus>>,
         DefaultSimulationPolicy,
         MostVisitedAndMaxMean,
-        SolverBounds,
+        SolverBounds<TicTacToeMCTSGame>,
     >;
     type TTTFullMCTSTree = PlainTree<
         TicTacToeMCTSGame,
@@ -165,11 +165,12 @@ mod tests {
                         while start.elapsed() < time_out && is_solved.is_none() {
                             is_solved = mcts_tic_tac_toe.iterate(&mut mcts_tree_tic_tac_toe);
                             if let Some(outcome) = is_solved {
-                                eprintln!("{:?}", outcome);
+                                eprintln!("{:?} after {:?}", outcome, start.elapsed());
                             }
                         }
                         time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                        let selected_move = *mcts_tic_tac_toe.select_move(&mcts_tree_tic_tac_toe);
+                        let selected_move =
+                            *mcts_tic_tac_toe.select_move(&mut mcts_tree_tic_tac_toe);
                         eprintln!("me : {}", selected_move.cell);
                         ttt_game_data =
                             TicTacToeMCTSGame::apply_move(&ttt_game_data, &selected_move);
@@ -231,11 +232,12 @@ mod tests {
                         while start.elapsed() < time_out && is_solved.is_none() {
                             is_solved = mcts_tic_tac_toe.iterate(&mut mcts_tree_tic_tac_toe);
                             if let Some(outcome) = is_solved {
-                                eprintln!("{:?}", outcome);
+                                eprintln!("{:?} after {:?}", outcome, start.elapsed());
                             }
                         }
                         time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                        let selected_move = *mcts_tic_tac_toe.select_move(&mcts_tree_tic_tac_toe);
+                        let selected_move =
+                            *mcts_tic_tac_toe.select_move(&mut mcts_tree_tic_tac_toe);
                         eprintln!("me : {}", selected_move.cell);
                         ttt_game_data =
                             TicTacToeMCTSGame::apply_move(&ttt_game_data, &selected_move);
@@ -313,12 +315,12 @@ mod tests {
                             first_mcts_tic_tac_toe.iterate(&mut first_mcts_tree_tic_tac_toe);
                         iteration_counter += 1;
                         if let Some(outcome) = is_solved_first {
-                            eprintln!("{:?}", outcome);
+                            eprintln!("first {:?} after {:?}", outcome, start.elapsed());
                         }
                     }
                     first_time_out = TIME_OUT_SUCCESSIVE_TURNS;
                     let selected_move =
-                        *first_mcts_tic_tac_toe.select_move(&first_mcts_tree_tic_tac_toe);
+                        *first_mcts_tic_tac_toe.select_move(&mut first_mcts_tree_tic_tac_toe);
                     eprintln!(
                         "first : {} (Iterations: {})",
                         selected_move.cell, iteration_counter
@@ -340,12 +342,12 @@ mod tests {
                             second_mcts_tic_tac_toe.iterate(&mut second_mcts_tree_tic_tac_toe);
                         iteration_counter += 1;
                         if let Some(outcome) = is_solved_second {
-                            eprintln!("{:?}", outcome);
+                            eprintln!("second {:?} after {:?}", outcome, start.elapsed());
                         }
                     }
                     second_time_out = TIME_OUT_SUCCESSIVE_TURNS;
                     let selected_move =
-                        *second_mcts_tic_tac_toe.select_move(&second_mcts_tree_tic_tac_toe);
+                        *second_mcts_tic_tac_toe.select_move(&mut second_mcts_tree_tic_tac_toe);
                     eprintln!(
                         "second: {} (Iterations: {}",
                         selected_move.cell, iteration_counter

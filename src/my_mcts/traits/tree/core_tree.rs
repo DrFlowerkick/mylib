@@ -73,5 +73,7 @@ where
     ) -> Option<G::Move>;
     fn update_stats(&mut self, path_node: Self::PathNode, result: f32);
     fn update_solver(&mut self, path_node: Self::PathNode, previous_solver_changed: bool) -> bool;
+    fn update_root_solver(&mut self) -> bool;
+    fn filter_select_move(&self, path_node: Self::PathNode) -> bool;
     fn get_move(&self, path_node: Self::PathNode) -> Option<&G::Move>;
 }
