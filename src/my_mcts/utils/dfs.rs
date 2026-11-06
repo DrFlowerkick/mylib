@@ -36,8 +36,8 @@ where
         }
     }
 
-    pub fn next(&mut self, tree: &T) -> Option<T::NodeID> {
-        let path_node: <T as MCTSTree<G, H, A>>::PathNode = self.stack.pop()?;
+    pub fn next(&mut self, tree: &T) -> Option<T::PathNode> {
+        let path_node = self.stack.pop()?;
         let node_id = tree.target(path_node);
         let children_path_nodes: Vec<_> = tree.get_children_path_nodes(node_id).collect();
         for child_path_node in children_path_nodes.into_iter().rev() {
@@ -46,7 +46,7 @@ where
                 self.stack.push(child_path_node);
             }
         }
-        Some(node_id)
+        Some(path_node)
     }
 
     pub fn is_empty(&self) -> bool {
@@ -78,7 +78,7 @@ where
     T: MCTSTree<G, H, A>,
     T::NodeID: std::hash::Hash,
 {
-    type Item = T::NodeID;
+    type Item = T::PathNode;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.walker.next(self.tree)

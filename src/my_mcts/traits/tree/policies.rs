@@ -45,7 +45,7 @@ use super::{Heuristic, MCTSAlgo, MCTSGame, UCTCache};
 // of MCTSTree you use for the UCTCache of a node and edge the types
 // from this trait instead of defining them separately.
 
-pub trait UCTStatsPolicy<G, H, A>
+pub trait UCTStatsPolicy<G, H, A>: Clone
 where
     G: MCTSGame,
     H: Heuristic<G>,

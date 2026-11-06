@@ -6,6 +6,7 @@ use super::{
     MCTSAlgo, MCTSGame, NoUCTCache, UCTStatsPolicy,
 };
 
+#[derive(Clone)]
 pub struct NodeOnly;
 
 impl<G, H, A> UCTStatsPolicy<G, H, A> for NodeOnly
@@ -18,6 +19,7 @@ where
     type Edge = NoUCTCache;
 }
 
+#[derive(Clone)]
 pub struct EdgeOnly;
 
 impl<G, H, A> UCTStatsPolicy<G, H, A> for EdgeOnly
@@ -30,6 +32,7 @@ where
     type Edge = ExploitationAndExploration;
 }
 
+#[derive(Clone)]
 pub struct Hybrid;
 
 impl<G, H, A> UCTStatsPolicy<G, H, A> for Hybrid
@@ -42,6 +45,7 @@ where
     type Edge = ExplorationOnly;
 }
 
+#[derive(Clone)]
 pub struct NodeOnlyWithScoreCache;
 
 impl<G, H, A> UCTStatsPolicy<G, H, A> for NodeOnlyWithScoreCache
@@ -54,6 +58,7 @@ where
     type Edge = NoUCTCache;
 }
 
+#[derive(Clone)]
 pub struct EdgeOnlyWithScoreCache;
 
 impl<G, H, A> UCTStatsPolicy<G, H, A> for EdgeOnlyWithScoreCache
@@ -66,6 +71,7 @@ where
     type Edge = ExploitationAndExplorationWithScoreCache;
 }
 
+#[derive(Clone)]
 pub struct HybridWithScoreCache;
 
 impl<G, H, A> UCTStatsPolicy<G, H, A> for HybridWithScoreCache
