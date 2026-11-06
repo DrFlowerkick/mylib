@@ -18,6 +18,7 @@ where
     type PathNode: Copy + Eq + std::fmt::Debug;
 
     fn root_id(&self) -> Option<Self::NodeID>;
+    fn get_tree_size(&self) -> usize;
     fn init_root(&mut self, state: G::State) -> Self::NodeID;
     fn set_root(&mut self, new_root_id: Self::NodeID);
     fn get_node_id(
