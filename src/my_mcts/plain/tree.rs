@@ -220,6 +220,10 @@ where
         }
     }
 
+    fn get_tree_size(&self) -> usize {
+        self.nodes.len()
+    }
+
     fn init_root(&mut self, state: G::State) -> Self::NodeID {
         // Clear any existing nodes and edges
         self.root_id = 0;
