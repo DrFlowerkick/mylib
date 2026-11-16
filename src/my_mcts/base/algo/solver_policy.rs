@@ -83,7 +83,7 @@ impl<G: MCTSGame> SolverPolicy<G> for SolverBounds<G> {
         out
     }
     fn get_guaranteed_outcome(&self) -> Option<G::Outcome> {
-        Some(self.worst_for_parent())
+        Some(self.pessimistic)
     }
     fn filter_select_move(&self, child: &Self) -> bool {
         // if certain loss, do not filter. Otherwise
