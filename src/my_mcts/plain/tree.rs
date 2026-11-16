@@ -411,17 +411,19 @@ where
     }
 
     fn get_win_probability(&self) -> f32 {
+        // ToDo: exploitation score of root is from view of opponent, not perspective player
+        // quick fix: 1.0 - exploitation score. But is this valid?
         if self.nodes[self.root_id].get_accumulated_value().is_some() {
             // node contains exploitation stats
-            self.nodes[self.root_id].calc_exploitation_score()
+            1.0 - self.nodes[self.root_id].calc_exploitation_score()
         } else {
             // edges only -> total uct is some of children edges
             // previous_player for exploitation score is current player of root
             let previous_player = G::current_player(self.nodes[self.root_id].get_state());
-            self.edges[self.root_id]
+            1.0 - self.edges[self.root_id]
                 .iter()
                 .map(|(_, e)| e.calc_exploitation_score(previous_player))
-                .sum()
+                .sum::<f32>()
         }
     }
 
