@@ -425,6 +425,10 @@ where
         }
     }
 
+    fn get_guaranteed_outcome(&self) -> Option<G::Outcome> {
+        self.nodes[self.root_id].get_guaranteed_outcome()
+    }
+
     fn select_child_with_best_uct(
         &mut self,
         path_node: Self::PathNode,

@@ -54,6 +54,7 @@ where
     fn get_target_outcome(&self, path_node: Self::PathNode) -> Option<G::Outcome>;
     fn get_visits_from_parent(&self, path_node: Self::PathNode) -> usize;
     fn get_win_probability(&self) -> f32;
+    fn get_guaranteed_outcome(&self) -> Option<G::Outcome>;
     fn select_child_with_best_uct(
         &mut self,
         path_node: Self::PathNode,
