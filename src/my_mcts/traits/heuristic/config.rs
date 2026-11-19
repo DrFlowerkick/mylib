@@ -1,4 +1,4 @@
-// configuration traits for heuristic and recursive heuristic.
+// configuration traits for heuristic.
 
 pub trait HeuristicConfig {
     fn progressive_widening_initial_threshold(&self) -> f32 {
