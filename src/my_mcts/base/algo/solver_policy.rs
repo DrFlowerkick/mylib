@@ -47,6 +47,7 @@ impl<G: MCTSGame> SolverPolicy<G> for SolverBounds<G> {
         }
     }
     fn get_outcome(&self, current_player: G::Player) -> Option<G::Outcome> {
+        // ToDo: perspective_player() does not work correct, if Im second. Try to remove perspective player from code
         if self.optimistic == self.pessimistic {
             if current_player == G::perspective_player() {
                 Some(self.optimistic)

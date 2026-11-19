@@ -46,8 +46,10 @@ pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Pl
     ) -> bool {
         false
     }
+    #[allow(clippy::too_many_arguments)]
     fn pop_expandable_move(
         &mut self,
+        current_turn: usize,
         state: &G::State,
         visits: usize,
         num_children: usize,
@@ -63,6 +65,7 @@ pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::P
     Clone + Sync + Send
 {
     fn should_cutoff(
+        _current_turn: usize,
         _state: &G::State,
         _depth: usize,
         _perspective_player: Option<G::Player>,

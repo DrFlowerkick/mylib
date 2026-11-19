@@ -43,6 +43,7 @@ where
     }
     fn pop_expandable_move(
         &mut self,
+        _current_turn: usize,
         state: &G::State,
         _visits: usize,
         _num_children: usize,
@@ -132,6 +133,7 @@ where
     }
     fn pop_expandable_move(
         &mut self,
+        _current_turn: usize,
         state: &G::State,
         visits: usize,
         num_children: usize,
@@ -235,6 +237,7 @@ where
     }
     fn pop_expandable_move(
         &mut self,
+        current_turn: usize,
         state: &G::State,
         visits: usize,
         num_children: usize,
@@ -243,16 +246,29 @@ where
         heuristic_config: &H::Config,
     ) -> Option<G::Move> {
         if let Some(moves) = &mut self.unexpanded_moves {
-            let threshold = Self::threshold(visits, heuristic_config);
-            if force
-                || (num_children < Self::allowed_children(visits, mcts_config)
-                    && moves.iter().any(|(score, _)| *score >= threshold))
+            if let Some(max_turn) = heuristic_config.max_turn()
+                && max_turn > current_turn
             {
-                moves.pop().map(|(_, m)| m)
+                let threshold = Self::threshold(visits, heuristic_config);
+                if force
+                    || (num_children < Self::allowed_children(visits, mcts_config)
+                        && moves.iter().any(|(score, _)| *score >= threshold))
+                {
+                    moves.pop().map(|(_, m)| m)
+                } else {
+                    None
+                }
             } else {
-                None
+                // fall back to progressive widening, if max turn for heuristic is reached
+                if force || num_children < Self::allowed_children(visits, mcts_config) {
+                    moves.pop().map(|(_, m)| m)
+                } else {
+                    None
+                }
             }
-        } else {
+        } else if let Some(max_turn) = heuristic_config.max_turn()
+            && max_turn > current_turn
+        {
             let mut heuristic_moves = G::available_moves(state)
                 .map(|mv| (H::evaluate_move(state, &mv, heuristic_config), mv))
                 .collect::<Vec<_>>();
@@ -262,6 +278,14 @@ where
             });
             let mv = heuristic_moves.pop().map(|(_, m)| m);
             self.unexpanded_moves = Some(heuristic_moves);
+            mv
+        } else {
+            let mut moves = G::available_moves(state)
+                .map(|mv| (0.0, mv))
+                .collect::<Vec<_>>();
+            moves.shuffle(&mut rng());
+            let mv = moves.pop().map(|(_, mv)| mv);
+            self.unexpanded_moves = Some(moves);
             mv
         }
     }

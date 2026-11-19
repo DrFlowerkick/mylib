@@ -68,6 +68,7 @@ where
     ) -> bool;
     fn pop_target_expandable_move(
         &mut self,
+        current_turn: usize,
         path_node: Self::PathNode,
         force: bool,
         mcts_config: &A::Config,

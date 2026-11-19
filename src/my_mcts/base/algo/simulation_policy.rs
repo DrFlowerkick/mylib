@@ -23,6 +23,7 @@ where
     Config: MCTSConfig<G::Player>,
 {
     fn should_cutoff(
+        _current_turn: usize,
         state: &G::State,
         depth: usize,
         perspective_player: Option<G::Player>,
@@ -48,18 +49,25 @@ where
     Config: MCTSConfig<G::Player>,
 {
     fn should_cutoff(
+        current_turn: usize,
         state: &G::State,
         depth: usize,
         perspective_player: Option<G::Player>,
         mcts_config: &Config,
         heuristic_config: &H::Config,
     ) -> Option<f32> {
-        let heuristic = H::evaluate_state(state, perspective_player, heuristic_config);
-        if depth >= mcts_config.early_cut_off_depth()
-            || heuristic <= heuristic_config.early_cut_off_lower_bound()
-            || heuristic >= heuristic_config.early_cut_off_upper_bound()
+        if let Some(max_turn) = heuristic_config.max_turn()
+            && max_turn > current_turn
         {
-            Some(heuristic)
+            let heuristic = H::evaluate_state(state, perspective_player, heuristic_config);
+            if depth >= mcts_config.early_cut_off_depth()
+                || heuristic <= heuristic_config.early_cut_off_lower_bound()
+                || heuristic >= heuristic_config.early_cut_off_upper_bound()
+            {
+                Some(heuristic)
+            } else {
+                None
+            }
         } else {
             None
         }

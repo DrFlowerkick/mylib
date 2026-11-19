@@ -488,6 +488,7 @@ where
 
     fn pop_target_expandable_move(
         &mut self,
+        current_turn: usize,
         path_node: Self::PathNode,
         force: bool,
         mcts_config: &A::Config,
@@ -497,6 +498,7 @@ where
         let id = self.target(path_node);
         let num_children = self.count_children(id);
         self.nodes[id].pop_expandable_move(
+            current_turn,
             visits,
             num_children,
             force,

@@ -1,6 +1,6 @@
 // Base configuration for Heuristic and RecursiveHeuristic
 
-use super::{HeuristicConfig, RecursiveHeuristicConfig};
+use super::HeuristicConfig;
 
 // Base configuration of heuristic, which supports HeuristicProgressiveWidening and HeuristicCutoff
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -46,6 +46,7 @@ pub struct BaseRecursiveConfig {
     pub alpha_reduction_factor: f32,
     pub target_alpha: f32,
     pub early_exit_threshold: f32,
+    pub max_turn: Option<usize>,
 }
 
 impl Default for BaseRecursiveConfig {
@@ -57,6 +58,7 @@ impl Default for BaseRecursiveConfig {
             alpha_reduction_factor: 0.9,
             target_alpha: 0.5,
             early_exit_threshold: 0.95,
+            max_turn: None,
         }
     }
 }
@@ -74,22 +76,7 @@ impl HeuristicConfig for BaseRecursiveConfig {
     fn early_cut_off_upper_bound(&self) -> f32 {
         self.base_config.early_cut_off_upper_bound
     }
-}
-
-impl RecursiveHeuristicConfig for BaseRecursiveConfig {
-    fn max_depth(&self) -> usize {
-        self.max_depth
-    }
-    fn alpha(&self) -> f32 {
-        self.alpha
-    }
-    fn alpha_reduction_factor(&self) -> f32 {
-        self.alpha_reduction_factor
-    }
-    fn target_alpha(&self) -> f32 {
-        self.target_alpha
-    }
-    fn early_exit_threshold(&self) -> f32 {
-        self.early_exit_threshold
+    fn max_turn(&self) -> Option<usize> {
+        self.max_turn
     }
 }

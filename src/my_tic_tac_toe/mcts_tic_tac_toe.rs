@@ -156,14 +156,16 @@ mod tests {
             ttt_game_data.set_current_player(TicTacToeStatus::First);
             let mut time_out = TIME_OUT_FIRST_TURN;
             let mut is_solved = None;
+            let mut turn = 0;
 
             while TicTacToeMCTSGame::evaluate(&ttt_game_data).is_none() {
+                turn += 1;
                 match ttt_game_data.current_player {
                     TicTacToeStatus::First => {
                         let start = Instant::now();
                         mcts_tic_tac_toe.set_root(&ttt_game_data, &mut mcts_tree_tic_tac_toe, 2);
                         while start.elapsed() < time_out && is_solved.is_none() {
-                            is_solved = mcts_tic_tac_toe.iterate(&mut mcts_tree_tic_tac_toe);
+                            is_solved = mcts_tic_tac_toe.iterate(&mut mcts_tree_tic_tac_toe, turn);
                             if let Some(outcome) = is_solved {
                                 eprintln!("{:?} after {:?}", outcome, start.elapsed());
                             }
@@ -223,14 +225,16 @@ mod tests {
             ttt_game_data.set_current_player(TicTacToeStatus::First);
             let mut time_out = TIME_OUT_FIRST_TURN;
             let mut is_solved = None;
+            let mut turn = 0;
 
             while TicTacToeMCTSGame::evaluate(&ttt_game_data).is_none() {
+                turn += 1;
                 match ttt_game_data.current_player {
                     TicTacToeStatus::First => {
                         let start = Instant::now();
                         mcts_tic_tac_toe.set_root(&ttt_game_data, &mut mcts_tree_tic_tac_toe, 2);
                         while start.elapsed() < time_out && is_solved.is_none() {
-                            is_solved = mcts_tic_tac_toe.iterate(&mut mcts_tree_tic_tac_toe);
+                            is_solved = mcts_tic_tac_toe.iterate(&mut mcts_tree_tic_tac_toe, turn);
                             if let Some(outcome) = is_solved {
                                 eprintln!("{:?} after {:?}", outcome, start.elapsed());
                             }
@@ -301,7 +305,9 @@ mod tests {
             let mut is_solved_second = None;
 
             let mut first = true;
+            let mut turn = 0;
             while TicTacToeMCTSGame::evaluate(&first_ttt_game_data).is_none() {
+                turn += 1;
                 let mut iteration_counter: usize = 0;
                 if first {
                     let start = Instant::now();
@@ -312,7 +318,7 @@ mod tests {
                     );
                     while start.elapsed() < first_time_out && is_solved_first.is_none() {
                         is_solved_first =
-                            first_mcts_tic_tac_toe.iterate(&mut first_mcts_tree_tic_tac_toe);
+                            first_mcts_tic_tac_toe.iterate(&mut first_mcts_tree_tic_tac_toe, turn);
                         iteration_counter += 1;
                         if let Some(outcome) = is_solved_first {
                             eprintln!("first {:?} after {:?}", outcome, start.elapsed());
@@ -338,8 +344,8 @@ mod tests {
                         2,
                     );
                     while start.elapsed() < second_time_out && is_solved_second.is_none() {
-                        is_solved_second =
-                            second_mcts_tic_tac_toe.iterate(&mut second_mcts_tree_tic_tac_toe);
+                        is_solved_second = second_mcts_tic_tac_toe
+                            .iterate(&mut second_mcts_tree_tic_tac_toe, turn);
                         iteration_counter += 1;
                         if let Some(outcome) = is_solved_second {
                             eprintln!("second {:?} after {:?}", outcome, start.elapsed());

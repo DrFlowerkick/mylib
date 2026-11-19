@@ -80,7 +80,11 @@ where
         false
     }
 
-    fn iterate(&self, tree: &mut impl MCTSTree<G, H, Self>) -> Option<G::Outcome> {
+    fn iterate(
+        &self,
+        tree: &mut impl MCTSTree<G, H, Self>,
+        current_turn: usize,
+    ) -> Option<G::Outcome> {
         let mut current_path_node = tree.root_path_node();
         if let Some(outcome) = tree.get_target_outcome(current_path_node) {
             return Some(outcome);
@@ -155,6 +159,7 @@ where
 
             // generate new children nodes from expandable moves
             while let Some(mv) = tree.pop_target_expandable_move(
+                current_turn,
                 current_path_node,
                 force_expansion,
                 &self.mcts_config,
@@ -211,6 +216,7 @@ where
             loop {
                 // check for heuristic cutoff
                 if let Some(heuristic) = SP::should_cutoff(
+                    current_turn,
                     &current_state,
                     depth,
                     Some(G::perspective_player()),

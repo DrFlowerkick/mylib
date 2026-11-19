@@ -13,22 +13,8 @@ pub trait HeuristicConfig {
     fn early_cut_off_lower_bound(&self) -> f32 {
         0.95
     }
-}
-
-pub trait RecursiveHeuristicConfig: HeuristicConfig {
-    fn max_depth(&self) -> usize {
-        0
-    }
-    fn alpha(&self) -> f32 {
-        0.0
-    }
-    fn alpha_reduction_factor(&self) -> f32 {
-        0.0
-    }
-    fn target_alpha(&self) -> f32 {
-        0.0
-    }
-    fn early_exit_threshold(&self) -> f32 {
-        0.0
+    // heuristic will be used while current_turn < max_turn
+    fn max_turn(&self) -> Option<usize> {
+        None
     }
 }

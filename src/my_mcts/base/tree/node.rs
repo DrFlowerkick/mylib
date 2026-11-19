@@ -79,6 +79,7 @@ where
 
     fn pop_expandable_move(
         &mut self,
+        current_turn: usize,
         visits: usize,
         num_children: usize,
         force: bool,
@@ -87,6 +88,7 @@ where
     ) -> Option<G::Move> {
         let (state, ep) = (&self.state, &mut self.expansion_policy);
         ep.pop_expandable_move(
+            current_turn,
             state,
             visits,
             num_children,
