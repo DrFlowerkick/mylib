@@ -92,30 +92,28 @@ mod tests {
         BaseConfig, DefaultSimulationPolicy, DynamicC, ExpandAll, HybridWithScoreCache, MCTSAlgo,
         MostVisited, MostVisitedAndMaxMean, NoHeuristic, NoSolver, NoTranspositionTable, NodeOnly,
         PlainMCTS, PlainTree, ProgressiveWidening, SimulationScore, SolverBounds, StaticC,
-        TranspositionHashMap, TwoPlayerScore,
+        TranspositionHashMap, TwoPlayerPlainMCTS, TwoPlayerScore,
     };
 
-    type TTTBasicMCTS = PlainMCTS<
+    type TTTBasicMCTS = TwoPlayerPlainMCTS<
         TicTacToeMCTSGame,
         NoHeuristic,
         BaseConfig<TwoPlayer>,
         StaticC,
         ExpandAll<TicTacToeMCTSGame>,
         DefaultSimulationPolicy,
-        TwoPlayerScore,
         MostVisited,
         NoSolver,
     >;
     type TTTBasicMCTSTree =
         PlainTree<TicTacToeMCTSGame, NoHeuristic, TTTBasicMCTS, NodeOnly, NoTranspositionTable>;
-    type TTTFullMCTS = PlainMCTS<
+    type TTTFullMCTS = TwoPlayerPlainMCTS<
         TicTacToeMCTSGame,
         NoHeuristic,
         BaseConfig<TwoPlayer>,
         DynamicC,
         ProgressiveWidening<TicTacToeMCTSGame, BaseConfig<TwoPlayer>>,
         DefaultSimulationPolicy,
-        TwoPlayerScore,
         MostVisitedAndMaxMean,
         SolverBounds<TicTacToeMCTSGame>,
     >;

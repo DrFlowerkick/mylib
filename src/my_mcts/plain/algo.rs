@@ -2,9 +2,12 @@
 
 use super::{
     ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSTree, MoveStats,
-    SelectMovePolicy, SimulationPolicy, SimulationScore, SolverPolicy, UCTPolicy,
+    SelectMovePolicy, SimulationPolicy, SimulationScore, SolverPolicy, TwoPlayerScore, UCTPolicy,
 };
 use rand::{prelude::IteratorRandom, rng};
+
+pub type TwoPlayerPlainMCTS<G, H, MC, UP, EP, SP, MP, SO> =
+    PlainMCTS<G, H, MC, UP, EP, SP, TwoPlayerScore, MP, SO>;
 
 // Use PlainMCTS with your specific implementations of the MCTS traits.
 #[derive(Clone, Copy)]
