@@ -4,8 +4,8 @@ use super::{MCTSGame, SimulationScore, TwoPlayer, TwoPlayerOutcome};
 
 #[derive(Debug, Clone, Copy)]
 pub struct TwoPlayerScore {
-    first: f32,
-    second: f32,
+    pub first: f32,
+    pub second: f32,
 }
 
 impl Default for TwoPlayerScore {
