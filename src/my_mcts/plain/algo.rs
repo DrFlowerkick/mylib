@@ -260,7 +260,7 @@ where
         None
     }
 
-    fn select_move<'a>(&'a self, tree: &'a mut impl MCTSTree<G, H, Self>) -> &'a G::Move {
+    fn select_move<'a>(&'a self, tree: &'a mut impl MCTSTree<G, H, Self>) -> (&'a G::Move, f32) {
         let root_id = tree
             .root_id()
             .expect("Root node must be initialized before selecting a move");

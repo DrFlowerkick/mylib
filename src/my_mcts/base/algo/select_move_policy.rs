@@ -9,12 +9,12 @@ impl<G> SelectMovePolicy<G> for MostVisited
 where
     G: MCTSGame,
 {
-    fn select<'a, I>(c: I) -> Option<&'a G::Move>
+    fn select<'a, I>(c: I) -> Option<(&'a G::Move, f32)>
     where
         I: Iterator<Item = (&'a G::Move, MoveStats)>,
     {
         c.max_by(|(_, a), (_, b)| a.visits_from_parent.cmp(&b.visits_from_parent))
-            .map(|(m, _)| m)
+            .map(|(m, ms)| (m, ms.get_win_probability()))
     }
 }
 
@@ -25,7 +25,7 @@ impl<G> SelectMovePolicy<G> for MostVisitedAndMaxMean
 where
     G: MCTSGame,
 {
-    fn select<'a, I>(c: I) -> Option<&'a G::Move>
+    fn select<'a, I>(c: I) -> Option<(&'a G::Move, f32)>
     where
         I: Iterator<Item = (&'a G::Move, MoveStats)>,
     {
@@ -37,6 +37,6 @@ where
                         .total_cmp(&(b.accumulated_value / b.acc_visits as f32))
                 })
         })
-        .map(|(m, _)| m)
+        .map(|(m, ms)| (m, ms.get_win_probability()))
     }
 }

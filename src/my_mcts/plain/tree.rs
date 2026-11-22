@@ -412,29 +412,6 @@ where
         }
     }
 
-    fn get_win_probability(&self) -> f32 {
-        // exploitation score of any node is from view of previous player, not current player
-        let (total_score, total_visits) = self.get_children_path_nodes(self.root_id).fold(
-            (0.0, 0),
-            |(mut score, mut visits), child_pn| {
-                visits += self.get_target_visits(child_pn);
-                let child_id = self.target(child_pn);
-                if let Some(acc) = self.nodes[child_id].get_accumulated_value() {
-                    // node contains exploitation stats
-                    score += acc;
-                } else {
-                    // edges only -> total uct is sum of children edges
-                    score += self.edges[self.root_id]
-                        .iter()
-                        .flat_map(|(_, e)| e.get_accumulated_value())
-                        .sum::<f32>();
-                }
-                (score, visits)
-            },
-        );
-        total_score / total_visits as f32
-    }
-
     fn get_guaranteed_outcome(&self) -> Option<G::Outcome> {
         self.nodes[self.root_id].get_guaranteed_outcome()
     }

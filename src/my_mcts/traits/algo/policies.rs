@@ -79,8 +79,14 @@ pub struct MoveStats {
     pub acc_visits: usize,
 }
 
+impl MoveStats {
+    pub fn get_win_probability(&self) -> f32 {
+        self.accumulated_value / self.acc_visits as f32
+    }
+}
+
 pub trait SelectMovePolicy<G: MCTSGame>: Clone + Sync + Send {
-    fn select<'a, I>(candidates: I) -> Option<&'a G::Move>
+    fn select<'a, I>(candidates: I) -> Option<(&'a G::Move, f32)>
     where
         I: Iterator<Item = (&'a G::Move, MoveStats)>;
 }

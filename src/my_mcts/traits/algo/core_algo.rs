@@ -39,5 +39,5 @@ pub trait MCTSAlgo<G: MCTSGame, H: Heuristic<G, Self::Score>>: Sized + Clone + S
         tree: &mut impl MCTSTree<G, H, Self>,
         current_turn: usize,
     ) -> Option<G::Outcome>;
-    fn select_move<'a>(&'a self, tree: &'a mut impl MCTSTree<G, H, Self>) -> &'a G::Move;
+    fn select_move<'a>(&'a self, tree: &'a mut impl MCTSTree<G, H, Self>) -> (&'a G::Move, f32);
 }

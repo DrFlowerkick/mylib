@@ -167,10 +167,10 @@ mod tests {
                         }
                         time_out = TIME_OUT_SUCCESSIVE_TURNS;
                         let selected_move =
-                            *mcts_tic_tac_toe.select_move(&mut mcts_tree_tic_tac_toe);
+                            mcts_tic_tac_toe.select_move(&mut mcts_tree_tic_tac_toe).0;
                         eprintln!("me : {}", selected_move.cell);
                         ttt_game_data =
-                            TicTacToeMCTSGame::apply_move(&ttt_game_data, &selected_move);
+                            TicTacToeMCTSGame::apply_move(&ttt_game_data, selected_move);
                     }
                     TwoPlayer::Second => {
                         // let opp act by choosing a random action
@@ -234,10 +234,10 @@ mod tests {
                         }
                         time_out = TIME_OUT_SUCCESSIVE_TURNS;
                         let selected_move =
-                            *mcts_tic_tac_toe.select_move(&mut mcts_tree_tic_tac_toe);
+                            mcts_tic_tac_toe.select_move(&mut mcts_tree_tic_tac_toe).0;
                         eprintln!("me : {}", selected_move.cell);
                         ttt_game_data =
-                            TicTacToeMCTSGame::apply_move(&ttt_game_data, &selected_move);
+                            TicTacToeMCTSGame::apply_move(&ttt_game_data, selected_move);
                     }
                     TwoPlayer::Second => {
                         // let opp act by choosing a random action
@@ -316,14 +316,15 @@ mod tests {
                         }
                     }
                     first_time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                    let selected_move =
-                        *first_mcts_tic_tac_toe.select_move(&mut first_mcts_tree_tic_tac_toe);
+                    let selected_move = first_mcts_tic_tac_toe
+                        .select_move(&mut first_mcts_tree_tic_tac_toe)
+                        .0;
                     eprintln!(
                         "first : {} (Iterations: {})",
                         selected_move.cell, iteration_counter
                     );
                     first_ttt_game_data =
-                        TicTacToeMCTSGame::apply_move(&first_ttt_game_data, &selected_move);
+                        TicTacToeMCTSGame::apply_move(&first_ttt_game_data, selected_move);
                     second_ttt_game_data =
                         TicTacToeMCTSGame::apply_move(&second_ttt_game_data, &selected_move);
                     first = false;
@@ -343,16 +344,17 @@ mod tests {
                         }
                     }
                     second_time_out = TIME_OUT_SUCCESSIVE_TURNS;
-                    let selected_move =
-                        *second_mcts_tic_tac_toe.select_move(&mut second_mcts_tree_tic_tac_toe);
+                    let selected_move = second_mcts_tic_tac_toe
+                        .select_move(&mut second_mcts_tree_tic_tac_toe)
+                        .0;
                     eprintln!(
                         "second: {} (Iterations: {}",
                         selected_move.cell, iteration_counter
                     );
                     second_ttt_game_data =
-                        TicTacToeMCTSGame::apply_move(&second_ttt_game_data, &selected_move);
+                        TicTacToeMCTSGame::apply_move(&second_ttt_game_data, selected_move);
                     first_ttt_game_data =
-                        TicTacToeMCTSGame::apply_move(&first_ttt_game_data, &selected_move);
+                        TicTacToeMCTSGame::apply_move(&first_ttt_game_data, selected_move);
                     first = true;
                 }
             }
