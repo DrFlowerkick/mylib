@@ -265,13 +265,11 @@ where
                 } else {
                     None
                 }
-            } else {
+            } else if force || num_children < Self::allowed_children(visits, mcts_config) {
                 // fall back to progressive widening, if max turn for heuristic is reached
-                if force || num_children < Self::allowed_children(visits, mcts_config) {
-                    moves.pop().map(|(_, m)| m)
-                } else {
-                    None
-                }
+                moves.pop().map(|(_, m)| m)
+            } else {
+                None
             }
         } else if let Some(max_turn) = heuristic_config.max_turn()
             && max_turn > current_turn
