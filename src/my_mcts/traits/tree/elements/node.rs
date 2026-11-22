@@ -5,7 +5,7 @@ use super::{Heuristic, MCTSAlgo, MCTSGame};
 pub trait MCTSNode<G, H, A>: Clone + Sync + Send
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
 {
     fn new(state: G::State) -> Self;

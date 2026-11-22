@@ -1,6 +1,6 @@
 // implementations of ExpansionPolicy
 
-use super::{ExpansionPolicy, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame};
+use super::{ExpansionPolicy, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame, SimulationScore};
 use rand::{prelude::SliceRandom, rng};
 
 #[derive(Clone)]
@@ -22,10 +22,11 @@ where
     }
 }
 
-impl<G, H, Config> ExpansionPolicy<G, H, Config> for ExpandAll<G>
+impl<G, S, H, Config> ExpansionPolicy<G, S, H, Config> for ExpandAll<G>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    S: SimulationScore<G>,
+    H: Heuristic<G, S>,
     Config: MCTSConfig<G::Player>,
 {
     fn should_expand(
@@ -109,10 +110,11 @@ where
     }
 }
 
-impl<G, H, Config> ExpansionPolicy<G, H, Config> for ProgressiveWidening<G, Config>
+impl<G, S, H, Config> ExpansionPolicy<G, S, H, Config> for ProgressiveWidening<G, Config>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    S: SimulationScore<G>,
+    H: Heuristic<G, S>,
     Config: MCTSConfig<G::Player>,
 {
     fn should_expand(
@@ -165,20 +167,22 @@ where
 }
 
 #[derive(Clone)]
-pub struct HeuristicProgressiveWidening<G, H, Config>
+pub struct HeuristicProgressiveWidening<G, S, H, Config>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    S: SimulationScore<G>,
+    H: Heuristic<G, S>,
     Config: MCTSConfig<G::Player>,
 {
     pub unexpanded_moves: Option<Vec<(f32, G::Move)>>,
-    phantom: std::marker::PhantomData<(H, Config)>,
+    phantom: std::marker::PhantomData<(S, H, Config)>,
 }
 
-impl<G, H, Config> Default for HeuristicProgressiveWidening<G, H, Config>
+impl<G, S, H, Config> Default for HeuristicProgressiveWidening<G, S, H, Config>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    S: SimulationScore<G>,
+    H: Heuristic<G, S>,
     Config: MCTSConfig<G::Player>,
 {
     fn default() -> Self {
@@ -189,10 +193,11 @@ where
     }
 }
 
-impl<G, H, Config> HeuristicProgressiveWidening<G, H, Config>
+impl<G, S, H, Config> HeuristicProgressiveWidening<G, S, H, Config>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    S: SimulationScore<G>,
+    H: Heuristic<G, S>,
     Config: MCTSConfig<G::Player>,
 {
     fn allowed_children(visits: usize, mcts_config: &Config) -> usize {
@@ -212,10 +217,12 @@ where
     }
 }
 
-impl<G, H, Config> ExpansionPolicy<G, H, Config> for HeuristicProgressiveWidening<G, H, Config>
+impl<G, S, H, Config> ExpansionPolicy<G, S, H, Config>
+    for HeuristicProgressiveWidening<G, S, H, Config>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    S: SimulationScore<G>,
+    H: Heuristic<G, S>,
     Config: MCTSConfig<G::Player>,
 {
     fn should_expand(
@@ -270,7 +277,15 @@ where
             && max_turn > current_turn
         {
             let mut heuristic_moves = G::available_moves(state)
-                .map(|mv| (H::evaluate_move(state, &mv, heuristic_config), mv))
+                .map(|mv| {
+                    (
+                        // current player, because we apply mv of current player to state and want to get
+                        // resulting heuristic score of current player
+                        H::evaluate_move(state, &mv, heuristic_config)
+                            .get_player_score(G::current_player(state)),
+                        mv,
+                    )
+                })
                 .collect::<Vec<_>>();
             heuristic_moves.shuffle(&mut rng());
             heuristic_moves.sort_unstable_by(|a, b| {

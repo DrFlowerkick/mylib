@@ -11,7 +11,7 @@ use super::{Heuristic, MCTSAlgo, MCTSGame};
 pub trait MCTSTree<G, H, A>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
 {
     type NodeID: Copy + Eq + std::fmt::Debug;
@@ -74,7 +74,7 @@ where
         mcts_config: &A::Config,
         heuristic_config: &H::Config,
     ) -> Option<G::Move>;
-    fn update_stats(&mut self, path_node: Self::PathNode, result: f32);
+    fn update_stats(&mut self, path_node: Self::PathNode, result: A::Score);
     fn update_solver(&mut self, path_node: Self::PathNode, previous_solver_changed: bool) -> bool;
     fn update_root_solver(&mut self) -> bool;
     fn filter_select_move(&self, path_node: Self::PathNode) -> bool;

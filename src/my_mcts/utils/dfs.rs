@@ -7,7 +7,7 @@ use std::collections::HashSet;
 pub struct DfsWalker<G, H, A, T>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     T: MCTSTree<G, H, A>,
     T::NodeID: std::hash::Hash,
@@ -21,7 +21,7 @@ where
 impl<G, H, A, T> DfsWalker<G, H, A, T>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     T: MCTSTree<G, H, A>,
     T::NodeID: std::hash::Hash,
@@ -61,7 +61,7 @@ where
 pub struct DfsIterator<'a, G, H, A, T>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     T: MCTSTree<G, H, A>,
     T::NodeID: std::hash::Hash,
@@ -73,7 +73,7 @@ where
 impl<G, H, A, T> Iterator for DfsIterator<'_, G, H, A, T>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     T: MCTSTree<G, H, A>,
     T::NodeID: std::hash::Hash,

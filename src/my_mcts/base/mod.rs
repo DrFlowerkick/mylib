@@ -17,7 +17,7 @@ pub use heuristic::*;
 pub use tree::*;
 
 use super::{
-    ExpansionPolicy, GameOutcome, GamePlayer, Heuristic, HeuristicConfig, MCTSAlgo, MCTSConfig,
-    MCTSEdge, MCTSGame, MCTSNode, MoveStats, SelectMovePolicy, SimulationPolicy, SolverPolicy,
-    TranspositionTable, UCTCache, UCTPolicy, UCTStatsPolicy,
+    ExpansionPolicy, GamePlayer, Heuristic, HeuristicConfig, MCTSAlgo, MCTSConfig, MCTSEdge,
+    MCTSGame, MCTSNode, MoveStats, SelectMovePolicy, SimulationPolicy, SimulationScore,
+    SolverPolicy, TranspositionTable, UCTCache, UCTPolicy, UCTStatsPolicy,
 };

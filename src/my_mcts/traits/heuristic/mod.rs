@@ -6,4 +6,4 @@ mod core_heuristic;
 pub use config::*;
 pub use core_heuristic::*;
 
-use super::MCTSGame;
+use super::{MCTSGame, SimulationScore};

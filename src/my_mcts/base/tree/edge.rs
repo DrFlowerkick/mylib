@@ -6,7 +6,7 @@ use super::{Heuristic, MCTSAlgo, MCTSEdge, MCTSGame, UCTCache};
 pub struct BaseEdge<G, H, A, UC>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     UC: UCTCache<G, A::UCT, A::Config>,
 {
@@ -18,7 +18,7 @@ where
 impl<G, H, A, UC> MCTSEdge<G, H, A> for BaseEdge<G, H, A, UC>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     UC: UCTCache<G, A::UCT, A::Config>,
 {
@@ -34,23 +34,22 @@ where
         &self.mv
     }
 
-    fn calc_exploitation_score(&self, previous_player: G::Player) -> f32 {
-        self.uct_cache.calc_exploitation_score(previous_player)
+    fn calc_exploitation_score(&self) -> f32 {
+        self.uct_cache.calc_exploitation_score()
     }
 
     fn calc_exploration_score(
         &mut self,
-        previous_player: G::Player,
         parent_visits: usize,
         mcts_config: &A::Config,
+        acting_player: G::Player,
     ) -> f32 {
         self.uct_cache
-            .calc_exploration_score(parent_visits, mcts_config, previous_player)
+            .calc_exploration_score(parent_visits, mcts_config, acting_player)
     }
 
-    fn update_stats(&mut self, state: &G::State, result: f32) {
-        self.uct_cache
-            .update_stats(result, G::previous_player(state));
+    fn update_stats(&mut self, result: f32) {
+        self.uct_cache.update_stats(result);
     }
 
     fn get_visits(&self) -> Option<usize> {

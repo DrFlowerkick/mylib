@@ -1,14 +1,15 @@
 // Implementations of SimulationPolicy
 
-use super::{Heuristic, HeuristicConfig, MCTSConfig, MCTSGame, SimulationPolicy};
+use super::{Heuristic, HeuristicConfig, MCTSConfig, MCTSGame, SimulationPolicy, SimulationScore};
 
 #[derive(Clone)]
 pub struct DefaultSimulationPolicy {}
 
-impl<G, H, Config> SimulationPolicy<G, H, Config> for DefaultSimulationPolicy
+impl<G, S, H, Config> SimulationPolicy<G, S, H, Config> for DefaultSimulationPolicy
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    S: SimulationScore<G>,
+    H: Heuristic<G, S>,
     Config: MCTSConfig<G::Player>,
 {
 }
@@ -16,22 +17,25 @@ where
 #[derive(Clone)]
 pub struct EarlyCutoff {}
 
-impl<G, H, Config> SimulationPolicy<G, H, Config> for EarlyCutoff
+impl<G, S, H, Config> SimulationPolicy<G, S, H, Config> for EarlyCutoff
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    S: SimulationScore<G>,
+    H: Heuristic<G, S>,
     Config: MCTSConfig<G::Player>,
 {
     fn should_cutoff(
         _current_turn: usize,
         state: &G::State,
         depth: usize,
-        perspective_player: Option<G::Player>,
         mcts_config: &Config,
         heuristic_config: &H::Config,
-    ) -> Option<f32> {
-        let heuristic = H::evaluate_state(state, perspective_player, heuristic_config);
+    ) -> Option<S> {
+        let heuristic = H::evaluate_state(state, heuristic_config);
         if depth >= mcts_config.early_cut_off_depth() {
+            // previous player, because the current state results from the move of the previous player
+            // and we want to check, if the move of the previous player results in a good enough score
+            // to cutoff the simulation
             Some(heuristic)
         } else {
             None
@@ -42,27 +46,31 @@ where
 #[derive(Clone)]
 pub struct HeuristicCutoff {}
 
-impl<G, H, Config> SimulationPolicy<G, H, Config> for HeuristicCutoff
+impl<G, S, H, Config> SimulationPolicy<G, S, H, Config> for HeuristicCutoff
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    S: SimulationScore<G>,
+    H: Heuristic<G, S>,
     Config: MCTSConfig<G::Player>,
 {
     fn should_cutoff(
         current_turn: usize,
         state: &G::State,
         depth: usize,
-        perspective_player: Option<G::Player>,
         mcts_config: &Config,
         heuristic_config: &H::Config,
-    ) -> Option<f32> {
+    ) -> Option<S> {
         if let Some(max_turn) = heuristic_config.max_turn()
             && max_turn > current_turn
         {
-            let heuristic = H::evaluate_state(state, perspective_player, heuristic_config);
+            // previous player, because the current state results from the move of the previous player
+            // and we want to check, if the move of the previous player results in a good enough score
+            // to cutoff the simulation
+            let heuristic = H::evaluate_state(state, heuristic_config);
+            let previous_player_score = heuristic.get_player_score(G::previous_player(state));
             if depth >= mcts_config.early_cut_off_depth()
-                || heuristic <= heuristic_config.early_cut_off_lower_bound()
-                || heuristic >= heuristic_config.early_cut_off_upper_bound()
+                || previous_player_score <= heuristic_config.early_cut_off_lower_bound()
+                || previous_player_score >= heuristic_config.early_cut_off_upper_bound()
             {
                 Some(heuristic)
             } else {

@@ -8,7 +8,7 @@ use super::{Heuristic, MCTSAlgo, MCTSGame, MCTSNode, UCTCache};
 pub struct BaseNode<G, H, A, UC>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     UC: UCTCache<G, A::UCT, A::Config>,
 {
@@ -21,7 +21,7 @@ where
 impl<G, H, A, UC> MCTSNode<G, H, A> for BaseNode<G, H, A, UC>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     UC: UCTCache<G, A::UCT, A::Config>,
 {
@@ -40,8 +40,7 @@ where
 
     // -------------- UCT --------------
     fn calc_exploitation_score(&self) -> f32 {
-        self.uct_cache
-            .calc_exploitation_score(G::previous_player(&self.state))
+        self.uct_cache.calc_exploitation_score()
     }
 
     fn calc_exploration_score(&mut self, parent_visits: usize, mcts_config: &A::Config) -> f32 {
@@ -53,8 +52,7 @@ where
     }
 
     fn update_stats(&mut self, result: f32) {
-        self.uct_cache
-            .update_stats(result, G::previous_player(&self.state));
+        self.uct_cache.update_stats(result);
     }
 
     fn get_visits(&self) -> Option<usize> {
@@ -119,7 +117,8 @@ where
             .update(children.map(|c| &c.solver), is_fully_expanded)
     }
     fn get_guaranteed_outcome(&self) -> Option<G::Outcome> {
-        self.solver.get_guaranteed_outcome()
+        self.solver
+            .get_guaranteed_outcome(G::current_player(&self.state))
     }
     fn filter_select_move(&self, child: &Self) -> bool {
         self.solver.filter_select_move(&child.solver)

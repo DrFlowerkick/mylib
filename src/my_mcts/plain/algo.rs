@@ -1,21 +1,22 @@
 // Plain implementation of MCTS
 
 use super::{
-    ExpansionPolicy, GameOutcome, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSTree, MoveStats,
-    SelectMovePolicy, SimulationPolicy, SolverPolicy, UCTPolicy,
+    ExpansionPolicy, Heuristic, MCTSAlgo, MCTSConfig, MCTSGame, MCTSTree, MoveStats,
+    SelectMovePolicy, SimulationPolicy, SimulationScore, SolverPolicy, UCTPolicy,
 };
 use rand::{prelude::IteratorRandom, rng};
 
 // Use PlainMCTS with your specific implementations of the MCTS traits.
 #[derive(Clone, Copy)]
-pub struct PlainMCTS<G, H, MC, UP, EP, SP, MP, SO>
+pub struct PlainMCTS<G, H, MC, UP, EP, SP, SS, MP, SO>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, SS>,
     MC: MCTSConfig<G::Player>,
     UP: UCTPolicy<G, MC>,
-    EP: ExpansionPolicy<G, H, MC>,
-    SP: SimulationPolicy<G, H, MC>,
+    EP: ExpansionPolicy<G, SS, H, MC>,
+    SP: SimulationPolicy<G, SS, H, MC>,
+    SS: SimulationScore<G>,
     MP: SelectMovePolicy<G>,
     SO: SolverPolicy<G>,
 {
@@ -24,14 +25,15 @@ where
     phantom: std::marker::PhantomData<(UP, EP, SP, MP, SO)>,
 }
 
-impl<G, H, MC, UP, EP, SP, MP, SO> PlainMCTS<G, H, MC, UP, EP, SP, MP, SO>
+impl<G, H, MC, UP, EP, SP, SS, MP, SO> PlainMCTS<G, H, MC, UP, EP, SP, SS, MP, SO>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, SS>,
     MC: MCTSConfig<G::Player>,
     UP: UCTPolicy<G, MC>,
-    EP: ExpansionPolicy<G, H, MC>,
-    SP: SimulationPolicy<G, H, MC>,
+    EP: ExpansionPolicy<G, SS, H, MC>,
+    SP: SimulationPolicy<G, SS, H, MC>,
+    SS: SimulationScore<G>,
     MP: SelectMovePolicy<G>,
     SO: SolverPolicy<G>,
 {
@@ -44,14 +46,16 @@ where
     }
 }
 
-impl<G, H, MC, UP, EP, SP, MP, SO> MCTSAlgo<G, H> for PlainMCTS<G, H, MC, UP, EP, SP, MP, SO>
+impl<G, H, MC, UP, EP, SP, SS, MP, SO> MCTSAlgo<G, H>
+    for PlainMCTS<G, H, MC, UP, EP, SP, SS, MP, SO>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, SS>,
     MC: MCTSConfig<G::Player>,
     UP: UCTPolicy<G, MC>,
-    EP: ExpansionPolicy<G, H, MC>,
-    SP: SimulationPolicy<G, H, MC>,
+    EP: ExpansionPolicy<G, SS, H, MC>,
+    SP: SimulationPolicy<G, SS, H, MC>,
+    SS: SimulationScore<G>,
     MP: SelectMovePolicy<G>,
     SO: SolverPolicy<G>,
 {
@@ -61,6 +65,7 @@ where
     type Simulation = SP;
     type MoveSelect = MP;
     type Solver = SO;
+    type Score = SS;
 
     fn set_root(
         &self,
@@ -203,44 +208,44 @@ where
         // or some heuristic value between 0.0 and 1.0
         // WinDrawLoss implementation of GameOutcome provides these values with fn to_score()
         let mut current_state = tree.get_node_state(tree.target(current_path_node)).clone();
-        let simulation_result = if let Some(outcome) = tree.get_target_outcome(current_path_node) {
-            // node is already solved -> use solved score
-            outcome.to_score()
-        } else if let Some(outcome) = G::evaluate(&current_state) {
-            // leaf is terminal -> set outcome of leaf ...
-            tree.set_node_outcome(tree.target(current_path_node), outcome);
-            // ... and return outcome as score
-            outcome.to_score()
-        } else {
-            let mut depth = 0;
-            loop {
-                // check for heuristic cutoff
-                if let Some(heuristic) = SP::should_cutoff(
-                    current_turn,
-                    &current_state,
-                    depth,
-                    Some(G::perspective_player()),
-                    &self.mcts_config,
-                    &self.heuristic_config,
-                ) {
-                    break heuristic;
-                }
+        let simulation_result: SS =
+            if let Some(outcome) = tree.get_target_outcome(current_path_node) {
+                // node is already solved -> use solved score
+                outcome.into()
+            } else if let Some(outcome) = G::evaluate(&current_state) {
+                // leaf is terminal -> set outcome of leaf ...
+                tree.set_node_outcome(tree.target(current_path_node), outcome);
+                // ... and return outcome as score
+                outcome.into()
+            } else {
+                let mut depth = 0;
+                loop {
+                    // check for heuristic cutoff
+                    if let Some(heuristic) = SP::should_cutoff(
+                        current_turn,
+                        &current_state,
+                        depth,
+                        &self.mcts_config,
+                        &self.heuristic_config,
+                    ) {
+                        break heuristic;
+                    }
 
-                // choose next state randomly
-                current_state = G::apply_move(
-                    &current_state,
-                    &G::available_moves(&current_state)
-                        .choose(&mut rng())
-                        .expect("No available moves"),
-                );
-                depth += 1;
+                    // choose next state randomly
+                    current_state = G::apply_move(
+                        &current_state,
+                        &G::available_moves(&current_state)
+                            .choose(&mut rng())
+                            .expect("No available moves"),
+                    );
+                    depth += 1;
 
-                // check for terminal state
-                if let Some(outcome) = G::evaluate(&current_state) {
-                    break outcome.to_score();
+                    // check for terminal state
+                    if let Some(outcome) = G::evaluate(&current_state) {
+                        break outcome.into();
+                    }
                 }
-            }
-        };
+            };
 
         /* ----------------- Back Propagation ----------------- */
         // unwrap() is save, since path is always at least one element long.

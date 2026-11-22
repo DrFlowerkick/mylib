@@ -1,6 +1,7 @@
 // implementation of trait SolverPolicy
 
-use super::{GameOutcome, MCTSGame, SolverPolicy};
+use super::{MCTSGame, SolverPolicy, TwoPlayer, TwoPlayerOutcome};
+use std::ops::Neg;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct NoSolver {}
@@ -12,48 +13,74 @@ where
     fn set_outcome(&mut self, _outcome: G::Outcome, _current_player: G::Player) {}
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct SolverBounds<G: MCTSGame> {
-    pessimistic: G::Outcome,
-    optimistic: G::Outcome,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum WinDrawLoss {
+    Loss,
+    Draw,
+    Win,
 }
 
-impl<G: MCTSGame> Default for SolverBounds<G> {
+impl Neg for WinDrawLoss {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            WinDrawLoss::Draw => WinDrawLoss::Draw,
+            WinDrawLoss::Loss => WinDrawLoss::Win,
+            WinDrawLoss::Win => WinDrawLoss::Loss,
+        }
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct SolverBounds<G: MCTSGame<Player = TwoPlayer, Outcome = TwoPlayerOutcome>> {
+    pessimistic: WinDrawLoss,
+    optimistic: WinDrawLoss,
+    phantom: std::marker::PhantomData<G>,
+}
+
+impl<G: MCTSGame<Player = TwoPlayer, Outcome = TwoPlayerOutcome>> Default for SolverBounds<G> {
     fn default() -> Self {
         Self {
-            pessimistic: G::Outcome::WORST_OUTCOME,
-            optimistic: G::Outcome::BEST_OUTCOME,
+            pessimistic: WinDrawLoss::Loss,
+            optimistic: WinDrawLoss::Win,
+            phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<G: MCTSGame> SolverBounds<G> {
-    fn best_for_parent(&self) -> G::Outcome {
+impl<G: MCTSGame<Player = TwoPlayer, Outcome = TwoPlayerOutcome>> SolverBounds<G> {
+    fn best_for_parent(&self) -> WinDrawLoss {
         -self.pessimistic
     }
-    fn worst_for_parent(&self) -> G::Outcome {
+    fn worst_for_parent(&self) -> WinDrawLoss {
         -self.optimistic
     }
 }
 
-impl<G: MCTSGame> SolverPolicy<G> for SolverBounds<G> {
+impl<G: MCTSGame<Player = TwoPlayer, Outcome = TwoPlayerOutcome>> SolverPolicy<G>
+    for SolverBounds<G>
+{
     fn set_outcome(&mut self, outcome: G::Outcome, current_player: G::Player) {
-        if current_player == G::perspective_player() {
-            self.optimistic = outcome;
-            self.pessimistic = outcome;
-        } else {
-            self.optimistic = -outcome;
-            self.pessimistic = -outcome;
+        match (outcome, current_player) {
+            (TwoPlayerOutcome::Draw, _) => {
+                self.pessimistic = WinDrawLoss::Draw;
+                self.optimistic = WinDrawLoss::Draw;
+            }
+            (TwoPlayerOutcome::FirstIsWinner, TwoPlayer::First)
+            | (TwoPlayerOutcome::SecondIsWinner, TwoPlayer::Second) => {
+                self.pessimistic = WinDrawLoss::Win;
+                self.optimistic = WinDrawLoss::Win;
+            }
+            (TwoPlayerOutcome::SecondIsWinner, TwoPlayer::First)
+            | (TwoPlayerOutcome::FirstIsWinner, TwoPlayer::Second) => {
+                self.pessimistic = WinDrawLoss::Loss;
+                self.optimistic = WinDrawLoss::Loss;
+            }
         }
     }
     fn get_outcome(&self, current_player: G::Player) -> Option<G::Outcome> {
-        // ToDo: perspective_player() does not work correct, if Im second. Try to remove perspective player from code
         if self.optimistic == self.pessimistic {
-            if current_player == G::perspective_player() {
-                Some(self.optimistic)
-            } else {
-                Some(-self.optimistic)
-            }
+            self.get_guaranteed_outcome(current_player)
         } else {
             None
         }
@@ -69,12 +96,12 @@ impl<G: MCTSGame> SolverPolicy<G> for SolverBounds<G> {
         let (optimistic, pessimistic) = children.fold(
             (
                 if is_fully_expanded {
-                    G::Outcome::WORST_OUTCOME
+                    WinDrawLoss::Loss
                 } else {
                     // unexpanded children give always an opportunity to Win!
-                    G::Outcome::BEST_OUTCOME
+                    WinDrawLoss::Win
                 },
-                G::Outcome::WORST_OUTCOME,
+                WinDrawLoss::Loss,
             ),
             |(o, p), c| (o.max(c.best_for_parent()), p.max(c.worst_for_parent())),
         );
@@ -83,15 +110,35 @@ impl<G: MCTSGame> SolverPolicy<G> for SolverBounds<G> {
         self.pessimistic = pessimistic;
         out
     }
-    fn get_guaranteed_outcome(&self) -> Option<G::Outcome> {
-        Some(self.pessimistic)
+    fn get_guaranteed_outcome(&self, current_player: G::Player) -> Option<G::Outcome> {
+        Some(match (self.pessimistic, current_player) {
+            (WinDrawLoss::Draw, _) => TwoPlayerOutcome::Draw,
+            (WinDrawLoss::Win, TwoPlayer::First) | (WinDrawLoss::Loss, TwoPlayer::Second) => {
+                TwoPlayerOutcome::FirstIsWinner
+            }
+            (WinDrawLoss::Win, TwoPlayer::Second) | (WinDrawLoss::Loss, TwoPlayer::First) => {
+                TwoPlayerOutcome::SecondIsWinner
+            }
+        })
     }
     fn filter_select_move(&self, child: &Self) -> bool {
         // if certain loss, do not filter. Otherwise
         // ignore moves resulting in certain loss and
         // keep all moves, which yield at least best guaranteed outcome (pessimistic)
-        self.optimistic == G::Outcome::WORST_OUTCOME
-            || (child.best_for_parent() > G::Outcome::WORST_OUTCOME
+        self.optimistic == WinDrawLoss::Loss
+            || (child.best_for_parent() > WinDrawLoss::Loss
                 && child.worst_for_parent() >= self.pessimistic)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ord() {
+        assert!(WinDrawLoss::Win > WinDrawLoss::Draw);
+        assert!(WinDrawLoss::Draw > WinDrawLoss::Loss);
+        assert!(WinDrawLoss::Win == WinDrawLoss::Win);
     }
 }

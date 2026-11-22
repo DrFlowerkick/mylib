@@ -5,7 +5,7 @@ use std::collections::HashSet;
 
 use crate::{
     my_map_3x3::{CellIndex3x3, MyMap3x3},
-    my_mcts::WinDrawLoss,
+    my_mcts::TwoPlayerOutcome,
 };
 
 // TicTacToeStatus is used for cell and game status of TicTacToe
@@ -39,11 +39,11 @@ impl TicTacToeStatus {
     pub fn is_player(&self) -> bool {
         matches!(self, Self::First | Self::Second)
     }
-    pub fn evaluate(&self) -> Option<WinDrawLoss> {
+    pub fn evaluate(&self) -> Option<TwoPlayerOutcome> {
         match self {
-            TicTacToeStatus::First => Some(WinDrawLoss::Win),
-            TicTacToeStatus::Second => Some(WinDrawLoss::Loss),
-            TicTacToeStatus::Tie => Some(WinDrawLoss::Draw),
+            TicTacToeStatus::First => Some(TwoPlayerOutcome::FirstIsWinner),
+            TicTacToeStatus::Second => Some(TwoPlayerOutcome::SecondIsWinner),
+            TicTacToeStatus::Tie => Some(TwoPlayerOutcome::Draw),
             TicTacToeStatus::Vacant => None,
         }
     }

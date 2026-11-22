@@ -7,7 +7,7 @@ use std::collections::VecDeque;
 pub struct BfsWalker<G, H, A, T>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     T: MCTSTree<G, H, A>,
     T::NodeID: std::hash::Hash,
@@ -22,7 +22,7 @@ where
 impl<G, H, A, T> BfsWalker<G, H, A, T>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     T: MCTSTree<G, H, A>,
     T::NodeID: std::hash::Hash,
@@ -67,7 +67,7 @@ where
 pub struct BfsIterator<'a, G, H, A, T>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     T: MCTSTree<G, H, A>,
     T::NodeID: std::hash::Hash,
@@ -79,7 +79,7 @@ where
 impl<'a, G, H, A, T> Iterator for BfsIterator<'a, G, H, A, T>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     T: MCTSTree<G, H, A>,
     T::NodeID: std::hash::Hash,

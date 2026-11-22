@@ -6,4 +6,4 @@ mod player;
 pub use outcome::*;
 pub use player::*;
 
-use super::{GameOutcome, GamePlayer};
+use super::GamePlayer;

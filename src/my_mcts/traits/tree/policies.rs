@@ -48,7 +48,7 @@ use super::{Heuristic, MCTSAlgo, MCTSGame, UCTCache};
 pub trait UCTStatsPolicy<G, H, A>: Clone
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
 {
     type Node: UCTCache<G, A::UCT, A::Config>;

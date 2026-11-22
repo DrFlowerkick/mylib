@@ -4,6 +4,7 @@ mod config;
 mod expansion_policy;
 mod select_move_policy;
 mod simulation_policy;
+mod simulation_score;
 mod solver_policy;
 mod uct_policy;
 
@@ -11,10 +12,12 @@ pub use config::*;
 pub use expansion_policy::*;
 pub use select_move_policy::*;
 pub use simulation_policy::*;
+pub use simulation_score::*;
 pub use solver_policy::*;
 pub use uct_policy::*;
 
 use super::{
-    ExpansionPolicy, GameOutcome, GamePlayer, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame,
-    MoveStats, SelectMovePolicy, SimulationPolicy, SolverPolicy, UCTPolicy,
+    ExpansionPolicy, GamePlayer, Heuristic, HeuristicConfig, MCTSConfig, MCTSGame, MoveStats,
+    SelectMovePolicy, SimulationPolicy, SimulationScore, SolverPolicy, TwoPlayer, TwoPlayerOutcome,
+    UCTPolicy,
 };

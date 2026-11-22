@@ -12,7 +12,7 @@ pub struct NodeOnly;
 impl<G, H, A> UCTStatsPolicy<G, H, A> for NodeOnly
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
 {
     type Node = ExploitationAndExploration;
@@ -25,7 +25,7 @@ pub struct EdgeOnly;
 impl<G, H, A> UCTStatsPolicy<G, H, A> for EdgeOnly
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
 {
     type Node = NoUCTCache;
@@ -38,7 +38,7 @@ pub struct Hybrid;
 impl<G, H, A> UCTStatsPolicy<G, H, A> for Hybrid
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
 {
     type Node = ExploitationOnly;
@@ -51,7 +51,7 @@ pub struct NodeOnlyWithScoreCache;
 impl<G, H, A> UCTStatsPolicy<G, H, A> for NodeOnlyWithScoreCache
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
 {
     type Node = ExploitationAndExplorationWithScoreCache;
@@ -64,7 +64,7 @@ pub struct EdgeOnlyWithScoreCache;
 impl<G, H, A> UCTStatsPolicy<G, H, A> for EdgeOnlyWithScoreCache
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
 {
     type Node = NoUCTCache;
@@ -77,7 +77,7 @@ pub struct HybridWithScoreCache;
 impl<G, H, A> UCTStatsPolicy<G, H, A> for HybridWithScoreCache
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
 {
     type Node = ExploitationOnlyWithScoreCache;

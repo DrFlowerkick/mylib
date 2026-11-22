@@ -1,3 +1,5 @@
+use crate::my_mcts::SimulationScore;
+
 // plain implementation of MCTSTree
 use super::{
     super::utils::BfsWalker, BaseEdge, BaseNode, Heuristic, MCTSAlgo, MCTSEdge, MCTSGame, MCTSNode,
@@ -23,7 +25,7 @@ type MutChildrenIterItem<'a, G, H, A, UN, UE> = (
 pub struct PlainTree<G, H, A, USP, TT>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     USP: UCTStatsPolicy<G, H, A>,
     TT: TranspositionTable<G::State, usize>,
@@ -37,7 +39,7 @@ where
 impl<G, H, A, USP, TT> PlainTree<G, H, A, USP, TT>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     USP: UCTStatsPolicy<G, H, A>,
     TT: TranspositionTable<G::State, usize>,
@@ -203,7 +205,7 @@ impl PlainPathNode {
 impl<G, H, A, USP, TT> MCTSTree<G, H, A> for PlainTree<G, H, A, USP, TT>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     USP: UCTStatsPolicy<G, H, A>,
     TT: TranspositionTable<G::State, usize>,
@@ -411,20 +413,26 @@ where
     }
 
     fn get_win_probability(&self) -> f32 {
-        // ToDo: exploitation score of root is from view of opponent, not perspective player
-        // quick fix: 1.0 - exploitation score. But is this valid?
-        if self.nodes[self.root_id].get_accumulated_value().is_some() {
-            // node contains exploitation stats
-            1.0 - self.nodes[self.root_id].calc_exploitation_score()
-        } else {
-            // edges only -> total uct is some of children edges
-            // previous_player for exploitation score is current player of root
-            let previous_player = G::current_player(self.nodes[self.root_id].get_state());
-            1.0 - self.edges[self.root_id]
-                .iter()
-                .map(|(_, e)| e.calc_exploitation_score(previous_player))
-                .sum::<f32>()
-        }
+        // exploitation score of any node is from view of previous player, not current player
+        let (total_score, total_visits) = self.get_children_path_nodes(self.root_id).fold(
+            (0.0, 0),
+            |(mut score, mut visits), child_pn| {
+                visits += self.get_target_visits(child_pn);
+                let child_id = self.target(child_pn);
+                if let Some(acc) = self.nodes[child_id].get_accumulated_value() {
+                    // node contains exploitation stats
+                    score += acc;
+                } else {
+                    // edges only -> total uct is sum of children edges
+                    score += self.edges[self.root_id]
+                        .iter()
+                        .flat_map(|(_, e)| e.get_accumulated_value())
+                        .sum::<f32>();
+                }
+                (score, visits)
+            },
+        );
+        total_score / total_visits as f32
     }
 
     fn get_guaranteed_outcome(&self) -> Option<G::Outcome> {
@@ -448,9 +456,9 @@ where
         {
             let node_uct = child.calc_exploitation_score()
                 + child.calc_exploration_score(parent_visits, mcts_config);
-            let previous_player = G::previous_player(child.get_state());
-            let edge_uct = edge_to_child.calc_exploitation_score(previous_player)
-                + edge_to_child.calc_exploration_score(previous_player, parent_visits, mcts_config);
+            let acting_player = G::previous_player(child.get_state());
+            let edge_uct = edge_to_child.calc_exploitation_score()
+                + edge_to_child.calc_exploration_score(parent_visits, mcts_config, acting_player);
 
             let uct = node_uct + edge_uct;
             if uct > best_uct {
@@ -507,10 +515,13 @@ where
         )
     }
 
-    fn update_stats(&mut self, path_node: Self::PathNode, result: f32) {
+    fn update_stats(&mut self, path_node: Self::PathNode, result: A::Score) {
+        // result is update from view of previous player, because result is a
+        // consequence of the move of previous player
         match path_node {
             PlainPathNode::Root(root_id) => {
-                self.nodes[root_id].update_stats(result);
+                let acting_player = G::previous_player(self.get_node_state(root_id));
+                self.nodes[root_id].update_stats(result.get_player_score(acting_player));
             }
             PlainPathNode::Via {
                 parent_id,
@@ -518,12 +529,12 @@ where
             } => {
                 // update states of node
                 let child_id = self.edges[parent_id][edge_idx].0;
-                self.nodes[child_id].update_stats(result);
+                let acting_player = G::previous_player(self.get_node_state(child_id));
+                self.nodes[child_id].update_stats(result.get_player_score(acting_player));
                 // update stats of edge
-                let state = self.nodes[child_id].get_state();
                 self.edges[parent_id][edge_idx]
                     .1
-                    .update_stats(state, result);
+                    .update_stats(result.get_player_score(acting_player));
             }
         }
     }
@@ -569,7 +580,7 @@ where
 impl<G, H, A, USP, TT> PruneToRoot for PlainTree<G, H, A, USP, TT>
 where
     G: MCTSGame,
-    H: Heuristic<G>,
+    H: Heuristic<G, A::Score>,
     A: MCTSAlgo<G, H>,
     USP: UCTStatsPolicy<G, H, A>,
     TT: TranspositionTable<G::State, usize>,

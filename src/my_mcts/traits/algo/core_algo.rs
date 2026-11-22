@@ -8,18 +8,23 @@
 // While MCTSAlgo policies ExpansionPolicy and SimulationsPolicy depend upon Heuristic,
 // NoHeuristic can be used if ho heuristic is required or feasible.
 
-use crate::my_mcts::SolverPolicy;
-
 use super::{
     ExpansionPolicy, Heuristic, MCTSConfig, MCTSGame, MCTSTree, SelectMovePolicy, SimulationPolicy,
-    UCTPolicy,
+    SolverPolicy, UCTPolicy,
 };
 
-pub trait MCTSAlgo<G: MCTSGame, H: Heuristic<G>>: Sized + Clone + Sync + Send {
+pub trait SimulationScore<G: MCTSGame>:
+    Sized + Clone + Copy + Default + Sync + Send + From<G::Outcome>
+{
+    fn get_player_score(&self, player: G::Player) -> f32;
+}
+
+pub trait MCTSAlgo<G: MCTSGame, H: Heuristic<G, Self::Score>>: Sized + Clone + Sync + Send {
     type Config: MCTSConfig<G::Player>;
     type UCT: UCTPolicy<G, Self::Config>;
-    type Expansion: ExpansionPolicy<G, H, Self::Config>;
-    type Simulation: SimulationPolicy<G, H, Self::Config>;
+    type Expansion: ExpansionPolicy<G, Self::Score, H, Self::Config>;
+    type Simulation: SimulationPolicy<G, Self::Score, H, Self::Config>;
+    type Score: SimulationScore<G>;
     type MoveSelect: SelectMovePolicy<G>;
     type Solver: SolverPolicy<G>;
 

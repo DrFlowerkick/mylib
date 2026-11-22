@@ -1,31 +1,20 @@
 // policy traits of mcts
 
-use super::{Heuristic, MCTSConfig, MCTSGame};
+use super::{Heuristic, MCTSConfig, MCTSGame, SimulationScore};
 
 pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig<G::Player>>: Clone + Sync + Send {
-    // calculates the exploitation score from the view of the perspective player
-    fn exploitation_score(
-        accumulated_value: f32,
-        visits: usize,
-        previous_player: G::Player,
-    ) -> f32 {
+    fn exploitation_score(accumulated_value: f32, visits: usize) -> f32 {
         if visits == 0 {
             return 0.0;
         }
-        let raw = accumulated_value / visits as f32;
-        // this works only for 2 player games
-        if previous_player == G::perspective_player() {
-            raw
-        } else {
-            1.0 - raw
-        }
+        accumulated_value / visits as f32
     }
 
     fn exploration_score(
         visits: usize,
         parent_visits: usize,
         mcts_config: &Config,
-        _previous_player: G::Player,
+        _acting_player: G::Player,
     ) -> f32 {
         if visits == 0 {
             return f32::INFINITY;
@@ -34,8 +23,12 @@ pub trait UCTPolicy<G: MCTSGame, Config: MCTSConfig<G::Player>>: Clone + Sync + 
     }
 }
 
-pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Player>>:
-    Clone + Sync + Send + Default
+pub trait ExpansionPolicy<
+    G: MCTSGame,
+    S: SimulationScore<G>,
+    H: Heuristic<G, S>,
+    Config: MCTSConfig<G::Player>,
+>: Clone + Sync + Send + Default
 {
     fn should_expand(
         &self,
@@ -61,17 +54,20 @@ pub trait ExpansionPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Pl
 }
 
 // return value ist heuristic value at cutoff
-pub trait SimulationPolicy<G: MCTSGame, H: Heuristic<G>, Config: MCTSConfig<G::Player>>:
-    Clone + Sync + Send
+pub trait SimulationPolicy<
+    G: MCTSGame,
+    S: SimulationScore<G>,
+    H: Heuristic<G, S>,
+    Config: MCTSConfig<G::Player>,
+>: Clone + Sync + Send
 {
     fn should_cutoff(
         _current_turn: usize,
         _state: &G::State,
         _depth: usize,
-        _perspective_player: Option<G::Player>,
         _mcts_config: &Config,
         _heuristic_config: &H::Config,
-    ) -> Option<f32> {
+    ) -> Option<S> {
         None
     }
 }
@@ -90,9 +86,7 @@ pub trait SelectMovePolicy<G: MCTSGame>: Clone + Sync + Send {
 }
 
 pub trait SolverPolicy<G: MCTSGame>: Clone + Sync + Send + Default {
-    // sets the outcome from the view of the perspective player
     fn set_outcome(&mut self, outcome: G::Outcome, current_player: G::Player);
-    // gets the outcome (if any) from the view of the perspective player
     fn get_outcome(&self, _current_player: G::Player) -> Option<G::Outcome> {
         None
     }
@@ -106,7 +100,7 @@ pub trait SolverPolicy<G: MCTSGame>: Clone + Sync + Send + Default {
     ) -> bool {
         false
     }
-    fn get_guaranteed_outcome(&self) -> Option<G::Outcome> {
+    fn get_guaranteed_outcome(&self, _current_player: G::Player) -> Option<G::Outcome> {
         None
     }
     fn filter_select_move(&self, _child: &Self) -> bool {

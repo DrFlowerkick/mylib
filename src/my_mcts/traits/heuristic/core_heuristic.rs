@@ -5,15 +5,11 @@
 //
 // Heuristic depends upon MCTSGame for State and Move type amongst others.
 
-use super::{HeuristicConfig, MCTSGame};
+use super::{HeuristicConfig, MCTSGame, SimulationScore};
 
-pub trait Heuristic<G: MCTSGame>: Clone + Sync + Send {
+pub trait Heuristic<G: MCTSGame, S: SimulationScore<G>>: Clone + Sync + Send {
     type Config: HeuristicConfig + Clone + Sync + Send;
 
-    fn evaluate_state(
-        state: &G::State,
-        perspective_player: Option<G::Player>,
-        heuristic_config: &Self::Config,
-    ) -> f32;
-    fn evaluate_move(state: &G::State, mv: &G::Move, heuristic_config: &Self::Config) -> f32;
+    fn evaluate_state(state: &G::State, heuristic_config: &Self::Config) -> S;
+    fn evaluate_move(state: &G::State, mv: &G::Move, heuristic_config: &Self::Config) -> S;
 }
