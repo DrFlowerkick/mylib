@@ -252,10 +252,28 @@ where
         mcts_config: &Config,
         heuristic_config: &H::Config,
     ) -> Option<G::Move> {
-        if let Some(moves) = &mut self.unexpanded_moves {
-            if let Some(max_turn) = heuristic_config.max_turn()
-                && max_turn > current_turn
-            {
+        if let Some(max_turn) = heuristic_config.max_turn()
+            && current_turn > max_turn
+        {
+            // fall back to progressive widening, if current_turn exceeds max_turn
+            if let Some(moves) = &mut self.unexpanded_moves {
+                if force || num_children < Self::allowed_children(visits, mcts_config) {
+                    moves.pop().map(|(_, m)| m)
+                } else {
+                    None
+                }
+            } else {
+                let mut moves = G::available_moves(state)
+                    .map(|mv| (0.0, mv))
+                    .collect::<Vec<_>>();
+                moves.shuffle(&mut rng());
+                let mv = moves.pop().map(|(_, mv)| mv);
+                self.unexpanded_moves = Some(moves);
+                mv
+            }
+        } else {
+            // heuristic progressive widening
+            if let Some(moves) = &mut self.unexpanded_moves {
                 let threshold = Self::threshold(visits, heuristic_config);
                 if force
                     || (num_children < Self::allowed_children(visits, mcts_config)
@@ -265,41 +283,26 @@ where
                 } else {
                     None
                 }
-            } else if force || num_children < Self::allowed_children(visits, mcts_config) {
-                // fall back to progressive widening, if max turn for heuristic is reached
-                moves.pop().map(|(_, m)| m)
             } else {
-                None
+                let mut heuristic_moves = G::available_moves(state)
+                    .map(|mv| {
+                        (
+                            // current player, because we apply mv of current player to state and want to get
+                            // resulting heuristic score of current player
+                            H::evaluate_move(state, &mv, heuristic_config)
+                                .get_player_score(G::current_player(state)),
+                            mv,
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                heuristic_moves.shuffle(&mut rng());
+                heuristic_moves.sort_unstable_by(|a, b| {
+                    a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal)
+                });
+                let mv = heuristic_moves.pop().map(|(_, m)| m);
+                self.unexpanded_moves = Some(heuristic_moves);
+                mv
             }
-        } else if let Some(max_turn) = heuristic_config.max_turn()
-            && max_turn > current_turn
-        {
-            let mut heuristic_moves = G::available_moves(state)
-                .map(|mv| {
-                    (
-                        // current player, because we apply mv of current player to state and want to get
-                        // resulting heuristic score of current player
-                        H::evaluate_move(state, &mv, heuristic_config)
-                            .get_player_score(G::current_player(state)),
-                        mv,
-                    )
-                })
-                .collect::<Vec<_>>();
-            heuristic_moves.shuffle(&mut rng());
-            heuristic_moves.sort_unstable_by(|a, b| {
-                a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal)
-            });
-            let mv = heuristic_moves.pop().map(|(_, m)| m);
-            self.unexpanded_moves = Some(heuristic_moves);
-            mv
-        } else {
-            let mut moves = G::available_moves(state)
-                .map(|mv| (0.0, mv))
-                .collect::<Vec<_>>();
-            moves.shuffle(&mut rng());
-            let mv = moves.pop().map(|(_, mv)| mv);
-            self.unexpanded_moves = Some(moves);
-            mv
         }
     }
     fn is_fully_expanded(&self) -> bool {

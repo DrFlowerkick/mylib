@@ -61,8 +61,11 @@ where
         heuristic_config: &H::Config,
     ) -> Option<S> {
         if let Some(max_turn) = heuristic_config.max_turn()
-            && max_turn > current_turn
+            && current_turn > max_turn
         {
+            // Fallback to "no cut off", if current_turn exceeds max_turn
+            None
+        } else {
             // previous player, because the current state results from the move of the previous player
             // and we want to check, if the move of the previous player results in a good enough score
             // to cutoff the simulation
@@ -76,8 +79,6 @@ where
             } else {
                 None
             }
-        } else {
-            None
         }
     }
 }

@@ -161,16 +161,16 @@ impl TicTacToeGameData {
     pub fn get_cell_value(&self, cell: CellIndex3x3) -> TicTacToeStatus {
         *self.map.get_cell(cell)
     }
-    pub fn get_first_vacant_cell(&self) -> Option<(CellIndex3x3, &TicTacToeStatus)> {
+    pub fn find_vacant_cell(&self) -> Option<(CellIndex3x3, &TicTacToeStatus)> {
         self.map.iterate().find(|(_, v)| v.is_vacant())
     }
-    pub fn count_me_cells(&self) -> usize {
+    pub fn count_first_cells(&self) -> usize {
         self.map
             .iterate()
             .filter(|(_, v)| matches!(**v, TicTacToeStatus::First))
             .count()
     }
-    pub fn count_opp_cells(&self) -> usize {
+    pub fn count_second_cells(&self) -> usize {
         self.map
             .iterate()
             .filter(|(_, v)| matches!(**v, TicTacToeStatus::Second))
@@ -186,8 +186,8 @@ impl TicTacToeGameData {
             .count()
     }
     pub fn get_threats(&self) -> (HashSet<CellIndex3x3>, HashSet<CellIndex3x3>) {
-        let mut me_threats: HashSet<CellIndex3x3> = HashSet::new();
-        let mut opp_threats: HashSet<CellIndex3x3> = HashSet::new();
+        let mut first_threats: HashSet<CellIndex3x3> = HashSet::new();
+        let mut second_threats: HashSet<CellIndex3x3> = HashSet::new();
 
         for score_line in Self::SCORE_LINES.iter() {
             let (threat, vacant) = score_line.iter().fold(
@@ -203,25 +203,25 @@ impl TicTacToeGameData {
             );
             match threat {
                 2 => {
-                    me_threats.insert(vacant);
+                    first_threats.insert(vacant);
                 }
                 -2 => {
-                    opp_threats.insert(vacant);
+                    second_threats.insert(vacant);
                 }
                 _ => (),
             }
         }
-        (me_threats, opp_threats)
+        (first_threats, second_threats)
     }
     pub fn get_meta_cell_threats(&self, cell: CellIndex3x3) -> (u8, u8, u8, u8) {
         if self.get_cell_value(cell).is_not_vacant() {
             return (0, 0, 0, 0);
         }
 
-        let mut my_meta_threats = 0;
-        let mut my_meta_small_threats = 0;
-        let mut opp_meta_threats = 0;
-        let mut opp_meta_small_threats = 0;
+        let mut first_meta_threats = 0;
+        let mut first_meta_small_threats = 0;
+        let mut second_meta_threats = 0;
+        let mut second_meta_small_threats = 0;
 
         for score_line in Self::SCORE_LINES.iter() {
             if !score_line.contains(&cell) {
@@ -233,49 +233,49 @@ impl TicTacToeGameData {
                 .sum();
 
             match threat {
-                2 => my_meta_threats += 1,
-                1 => my_meta_small_threats += 1,
-                -1 => opp_meta_small_threats += 1,
-                -2 => opp_meta_threats += 1,
+                2 => first_meta_threats += 1,
+                1 => first_meta_small_threats += 1,
+                -1 => second_meta_small_threats += 1,
+                -2 => second_meta_threats += 1,
                 _ => (),
             }
         }
 
         (
-            my_meta_threats,
-            my_meta_small_threats,
-            opp_meta_threats,
-            opp_meta_small_threats,
+            first_meta_threats,
+            first_meta_small_threats,
+            second_meta_threats,
+            second_meta_small_threats,
         )
     }
 
     pub fn get_board_control(&self) -> (f32, f32) {
         self.map.iterate().fold(
             (0.0, 0.0),
-            |(mut my_control, mut opp_control), (cell, status)| {
+            |(mut first_control, mut second_control), (cell, status)| {
                 match status {
                     TicTacToeStatus::First => {
-                        my_control += cell.cell_weight();
+                        first_control += cell.cell_weight();
                     }
                     TicTacToeStatus::Second => {
-                        opp_control += cell.cell_weight();
+                        second_control += cell.cell_weight();
                     }
                     TicTacToeStatus::Vacant | TicTacToeStatus::Tie => {
                         // do nothing
                     }
                 }
-                (my_control, opp_control)
+                (first_control, second_control)
             },
         )
     }
 
     pub fn board_analysis(&self) -> BoardAnalysis {
         let status = self.get_status();
-        let my_cells = self.count_me_cells();
-        let opp_cells = self.count_opp_cells();
+        let first_cells = self.count_first_cells();
+        let second_cells = self.count_second_cells();
         let played_cells = self.count_non_vacant_cells();
-        let (my_control, opp_control) = self.get_board_control();
-        let (my_threats, opp_threats) = self.get_threats();
+        let (first_control, second_control) = self.get_board_control();
+        let (my_threats, second_threats) = self.get_threats();
         let mut meta_cell_threats = MyMap3x3::default();
         for cell in self
             .iter_map()
@@ -286,13 +286,13 @@ impl TicTacToeGameData {
         }
         BoardAnalysis {
             status,
-            my_cells,
-            opp_cells,
+            first_cells,
+            second_cells,
             played_cells,
-            my_control,
-            opp_control,
+            first_control,
+            second_control,
             my_threats,
-            opp_threats,
+            second_threats,
             meta_cell_threats,
         }
     }
@@ -301,12 +301,12 @@ impl TicTacToeGameData {
 #[derive(Clone, Default)]
 pub struct BoardAnalysis {
     pub status: TicTacToeStatus,
-    pub my_cells: usize,
-    pub opp_cells: usize,
+    pub first_cells: usize,
+    pub second_cells: usize,
     pub played_cells: usize,
-    pub my_control: f32,
-    pub opp_control: f32,
+    pub first_control: f32,
+    pub second_control: f32,
     pub my_threats: HashSet<CellIndex3x3>,
-    pub opp_threats: HashSet<CellIndex3x3>,
+    pub second_threats: HashSet<CellIndex3x3>,
     pub meta_cell_threats: MyMap3x3<(u8, u8, u8, u8)>,
 }
