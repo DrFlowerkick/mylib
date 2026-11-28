@@ -1,5 +1,5 @@
 use super::*;
-use crate::my_mcts::{GamePlayer, MCTSGame, TwoPlayer, TwoPlayerOutcome};
+use crate::my_mcts::{MCTSGame, TwoPlayer, TwoPlayerOutcome};
 
 #[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
 pub struct TicTacToePlayerAction {
@@ -37,7 +37,7 @@ impl TicTacToeGame {
     }
     pub fn next_player(&mut self) {
         self.previous_player = self.current_player;
-        self.current_player = self.current_player.next();
+        self.current_player = self.current_player.next_player();
     }
 }
 

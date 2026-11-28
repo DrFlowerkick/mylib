@@ -2,6 +2,4 @@
 
 use std::hash::Hash;
 
-pub trait GamePlayer: PartialEq + Eq + Hash + Clone + Copy + Sync + Send {
-    fn next(&self) -> Self;
-}
+pub trait GamePlayer: PartialEq + Eq + Hash + Clone + Copy + Sync + Send {}

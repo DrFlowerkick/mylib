@@ -18,11 +18,4 @@ impl TwoPlayer {
     }
 }
 
-impl GamePlayer for TwoPlayer {
-    fn next(&self) -> Self {
-        match self {
-            TwoPlayer::First => TwoPlayer::Second,
-            TwoPlayer::Second => TwoPlayer::First,
-        }
-    }
-}
+impl GamePlayer for TwoPlayer {}
